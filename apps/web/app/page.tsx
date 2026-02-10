@@ -105,10 +105,10 @@ export default function LandingPage(): JSX.Element {
         <div className="kira-float-fast absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-kira-warmgray/15 blur-3xl" />
         <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
           <div className="md:col-span-8">
-            <p className="text-xs uppercase tracking-[0.12em] text-kira-midgray">grada</p>
-            <h1 className="mt-3 max-w-3xl text-4xl leading-tight md:text-6xl">
+            <h1 className="max-w-3xl text-5xl leading-tight md:text-7xl">Grada</h1>
+            <p className="mt-3 max-w-3xl text-3xl leading-tight md:text-5xl">
               Stop losing margin to wholesale operations chaos.
-            </h1>
+            </p>
             <p className="mt-4 max-w-2xl text-kira-darkgray md:text-lg">
               Empowering Every Step of Wholesale. grada is a focused operating layer for fashion teams handling
               inventory, marketplace orders, documents, and reporting.
