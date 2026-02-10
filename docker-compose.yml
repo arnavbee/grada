@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kira-postgres
+    environment:
+      POSTGRES_DB: kira
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kira"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: kira-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: python:3.11-slim
+    container_name: kira-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    working_dir: /workspace/apps/api
+    volumes:
+      - .:/workspace
+    command: >
+      sh -c "pip install --no-cache-dir -e .[dev] &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    env_file:
+      - ./apps/api/.env.example
+    ports:
+      - "8000:8000"
+
+  web:
+    image: node:20-alpine
+    container_name: kira-web
+    depends_on:
+      - api
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: >
+      sh -c "corepack enable &&
+             pnpm install &&
+             pnpm --filter @kira/web dev --hostname 0.0.0.0 --port 3000"
+    env_file:
+      - ./apps/web/.env.example
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --kira-space-1: 8px;
+  --kira-space-2: 16px;
+  --kira-space-3: 24px;
+  --kira-space-4: 32px;
+}
+
+body {
+  @apply bg-kira-offwhite font-sans text-kira-black antialiased;
+  background-image:
+    radial-gradient(circle at 8% 10%, rgba(199, 183, 182, 0.28) 0, transparent 32%),
+    radial-gradient(circle at 92% 14%, rgba(144, 113, 91, 0.12) 0, transparent 30%);
+  min-height: 100vh;
+}
+
+h1 {
+  @apply text-3xl font-bold tracking-tight md:text-4xl;
+}
+
+h2 {
+  @apply text-xl font-semibold tracking-tight;
+}
+
+p,
+label,
+th,
+td,
+input,
+button {
+  @apply text-sm md:text-base;
+}
+
+small {
+  @apply text-xs font-light;
+}
+
+.surface-card {
+  @apply rounded-2xl border border-kira-warmgray/35 bg-kira-offwhite/95 shadow-panel backdrop-blur-sm;
+}
+
+.table-zebra tbody tr:nth-child(even) {
+  background: rgba(199, 183, 182, 0.16);
+}
+
+.kira-focus-ring:focus-visible {
+  outline: 2px solid #90715b;
+  outline-offset: 2px;
+}
+
+@keyframes modal-open {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.kira-modal-open {
+  animation: modal-open 260ms ease-out both;
+}
+
+@keyframes kira-float-slow {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes kira-float-fast {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, 8px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes kira-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes kira-marquee-reverse {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes kira-pulse-bar {
+  0% {
+    opacity: 0.65;
+    filter: saturate(85%);
+  }
+  50% {
+    opacity: 1;
+    filter: saturate(115%);
+  }
+  100% {
+    opacity: 0.75;
+    filter: saturate(95%);
+  }
+}
+
+.kira-float-slow {
+  animation: kira-float-slow 5.5s ease-in-out infinite;
+}
+
+.kira-float-fast {
+  animation: kira-float-fast 4.2s ease-in-out infinite;
+}
+
+.kira-marquee {
+  animation: kira-marquee 28s linear infinite;
+}
+
+.kira-marquee-reverse {
+  animation: kira-marquee-reverse 31s linear infinite;
+}
+
+.kira-pulse-bar {
+  animation: kira-pulse-bar 2.4s ease-in-out infinite;
+}
+
+.kira-soft-glow {
+  box-shadow:
+    0 8px 30px rgba(6, 6, 6, 0.06),
+    0 0 0 1px rgba(199, 183, 182, 0.12),
+    0 0 42px rgba(144, 113, 91, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

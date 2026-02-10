@@ -1,0 +1,29 @@
+{
+  "name": "@kira/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm run clean && next dev",
+    "build": "next build",
+    "start": "next start",
+    "clean": "node -e \"const fs=require('fs');for (const dir of ['.next','.next-dev','../../node_modules/.cache/next']) fs.rmSync(dir,{ recursive:true, force:true });\"",
+    "lint": "next lint",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "next": "14.2.17",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/react": "^18.3.9",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.17",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "vitest": "^2.1.2"
+  }
+}

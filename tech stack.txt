@@ -1,0 +1,402 @@
+﻿Frontend
+Core Framework
+Next.js 14 (App Router)
+- Why: Full-stack React framework, SSR, API routes, file-based routing
+- AI Advantage: Cursor/GPT-4 EXCELLENT at Next.js (huge training data)
+- Hosting: Vercel (zero-config, auto-scaling, ₹0 for MVP scale)
+- Learning Curve: Low (if you know React basics)
+UI & Styling
+Tailwind CSS
+- Why: Utility-first, no CSS files, fast development
+- AI Advantage: AI generates perfect Tailwind classes
+- Alternative: None needed, Tailwind is perfect for this
+
+
+shadcn/ui Components
+- Why: Copy-paste React components, built on Radix UI
+- AI Advantage: AI knows all shadcn components, generates them perfectly
+- What you get: Beautiful, accessible buttons, modals, forms, tables out-of-box
+- Cost: Free (open source)
+- Install: npx shadcn-ui@latest init
+State Management
+Zustand
+- Why: Simplest state management, minimal boilerplate
+- AI Advantage: Very easy for AI to generate Zustand stores
+- Alternative: React Context (built-in, but more verbose)
+- When: For global state (user data, app settings)
+
+
+React Query (TanStack Query v5)
+- Why: Server state management, caching, auto-refetch
+- AI Advantage: AI writes perfect React Query hooks
+- When: For all API calls (products, POs, etc.)
+- Benefits: Loading states, error handling, cache automatic
+Form Handling
+React Hook Form
+- Why: Performant, less re-renders, easy validation
+- AI Advantage: AI generates complete forms with validation
+
+
+Zod
+- Why: TypeScript-first schema validation
+- AI Advantage: AI writes type-safe schemas
+- Integration: Works perfectly with React Hook Form
+Data Tables
+TanStack Table (formerly React Table)
+- Why: Powerful, headless table library
+- Features: Sorting, filtering, pagination, column resizing
+- AI Advantage: AI can generate complete table implementations
+Charts & Visualizations
+Recharts
+- Why: Built on D3, React components, simple API
+- AI Advantage: AI generates chart code easily
+- Types: Line, Bar, Pie, Area charts for dashboard
+
+
+Alternative: Chart.js with react-chartjs-2 (also good)
+File Uploads
+react-dropzone
+- Why: Drag-and-drop file uploads, image preview
+- AI Advantage: AI generates complete upload components
+- Integration: Works with any backend
+Date Handling
+date-fns
+- Why: Modern, tree-shakeable, immutable
+- Alternative: Day.js (smaller bundle)
+- AI Advantage: AI knows both very well
+________________
+
+
+Backend
+Framework
+Next.js API Routes + Server Actions
+- Why: Same codebase as frontend, deploy together
+- AI Advantage: Cursor writes backend + frontend in one flow
+- When: For CRUD operations, simple API endpoints
+
+
+FastAPI (Python) - Separate Service
+- Why: For AI-heavy operations (image analysis, PO parsing)
+- AI Advantage: AI EXCELLENT at Python, FastAPI
+- When: For AI processing, background jobs
+- Deploy: Separate Railway/Render deployment
+Database
+PostgreSQL (via Supabase)
+- Why: Open-source, JSONB support, full-text search, mature
+- AI Advantage: AI knows PostgreSQL extremely well
+- Hosting: Supabase (managed, ₹0 tier for MVP, includes auth)
+- Features: 
+  * Database (PostgreSQL)
+  * Auth (if you want to use it)
+  * Storage (for files)
+  * Realtime (websockets if needed later)
+  * Auto-generated REST API (instant CRUD)
+
+
+Alternative: Railway PostgreSQL (also good, simpler)
+Alternative: Neon (serverless PostgreSQL, generous free tier)
+ORM
+Prisma
+- Why: Type-safe, auto-completion, migrations, best DX
+- AI Advantage: AI generates Prisma schemas and queries PERFECTLY
+- Benefits:
+  * Define schema in schema.prisma
+  * Auto-generates TypeScript types
+  * Prisma Studio (GUI for database)
+  * Migration system built-in
+
+
+Example workflow:
+1. Define schema in schema.prisma
+2. Run: npx prisma generate
+3. Get full TypeScript types + autocomplete
+4. AI writes queries with perfect types
+Authentication
+NextAuth.js v5 (aka Auth.js)
+- Why: Most popular auth for Next.js, supports many providers
+- AI Advantage: AI knows NextAuth very well
+- Features: Email/password, Google OAuth, JWT sessions
+- Free: Yes
+
+
+Alternative: Supabase Auth (if using Supabase for DB)
+Alternative: Clerk (paid, but amazing DX)
+File Storage
+Cloudflare R2
+- Why: S3-compatible, cheaper than S3, zero egress fees
+- Cost: 10GB storage free, then ₹120/TB/month (vs AWS S3 ₹1,600/TB)
+- AI Advantage: S3-compatible = AI knows the API
+- Use: Product images, PDFs, generated exports
+
+
+Alternative: AWS S3 (more expensive but standard)
+Alternative: Supabase Storage (if using Supabase)
+
+
+For MVP: Vercel Blob Storage (₹0 for 1GB)
+Background Jobs & Queues
+Inngest (⭐ RECOMMENDED for MVP)
+- Why: Serverless background jobs, zero infrastructure
+- AI Advantage: Simple API, AI writes jobs easily
+- Features: Retries, scheduling, monitoring built-in
+- Cost: Free tier (generous)
+- Use: Image processing, PO parsing, email sending
+
+
+Alternative: BullMQ + Redis (more complex, better for scale)
+Alternative: Trigger.dev (similar to Inngest)
+Email
+Resend
+- Why: Built by Next.js community, best DX, ₹0 for 3K emails/month
+- AI Advantage: Dead simple API, AI generates email code easily
+- Features: React email templates, analytics
+- Alternative: SendGrid (more complex, established)
+
+
+React Email
+- Why: Write emails in React, compile to HTML
+- Integration: Works perfectly with Resend
+- AI Advantage: AI generates email templates
+________________
+
+
+AI/ML Services
+Image Analysis
+OpenAI GPT-4 Vision API
+- Why: Best vision model, detailed descriptions
+- Cost: ~₹40-60 per 1,000 images (high-res)
+- Use: Product attribute detection, description generation
+- API: Simple REST API, AI generates code easily
+
+
+Google Cloud Vision API
+- Why: Cheap, good for basic detection (labels, colors)
+- Cost: ~₹10-15 per 1,000 images
+- Use: Color detection, basic labels
+- Strategy: Use Vision for initial pass, GPT-4V for details
+Text Processing (PO Parsing, Tech Pack OCR)
+OpenAI GPT-4 Turbo API
+- Why: Best at structured data extraction from text
+- Cost: ₹80/1M input tokens, ₹240/1M output tokens
+- Use: Parse POs, extract tech pack data, generate text
+- Features: Function calling for structured outputs
+
+
+For OCR (if needed):
+Tesseract OCR (Open Source, Free)
+- Why: Good for printed text in PDFs
+- Install: npm package (tesseract.js)
+- When: Tech pack PDFs, scanned POs
+Document Processing
+pdf-parse (npm package)
+- Why: Extract text from PDFs, free, runs serverless
+- Use: Text-based PO PDFs
+
+
+Mammoth.js
+- Why: Convert DOCX to HTML/text
+- Use: If POs come as Word docs
+________________
+
+
+Dev Tools & AI Integration
+AI-Powered Development
+Cursor IDE (⭐ CRITICAL)
+- Why: AI writes 90% of your code
+- Cost: ₹1,600/month (Cursor Pro)
+- Integration: Works with Next.js, Prisma, everything
+- Features: AI pair programmer, codebase-aware
+- Install: Download from cursor.sh
+
+
+GitHub Copilot (optional, additional)
+- Why: AI autocomplete in any editor
+- Cost: ₹800/month
+- When: If you sometimes use VS Code
+Package Manager
+pnpm (⭐ RECOMMENDED)
+- Why: Faster than npm/yarn, saves disk space
+- AI Advantage: AI knows pnpm commands
+- Install: npm install -g pnpm
+
+
+Alternative: npm (comes with Node, totally fine)
+Code Quality
+TypeScript
+- Why: Catch errors before runtime, better AI assistance
+- AI Advantage: AI generates better code with types
+- Setup: Built into Next.js, zero config
+
+
+ESLint
+- Why: Catch code issues, enforce consistency
+- Setup: Next.js includes it, zero config
+
+
+Prettier
+- Why: Auto-format code consistently
+- Setup: Install extension, works with Cursor
+Version Control
+Git + GitHub
+- Why: Standard, required for CI/CD
+- AI Advantage: AI can write git commands, commit messages
+- Cursor: Built-in git UI
+________________
+
+
+Deployment & Infrastructure
+Frontend + API Routes
+Vercel (⭐ PERFECT for Next.js)
+- Why: Made by Next.js creators, zero-config, auto-scaling
+- Cost: ₹0 for MVP (generous free tier)
+- Features:
+  * Auto-deploy from GitHub (push to deploy)
+  * Edge network (global CDN)
+  * Serverless functions (API routes)
+  * Auto-SSL
+  * Preview deployments (for every PR)
+- Deploy: Connect GitHub repo, auto-deploys
+AI Backend (FastAPI for heavy AI ops)
+Railway.app (⭐ RECOMMENDED)
+- Why: Deploy Python backend easily, good free tier
+- Cost: ₹0 for small usage, then $5/month
+- Features:
+  * Deploy from GitHub
+  * PostgreSQL included
+  * Redis included
+  * Auto-scaling
+  * Simple dashboard
+- Alternative: Render.com (similar)
+Database
+Supabase (⭐ RECOMMENDED)
+- Why: Managed PostgreSQL, generous free tier
+- Cost: ₹0 up to 500MB DB, then ₹1,600/month
+- Features:
+  * Database GUI
+  * Auto backups
+  * Connection pooling
+  * Monitoring
+- Alternative: Railway PostgreSQL
+- Alternative: Neon (serverless, usage-based)
+File Storage
+Cloudflare R2 (⭐ RECOMMENDED)
+- Why: Cheapest, S3-compatible API
+- Cost: 10GB free, then ₹120/TB/month
+- Setup: Create bucket, get API keys
+- Alternative: Vercel Blob (₹0 for 1GB, then ₹400/GB)
+Job Queue / Background Processing
+Inngest (⭐ RECOMMENDED for MVP)
+- Why: Serverless, zero infrastructure, generous free tier
+- Cost: ₹0 for 5K job runs/month
+- Deploy: Works with Vercel (auto-detects)
+- Use: AI image processing, email sending
+Monitoring & Logging
+Sentry (Error Tracking)
+- Why: Catch errors in production, detailed stack traces
+- Cost: ₹0 for 5K errors/month
+- Setup: npm install @sentry/nextjs, 5 min setup
+
+
+Vercel Analytics (Performance)
+- Why: Built-in, zero config
+- Cost: ₹0 for basic, ₹1,600/month for advanced
+- Features: Web vitals, user insights
+
+
+PostHog (Product Analytics)
+- Why: Open source, self-hostable, generous free tier
+- Cost: ₹0 for 1M events/month
+- Features: Event tracking, funnels, session replay
+________________
+
+
+Payments (SaaS Billing)
+Razorpay (⭐ RECOMMENDED for India)
+- Why: Indian payment gateway, supports UPI, cards, net banking
+- Cost: 2% transaction fee
+- Features:
+  * Subscriptions (recurring billing)
+  * Payment links
+  * Invoices
+  * Dashboard
+- Integration: npm package available, AI generates code
+
+
+Alternative: Stripe (international, but works in India)
+Alternative: Cashfree (Indian, similar to Razorpay)
+________________
+
+
+Communication & Support
+Email Marketing (for onboarding, announcements)
+Loops.so (⭐ RECOMMENDED)
+- Why: Built for SaaS, beautiful templates
+- Cost: ₹0 for 2K contacts
+- Features: Transactional + marketing emails
+- Alternative: Resend (transactional only)
+Customer Support
+For MVP (Week 1-4):
+- Plain email: support@yourcompany.com
+- WhatsApp Business (free)
+- Crisp chat widget (₹0 tier, basic chat)
+
+
+After 10+ Clients:
+- Intercom (₹4,000/month, full support platform)
+- Crisp (₹2,000/month, good balance)
+________________
+
+
+The Complete Stack Summary
+┌─────────────────────────────────────────────┐
+│              FRONTEND (Vercel)              │
+├─────────────────────────────────────────────┤
+│ Next.js 14 + TypeScript                    │
+│ Tailwind CSS + shadcn/ui                   │
+│ Zustand + React Query                      │
+│ React Hook Form + Zod                      │
+│ TanStack Table + Recharts                  │
+└─────────────────────────────────────────────┘
+              ↓ API Calls ↓
+┌─────────────────────────────────────────────┐
+│          BACKEND (Next.js API)              │
+├─────────────────────────────────────────────┤
+│ Next.js API Routes (TypeScript)            │
+│ Prisma ORM → PostgreSQL (Supabase)        │
+│ NextAuth.js (Authentication)               │
+└─────────────────────────────────────────────┘
+              ↓ Heavy AI Jobs ↓
+┌─────────────────────────────────────────────┐
+│         AI SERVICE (Railway/Render)         │
+├─────────────────────────────────────────────┤
+│ FastAPI (Python)                           │
+│ GPT-4 Vision + GPT-4 Turbo APIs            │
+│ Google Cloud Vision API                    │
+│ pdf-parse, Tesseract OCR                   │
+└─────────────────────────────────────────────┘
+              ↓ Async Jobs ↓
+┌─────────────────────────────────────────────┐
+│          BACKGROUND JOBS (Inngest)          │
+├─────────────────────────────────────────────┤
+│ Image processing queue                     │
+│ PO parsing queue                           │
+│ Export generation                          │
+│ Email sending                              │
+└─────────────────────────────────────────────┘
+              ↓ Storage ↓
+┌─────────────────────────────────────────────┐
+│    DATABASE + STORAGE + PAYMENTS            │
+├─────────────────────────────────────────────┤
+│ PostgreSQL (Supabase) - Data              │
+│ Cloudflare R2 - Files                     │
+│ Razorpay - Payments                       │
+└─────────────────────────────────────────────┘
+              ↓ Monitoring ↓
+┌─────────────────────────────────────────────┐
+│           MONITORING & SUPPORT              │
+├─────────────────────────────────────────────┤
+│ Sentry - Error tracking                   │
+│ PostHog - Product analytics               │
+│ Resend - Transactional email              │
+│ Crisp - Customer support chat             │
+└─────────────────────────────────────────────┘

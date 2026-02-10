@@ -1,0 +1,1038 @@
+﻿MARKETPLACE AUTOMATION PLATFORM - MVP PRD (Product Requirements Document)
+EXECUTIVE SUMMARY
+Product Name: MarketSync (placeholder - choose your brand name)
+One-Line Description: AI-powered automation platform that eliminates 90% of manual work for D2C apparel brands selling on Indian marketplaces (Myntra, Ajio, Amazon, Flipkart, Nykaa).
+Target Users: D2C apparel brand operations teams (5-50 people companies, ₹2-20Cr revenue)
+Core Value Proposition: Transform 70+ hours/week of manual catalog management, PO processing, and invoicing into 7 hours/week through intelligent automation.
+Business Model:
+* Implementation fee: ₹2-5L (one-time)
+* SaaS subscription: ₹25-75K/month (based on volume)
+________________
+
+
+PRODUCT OVERVIEW
+What Problem Does It Solve?
+D2C apparel brands selling on multiple Indian marketplaces face:
+1. Catalog Chaos: 30-40 hours per collection creating catalogs manually, different format for each marketplace
+2. PO Nightmare: 50+ purchase orders weekly, each taking 30-60 min to process manually
+3. Invoice Hell: GST-compliant invoices and packing lists in marketplace-specific formats, all manual
+4. No Unified View: Jumping between 5 different marketplace portals, no single source of truth
+Total Cost: ₹15-25L annually in wasted labor + errors + opportunity cost
+What Does Our MVP Do?
+Module 1: Smart Catalog System
+* Upload product images → AI extracts attributes (color, style, type, etc.)
+* Upload tech pack PDF → OCR extracts measurements
+* Auto-generate marketplace-ready catalogs
+* One-click export to all 5 marketplaces in their specific formats
+Module 2: PO Automation
+* Receive POs via email/manual upload → AI parses all details
+* Auto-validate against inventory
+* Generate marketplace-specific confirmations
+* Dashboard showing all POs in one place
+Module 3: Invoice & Packing Automation
+* Auto-generate GST-compliant invoices
+* Create marketplace-specific packing lists
+* Generate barcode labels
+* One-click print/download
+Module 4: Multi-Marketplace Dashboard
+* Unified view of all orders across all marketplaces
+* Real-time inventory sync
+* Analytics and reporting
+* Marketplace performance comparison
+________________
+
+
+MVP SCOPE - WHAT'S IN, WHAT'S OUT
+✅ IN SCOPE (MVP - Version 1.0)
+Module 1: Smart Catalog (Core Feature)
+User Story 1.1: Bulk Image Upload
+AS A brand operations manager
+I WANT TO upload 50+ product images at once
+SO THAT I don't have to upload one by one
+
+
+Acceptance Criteria:
+* ✅ Drag-and-drop interface for bulk upload
+* ✅ Support JPG, PNG, WEBP formats
+* ✅ Max 10MB per image
+* ✅ Progress bar showing upload status
+* ✅ Support up to 100 images per upload session
+* ✅ Preview thumbnails of uploaded images
+User Story 1.2: AI Image Analysis
+AS A brand operations manager
+I WANT AI to analyze my product images and extract attributes
+SO THAT I don't have to manually type everything
+
+
+Acceptance Criteria:
+* ✅ AI detects: garment type, primary color, secondary color, pattern, style
+* ✅ AI generates: suggested product name (50 chars)
+* ✅ AI generates: product description (150-200 words)
+* ✅ Processing time: <2 min per image
+* ✅ Accuracy: 90%+ for garment type and color detection
+* ✅ Show confidence score for each attribute
+* ✅ Allow manual edit of all AI suggestions
+User Story 1.3: Tech Pack Processing
+AS A brand operations manager
+I WANT TO upload tech pack PDFs and have measurements auto-extracted
+SO THAT I don't have to manually type size charts
+
+
+Acceptance Criteria:
+* ✅ Upload PDF (max 5MB)
+* ✅ OCR extracts measurement table
+* ✅ AI parses: chest, waist, length, shoulder, sleeve for all sizes (XS-XXL)
+* ✅ Display extracted measurements in editable table
+* ✅ Flag if any measurements missing or seem unrealistic
+* ✅ Allow manual correction
+User Story 1.4: Catalog Management
+AS A brand operations manager
+I WANT TO review, edit, and finalize my product catalog
+SO THAT I ensure accuracy before exporting
+
+
+Acceptance Criteria:
+* ✅ Table view showing all products with key attributes
+* ✅ Inline editing for quick corrections
+* ✅ Bulk edit capability (select multiple, edit common fields)
+* ✅ Filter by: category, status (draft/ready/published), date added
+* ✅ Search by product name or SKU
+* ✅ Mark products as "Ready for Export"
+* ✅ Auto-generate SKU if missing (format: BRAND-CATEGORY-COLOR-SIZE)
+User Story 1.5: Marketplace Export
+AS A brand operations manager
+I WANT TO export my catalog in marketplace-specific formats
+SO THAT I can upload directly to marketplace portals
+
+
+Acceptance Criteria:
+* ✅ Support 5 marketplaces: Myntra, Amazon IN, Flipkart, Ajio, Nykaa
+* ✅ Select products to export (all or filtered selection)
+* ✅ Choose target marketplace(s)
+* ✅ Generate Excel/CSV in exact marketplace format
+* ✅ Validate data before export (show errors if any)
+* ✅ Download export file
+* ✅ Export history (track what was exported when)
+________________
+
+
+Module 2: PO Automation (Core Feature)
+User Story 2.1: PO Capture
+AS A brand operations manager
+I WANT POs to be automatically captured from email
+SO THAT I don't have to manually download and process them
+
+
+Acceptance Criteria:
+* ✅ Gmail/Outlook email integration
+* ✅ Auto-detect emails from marketplace domains
+* ✅ Download PDF/Excel attachments automatically
+* ✅ Trigger parsing pipeline
+* ✅ Manual upload option (drag-and-drop)
+* ✅ Support PDF and Excel PO formats
+User Story 2.2: PO Parsing
+AS A brand operations manager
+I WANT POs to be automatically read and data extracted
+SO THAT I don't have to manually enter order details
+
+
+Acceptance Criteria:
+* ✅ AI extracts: PO number, PO date, line items (SKU, quantity, price)
+* ✅ AI extracts: delivery deadline, warehouse address
+* ✅ AI detects marketplace (Myntra/Amazon/Flipkart/Ajio/Nykaa)
+* ✅ Handles different PO formats per marketplace
+* ✅ Parsing accuracy: 95%+ for standard formats
+* ✅ Flag uncertain extractions for manual review
+* ✅ Display parsed data in structured format for verification
+User Story 2.3: PO Validation
+AS A brand operations manager
+I WANT POs to be automatically validated against my inventory
+SO THAT I know immediately if I can fulfill
+
+
+Acceptance Criteria:
+* ✅ Check each line item SKU against catalog
+* ✅ Flag if SKU not found in system
+* ✅ Check quantities against available inventory (if inventory module enabled)
+* ✅ Calculate total order value
+* ✅ Show validation results: OK / Warnings / Errors
+* ✅ Allow manual override of warnings
+User Story 2.4: PO Dashboard
+AS A brand operations manager
+I WANT TO see all my POs in one place
+SO THAT I have a single source of truth across marketplaces
+
+
+Acceptance Criteria:
+* ✅ Table view with columns: PO#, Marketplace, Date, Items Count, Total Value, Status, Actions
+* ✅ Status options: Received, Validated, Confirmed, Processing, Shipped, Completed
+* ✅ Filter by: marketplace, status, date range
+* ✅ Search by PO number or customer
+* ✅ Sort by any column
+* ✅ Click to expand and see line item details
+* ✅ Bulk actions: Select multiple, change status
+User Story 2.5: PO Confirmation Generation
+AS A brand operations manager
+I WANT TO generate marketplace-specific PO confirmations
+SO THAT I can send acknowledgments quickly
+
+
+Acceptance Criteria:
+* ✅ Generate confirmation in marketplace-required format
+* ✅ Pre-fill all data from parsed PO
+* ✅ Allow editing before sending (delivery date, notes)
+* ✅ Email confirmation directly from platform OR download for manual sending
+* ✅ Track confirmation sent status
+* ✅ Store confirmation copy
+________________
+
+
+Module 3: Invoice & Packing Automation (Core Feature)
+User Story 3.1: Invoice Generation
+AS A brand operations manager
+I WANT TO generate GST-compliant invoices automatically
+SO THAT I don't have to manually calculate taxes and create invoices
+
+
+Acceptance Criteria:
+* ✅ One-click invoice generation from confirmed PO
+* ✅ Auto-populate: Company details, customer details, line items
+* ✅ Auto-calculate GST based on HSN codes (5%, 12%, 18%)
+* ✅ Auto-calculate CGST/SGST (intra-state) or IGST (inter-state)
+* ✅ Sequential invoice numbering (auto-increment)
+* ✅ Professional PDF template with company branding
+* ✅ Include: Invoice date, due date, payment terms
+* ✅ Download as PDF
+* ✅ Print-ready format
+User Story 3.2: Packing List Generation
+AS A brand operations manager
+I WANT TO generate packing lists in marketplace-specific formats
+SO THAT my warehouse can pack correctly for each marketplace
+
+
+Acceptance Criteria:
+* ✅ One-click packing list generation from PO
+* ✅ Include: All line items with SKU, description, quantity, size, color
+* ✅ Marketplace-specific format (Myntra format differs from Amazon)
+* ✅ Include barcode for each item
+* ✅ Include warehouse/delivery address
+* ✅ Include special packing instructions if any
+* ✅ PDF format, print-ready
+User Story 3.3: Barcode Generation
+AS A warehouse manager
+I WANT TO generate barcode labels for each item
+SO THAT we can scan during packing and shipping
+
+
+Acceptance Criteria:
+* ✅ Generate Code128 barcodes from SKU
+* ✅ Printable label format (standard 2"x1" labels)
+* ✅ Include: SKU, product name, size, barcode
+* ✅ Bulk generate for entire PO
+* ✅ Download as PDF (multiple labels per page)
+________________
+
+
+Module 4: Multi-Marketplace Dashboard (Core Feature)
+User Story 4.1: Unified Order View
+AS A brand owner
+I WANT TO see all orders from all marketplaces in one dashboard
+SO THAT I have complete visibility without logging into 5 different portals
+
+
+Acceptance Criteria:
+* ✅ Display all orders with: Order ID, Marketplace (logo), Date, Customer, Items, Value, Status
+* ✅ Real-time or near real-time updates (refresh every 5 min or manual refresh)
+* ✅ Filter by: marketplace, date range, status, value range
+* ✅ Search by order ID or customer name
+* ✅ Total count and value summary
+* ✅ Export to Excel
+User Story 4.2: Analytics Dashboard
+AS A brand owner
+I WANT TO see key metrics and analytics
+SO THAT I can make data-driven decisions
+
+
+Acceptance Criteria:
+* ✅ KPI Cards: Total Orders (today, this week, this month), Total Revenue, Avg Order Value, Pending Orders
+* ✅ Charts:
+   * Sales trend (line chart, last 30 days)
+   * Sales by marketplace (bar chart)
+   * Sales by category (pie chart)
+   * Top 10 products (table)
+* ✅ Date range selector
+* ✅ Export charts/data
+User Story 4.3: Inventory Overview (Basic)
+AS A brand operations manager
+I WANT TO see inventory status across products
+SO THAT I know what's in stock vs. low stock
+
+
+Acceptance Criteria:
+* ✅ Display products with current stock quantity
+* ✅ Low stock alerts (configurable threshold, default: <10 units)
+* ✅ Out of stock flag
+* ✅ Manual stock update capability
+* ✅ Stock history (basic log)
+* ❌ NOT IN MVP: Real-time marketplace sync, multi-location inventory
+________________
+
+
+Cross-Cutting Features (All Modules)
+User Story X.1: User Authentication
+AS A user
+I WANT TO securely log in to the platform
+SO THAT my data is protected
+
+
+Acceptance Criteria:
+* ✅ Email + Password login
+* ✅ "Remember me" option
+* ✅ Forgot password flow (email reset link)
+* ✅ Session timeout after 24 hours of inactivity
+* ❌ NOT IN MVP: SSO, 2FA (post-MVP)
+User Story X.2: Multi-User Access
+AS A brand owner
+I WANT TO add team members with different access levels
+SO THAT everyone can use the platform with appropriate permissions
+
+
+Acceptance Criteria:
+* ✅ User roles: Admin, Manager, Operator, Viewer
+* ✅ Admin can: Everything
+* ✅ Manager can: Everything except user management and billing
+* ✅ Operator can: Create/edit catalog, process POs, generate invoices (no delete)
+* ✅ Viewer can: View-only access to all data
+* ✅ Invite users via email
+* ✅ Deactivate users
+* ❌ NOT IN MVP: Granular permissions (e.g., "can only view Myntra orders")
+User Story X.3: Settings & Configuration
+AS AN admin user
+I WANT TO configure platform settings
+SO THAT it works for my specific business needs
+
+
+Acceptance Criteria:
+* ✅ Company profile: Name, GSTIN, Address, Logo
+* ✅ Brand settings: Brand name(s), default margins
+* ✅ SKU format configuration (prefix, structure)
+* ✅ Email integration settings (Gmail/Outlook OAuth)
+* ✅ Marketplace credentials (API keys - where applicable)
+* ✅ Invoice settings: Sequential numbering, payment terms
+* ✅ Notification preferences (email alerts on/off)
+User Story X.4: Notifications
+AS A user
+I WANT TO receive notifications for important events
+SO THAT I stay informed without constantly checking the platform
+
+
+Acceptance Criteria:
+* ✅ In-app notifications (bell icon, unread count)
+* ✅ Email notifications (configurable):
+   * New PO received
+   * PO parsing failed (needs manual review)
+   * Low stock alert
+   * Export ready for download
+* ✅ Mark notifications as read
+* ✅ Notification history (last 30 days)
+User Story X.5: Help & Support
+AS A user
+I WANT TO access help and support resources
+SO THAT I can solve issues independently or get help when needed
+
+
+Acceptance Criteria:
+* ✅ Help icon/link in navigation
+* ✅ FAQ section (common questions)
+* ✅ Video tutorials (embedded YouTube/Vimeo, 5-7 videos)
+* ✅ User guide (PDF download)
+* ✅ Contact support (email form)
+* ✅ WhatsApp support link
+* ❌ NOT IN MVP: Live chat, in-app chatbot
+________________
+
+
+❌ OUT OF SCOPE (MVP - Save for V2/V3)
+Not in Version 1.0:
+Advanced Inventory Management:
+* ❌ Multi-location inventory (only single location in MVP)
+* ❌ Auto-reorder based on stock levels
+* ❌ Real-time marketplace inventory sync via API
+* ❌ Inventory forecasting/demand prediction
+* ❌ Supplier management
+Advanced PO Features:
+* ❌ ASN (Advanced Shipping Notice) auto-generation
+* ❌ QC image upload and management
+* ❌ Shipment tracking integration
+* ❌ Returns management
+Advanced Analytics:
+* ❌ Profit margin analysis by product/marketplace
+* ❌ Customer segmentation
+* ❌ Predictive analytics
+* ❌ Custom report builder
+* ❌ Scheduled reports (auto-email weekly/monthly)
+Additional Integrations:
+* ❌ Accounting software (Tally, Zoho Books, QuickBooks)
+* ❌ Logistics partners (Delhivery, Blue Dart)
+* ❌ Payment gateway integration
+* ❌ WhatsApp Business API (for order notifications to customers)
+* ❌ ERP integrations (beyond basic catalog/PO)
+Advanced AI Features:
+* ❌ Trend forecasting (which products will sell)
+* ❌ Dynamic pricing suggestions
+* ❌ Image generation (AI-generated lifestyle images)
+* ❌ Automated product photography editing
+Multi-Brand/Multi-Business:
+* ❌ Managing multiple brands from one account
+* ❌ White-label capability
+* ❌ Reseller/agency accounts
+Mobile App:
+* ❌ Native iOS/Android apps
+* ❌ (Web app is mobile-responsive, but no native app in MVP)
+Advanced User Management:
+* ❌ SSO (Single Sign-On)
+* ❌ 2FA (Two-Factor Authentication)
+* ❌ Audit logs (detailed activity tracking)
+* ❌ Custom user roles (beyond 4 predefined)
+________________
+
+
+TECHNICAL SPECIFICATIONS
+Tech Stack
+Frontend
+Framework: Next.js 14 (React)
+Styling: Tailwind CSS
+UI Components: shadcn/ui
+State Management: Zustand
+Data Fetching: React Query (TanStack Query)
+Forms: React Hook Form + Zod validation
+Charts: Recharts
+File Upload: react-dropzone
+Tables: TanStack Table
+
+
+Deployment: Vercel
+Domain: Custom domain with SSL
+
+
+Backend
+Framework: Python FastAPI
+Database: PostgreSQL (Supabase or Railway)
+ORM: SQLAlchemy
+Authentication: JWT tokens
+File Storage: AWS S3 or Cloudflare R2
+Background Jobs: Celery + Redis (or FastAPI BackgroundTasks for MVP)
+Email: SendGrid or Resend
+API Documentation: OpenAPI (auto-generated by FastAPI)
+
+
+Deployment: Railway.app or Render.com
+
+
+AI/ML Services
+Image Analysis: 
+- Google Cloud Vision API (labels, colors)
+- GPT-4 Vision API (detailed analysis, descriptions)
+
+
+Text Processing:
+- GPT-4 API (PO parsing, catalog text generation)
+- Tesseract OCR (tech pack PDFs)
+
+
+Cost Management:
+- Cache common results
+- Batch processing where possible
+- Rate limiting per client
+
+
+Third-Party Services
+Email Integration:
+- Gmail API (OAuth2)
+- Microsoft Graph API for Outlook (OAuth2)
+
+
+Payments (for SaaS billing):
+- Razorpay (Indian market)
+- Stripe (backup/international)
+
+
+Analytics:
+- PostHog or Mixpanel (product analytics)
+- Google Analytics (website traffic)
+
+
+Monitoring:
+- Sentry (error tracking)
+- Uptime monitoring (UptimeRobot or similar)
+
+
+Customer Support:
+- Crisp or Intercom (chat widget - post-MVP)
+- Email support initially
+
+
+________________
+
+
+Database Schema (Core Tables)
+Users & Authentication
+-- users
+id (uuid, PK)
+email (varchar, unique)
+password_hash (varchar)
+full_name (varchar)
+role (enum: admin, manager, operator, viewer)
+company_id (uuid, FK)
+is_active (boolean)
+created_at (timestamp)
+last_login (timestamp)
+
+
+-- companies
+id (uuid, PK)
+name (varchar)
+gstin (varchar, unique)
+address (text)
+city (varchar)
+state (varchar)
+pincode (varchar)
+logo_url (varchar)
+created_at (timestamp)
+subscription_plan (enum: pilot, complete, enterprise)
+subscription_status (enum: active, paused, cancelled)
+
+
+Catalog Management
+-- products
+id (uuid, PK)
+company_id (uuid, FK)
+sku (varchar, unique per company)
+product_name (varchar)
+brand (varchar)
+category (varchar)
+sub_category (varchar)
+garment_type (varchar)
+gender (varchar)
+color_primary (varchar)
+color_secondary (varchar)
+pattern (varchar)
+fabric (varchar)
+sizes_available (jsonb) -- ["S", "M", "L", "XL"]
+mrp (decimal)
+cost_price (decimal)
+selling_price (decimal)
+hsn_code (varchar)
+gst_rate (integer) -- 5, 12, 18
+description_short (text)
+description_long (text)
+care_instructions (text)
+status (enum: draft, ready, published)
+created_at (timestamp)
+updated_at (timestamp)
+
+
+-- product_images
+id (uuid, PK)
+product_id (uuid, FK)
+image_url (varchar)
+is_primary (boolean)
+sort_order (integer)
+ai_analysis (jsonb) -- store AI detection results
+confidence_score (decimal)
+
+
+-- product_measurements
+id (uuid, PK)
+product_id (uuid, FK)
+size (varchar) -- "S", "M", "L", etc.
+chest_cm (decimal)
+waist_cm (decimal)
+length_cm (decimal)
+shoulder_cm (decimal)
+sleeve_cm (decimal)
+hip_cm (decimal)
+
+
+Purchase Orders
+-- purchase_orders
+id (uuid, PK)
+company_id (uuid, FK)
+po_number (varchar)
+marketplace (enum: myntra, ajio, amazon, flipkart, nykaa)
+po_date (date)
+delivery_deadline (date)
+delivery_address (text)
+buyer_name (varchar)
+buyer_email (varchar)
+buyer_phone (varchar)
+subtotal (decimal)
+tax (decimal)
+grand_total (decimal)
+total_pieces (integer)
+special_instructions (text)
+status (enum: received, validated, confirmed, processing, shipped, completed)
+source_file_url (varchar) -- original PO PDF/Excel
+parsed_at (timestamp)
+parsing_confidence (decimal)
+created_at (timestamp)
+updated_at (timestamp)
+
+
+-- po_line_items
+id (uuid, PK)
+po_id (uuid, FK)
+product_id (uuid, FK, nullable) -- links to our product if SKU matches
+sku (varchar)
+product_description (varchar)
+color (varchar)
+size (varchar)
+quantity (integer)
+unit_price (decimal)
+line_total (decimal)
+validation_status (enum: ok, warning, error)
+validation_message (text)
+
+
+Invoices & Packing
+-- invoices
+id (uuid, PK)
+company_id (uuid, FK)
+po_id (uuid, FK)
+invoice_number (varchar, unique per company)
+invoice_date (date)
+due_date (date)
+subtotal (decimal)
+cgst (decimal)
+sgst (decimal)
+igst (decimal)
+grand_total (decimal)
+pdf_url (varchar)
+status (enum: draft, generated, sent, paid)
+created_at (timestamp)
+
+
+-- packing_lists
+id (uuid, PK)
+po_id (uuid, FK)
+marketplace (varchar)
+pdf_url (varchar)
+barcode_labels_url (varchar)
+created_at (timestamp)
+
+
+Processing Jobs (for async tasks)
+-- processing_jobs
+id (uuid, PK)
+company_id (uuid, FK)
+job_type (enum: image_analysis, po_parsing, export_generation)
+status (enum: queued, processing, completed, failed)
+input_data (jsonb)
+output_data (jsonb)
+error_message (text)
+progress_percent (integer)
+created_at (timestamp)
+completed_at (timestamp)
+
+
+Marketplace Exports
+-- marketplace_exports
+id (uuid, PK)
+company_id (uuid, FK)
+marketplace (varchar)
+product_ids (jsonb) -- array of product UUIDs
+file_url (varchar)
+row_count (integer)
+status (enum: generating, ready, downloaded)
+created_at (timestamp)
+expires_at (timestamp) -- delete file after 7 days
+
+
+Settings & Configuration
+-- company_settings
+id (uuid, PK)
+company_id (uuid, FK, unique)
+sku_format (varchar) -- e.g., "{BRAND}-{CATEGORY}-{COLOR}-{SIZE}"
+default_margin_percent (decimal)
+invoice_prefix (varchar)
+invoice_next_number (integer)
+email_notifications_enabled (boolean)
+low_stock_threshold (integer)
+settings_json (jsonb) -- flexible for additional settings
+
+
+-- marketplace_credentials
+id (uuid, PK)
+company_id (uuid, FK)
+marketplace (varchar)
+api_key (varchar, encrypted)
+api_secret (varchar, encrypted)
+is_active (boolean)
+last_synced (timestamp)
+
+
+________________
+
+
+API Architecture
+RESTful API Endpoints
+Authentication
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/logout
+POST /api/v1/auth/refresh-token
+POST /api/v1/auth/forgot-password
+POST /api/v1/auth/reset-password
+
+
+Users
+GET    /api/v1/users
+POST   /api/v1/users
+GET    /api/v1/users/{id}
+PUT    /api/v1/users/{id}
+DELETE /api/v1/users/{id}
+
+
+Products (Catalog)
+GET    /api/v1/products
+POST   /api/v1/products
+GET    /api/v1/products/{id}
+PUT    /api/v1/products/{id}
+DELETE /api/v1/products/{id}
+PATCH  /api/v1/products/bulk-update (bulk edit)
+
+
+POST   /api/v1/products/upload-images (bulk image upload)
+POST   /api/v1/products/upload-techpack (PDF upload)
+GET    /api/v1/products/{id}/images
+POST   /api/v1/products/{id}/images
+DELETE /api/v1/products/{id}/images/{image_id}
+
+
+AI Processing
+POST   /api/v1/ai/analyze-image (single image)
+POST   /api/v1/ai/analyze-images (bulk)
+POST   /api/v1/ai/parse-techpack (PDF)
+GET    /api/v1/jobs/{job_id} (check job status)
+
+
+Marketplace Exports
+POST   /api/v1/exports (create export job)
+GET    /api/v1/exports
+GET    /api/v1/exports/{id}
+GET    /api/v1/exports/{id}/download
+
+
+Purchase Orders
+GET    /api/v1/purchase-orders
+POST   /api/v1/purchase-orders/upload (manual PO upload)
+GET    /api/v1/purchase-orders/{id}
+PUT    /api/v1/purchase-orders/{id}
+POST   /api/v1/purchase-orders/{id}/confirm
+GET    /api/v1/purchase-orders/{id}/line-items
+
+
+POST   /api/v1/po/parse (parse uploaded PO file)
+
+
+Invoices & Packing
+GET    /api/v1/invoices
+POST   /api/v1/invoices (generate from PO)
+GET    /api/v1/invoices/{id}
+GET    /api/v1/invoices/{id}/download
+
+
+POST   /api/v1/packing-lists (generate from PO)
+GET    /api/v1/packing-lists/{id}/download
+
+
+Dashboard & Analytics
+GET    /api/v1/dashboard/kpis (summary metrics)
+GET    /api/v1/dashboard/sales-trend (time series data)
+GET    /api/v1/dashboard/marketplace-breakdown
+GET    /api/v1/dashboard/top-products
+GET    /api/v1/dashboard/inventory-status
+
+
+Settings
+GET    /api/v1/settings/company
+PUT    /api/v1/settings/company
+GET    /api/v1/settings/marketplace-credentials
+POST   /api/v1/settings/marketplace-credentials
+PUT    /api/v1/settings/marketplace-credentials/{id}
+DELETE /api/v1/settings/marketplace-credentials/{id}
+
+
+POST   /api/v1/settings/email-integration (OAuth flow)
+
+
+Notifications
+GET    /api/v1/notifications (paginated, unread first)
+PUT    /api/v1/notifications/{id}/read
+PUT    /api/v1/notifications/mark-all-read
+
+
+________________
+
+
+AI Integration Specifications
+Image Analysis Pipeline
+Input: Product image (JPG/PNG, max 10MB)
+Process:
+1. Image Upload
+   → Store in S3/R2
+   → Create image record in DB
+
+
+2. Google Cloud Vision API Call
+   → Labels detection (clothing type, attributes)
+   → Dominant colors (RGB values)
+   → Text detection (if any tags visible)
+   → Safe search (filter inappropriate)
+   
+3. GPT-4 Vision API Call
+   Prompt:
+   "Analyze this apparel product image. Return JSON:
+   {
+     "garment_type": "specific type (e.g., Kurti, T-shirt, Jeans)",
+     "style": "style classification (e.g., Casual, Formal, Ethnic)",
+     "target_gender": "Men/Women/Unisex/Kids",
+     "target_age_group": "age range",
+     "pattern": "Solid/Striped/Floral/Printed/Embroidered/etc",
+     "suggested_name": "compelling product name (50 chars max)",
+     "description": "detailed product description (150-200 words)",
+     "occasion": "suggested occasions to wear",
+     "season": "suitable season(s)"
+   }"
+
+
+4. Combine Results
+   → Merge Vision + GPT-4 results
+   → Map colors to standard names
+   → Calculate confidence score
+   → Store in product.ai_analysis (jsonb)
+
+
+5. Return to Frontend
+   → Show AI suggestions
+   → User can accept/edit
+
+
+Output: Structured product data with confidence scores
+Error Handling:
+* Image too small/unclear → Return low confidence, flag for manual review
+* API timeout → Retry 3x, then queue for later processing
+* Inappropriate content → Reject image, notify user
+Cost Optimization:
+* Batch multiple images in single GPT-4 call (if API supports)
+* Cache results for identical images (hash-based)
+* Use cheaper Vision API for initial filtering, GPT-4 for detailed analysis
+________________
+
+
+Tech Pack OCR Pipeline
+Input: Tech pack PDF (max 5MB)
+Process:
+1. PDF Upload
+   → Store in S3/R2
+   → Create processing job
+
+
+2. PDF to Images (if needed)
+   → Convert each page to image
+   → Or extract text if text-based PDF
+
+
+3. OCR Processing
+   → Use Tesseract OCR or Google Document AI
+   → Extract all text from PDF
+   
+4. GPT-4 Text Analysis
+   Prompt:
+   "This is text extracted from an apparel tech pack. Find the measurements table and extract data. Return JSON:
+   {
+     "fabric": "fabric composition",
+     "gsm": "fabric GSM if mentioned",
+     "care_instructions": ["instruction 1", "instruction 2"],
+     "measurements": {
+       "XS": {"chest_cm": X, "waist_cm": Y, "length_cm": Z, ...},
+       "S": {...},
+       "M": {...},
+       "L": {...},
+       "XL": {...},
+       "XXL": {...}
+     }
+   }
+   If measurements are in inches, convert to cm. If any size is missing, mark as null."
+
+
+5. Validation
+   → Check if all expected sizes present
+   → Flag unrealistic measurements (e.g., chest > 200cm)
+   → Calculate size progression (each size should increase logically)
+
+
+6. Return Results
+   → Display in editable table
+   → Show validation warnings
+
+
+Output: Structured measurements data
+Error Handling:
+* Poor quality scan → Low confidence, suggest re-upload
+* No measurements found → Flag for manual entry
+* Partial data → Use what's available, flag gaps
+________________
+
+
+PO Parsing Pipeline
+Input: PO file (PDF or Excel) + marketplace hint
+Process:
+1. File Type Detection
+   → If Excel: Use pandas to read
+   → If PDF: Extract text using PyPDF2 or pdfplumber
+
+
+2. Marketplace Detection
+   → Look for marketplace name/logo in text
+   → Match email domain if from email
+   → Check PO number format (each marketplace has pattern)
+   → Use hints from user if provided
+
+
+3. GPT-4 Parsing
+   For Excel:
+   Prompt:
+   "This is a purchase order from {marketplace}. Extract data and return JSON:
+   {
+     "po_number": "PO number",
+     "po_date": "YYYY-MM-DD",
+     "delivery_deadline": "YYYY-MM-DD",
+     "warehouse_address": "full address",
+     "buyer_info": {"name": "", "email": "", "phone": ""},
+     "line_items": [
+       {"sku": "", "description": "", "color": "", "size": "", "quantity": X, "unit_price": Y, "total": Z}
+     ],
+     "subtotal": X,
+     "tax": Y,
+     "grand_total": Z,
+     "special_instructions": ["instruction 1", ...]
+   }"
+   
+   For PDF (similar but adapted for text format)
+
+
+4. Validation
+   → Verify all required fields extracted
+   → Check if SKUs exist in client's catalog
+   → Validate math (line totals, grand total)
+   → Flag discrepancies
+
+
+5. Human Review Queue
+   → If confidence < 90%, flag for review
+   → If SKUs not found, flag
+   → If totals don't match, flag
+
+
+Output: Structured PO data with validation status
+Marketplace-Specific Logic:
+* Myntra: Excel format, specific column names
+* Amazon: May come via API or Excel, ASN required
+* Flipkart: Excel, QC requirements
+* Ajio: PDF usually, specific format
+* Nykaa: Excel, beauty-specific fields
+________________
+
+
+Performance Requirements
+Response Time
+Page Load: < 2 seconds (initial load)
+API Response: < 500ms (95th percentile)
+Image Upload: < 3 seconds per image
+Image Analysis: < 2 minutes per image
+PO Parsing: < 1 minute per PO
+Export Generation: < 30 seconds (for 100 products)
+
+
+Scalability
+Concurrent Users: Support 50 concurrent users per client
+Database: Handle 100K products per client
+API Rate Limit: 100 requests/min per user
+File Storage: 10GB per client initially (expandable)
+
+
+Availability
+Uptime: 99.5% (allows ~3.5 hours downtime/month)
+Backup: Daily automated backups
+Disaster Recovery: < 4 hours to restore
+
+
+________________
+
+
+Security Requirements
+Authentication & Authorization
+✅ JWT-based authentication
+✅ Tokens expire after 24 hours
+✅ Refresh tokens for seamless re-auth
+✅ Password requirements: Min 8 chars, 1 uppercase, 1 number
+✅ Password hashing: bcrypt or Argon2
+✅ Role-based access control (RBAC)
+✅ API rate limiting per user
+
+
+Data Protection
+✅ HTTPS only (SSL/TLS)
+✅ Database: Encrypted at rest
+✅ Sensitive fields (API keys): Encrypted in DB
+✅ File uploads: Virus scanning (ClamAV or similar)
+✅ SQL injection prevention (parameterized queries)
+✅ XSS prevention (input sanitization)
+✅ CORS: Whitelist specific origins
+
+
+Compliance
+✅ GDPR-ready: Data export, deletion capabilities
+✅ Indian data residency (if applicable to client)
+✅ Audit logging for sensitive actions
+✅ Privacy policy and terms of service
+
+
+________________
+
+
+Deployment Architecture
+Infrastructure
+Frontend: Vercel (CDN, edge functions)
+Backend: Railway.app or Render.com
+Database: Supabase (managed PostgreSQL) or Railway
+File Storage: AWS S3 or Cloudflare R2
+Cache/Queue: Redis (Railway add-on or Upstash)
+CDN: Cloudflare (for images)
+Email: Resend or SendGrid
+
+
+Environments
+Development: Local (Docker Compose)
+Staging: Separate Railway/Render deployment
+Production: High-availability Railway/Render
+
+
+Branch Strategy:
+- main → Production
+- staging → Staging
+- feature/* → Dev branches
+
+
+CI/CD: GitHub Actions
+- Auto-deploy staging on push to staging branch
+- Manual approval for production deploy
+
+
+Monitoring & Logging
+Error Tracking: Sentry
+Logging: Built-in (Railway/Render logs) + LogTail for retention
+Uptime: UptimeRobot (free tier)
+Performance: Vercel Analytics, PostHog
+Database: Built-in monitoring (Supabase/Railway)

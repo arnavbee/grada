@@ -1,0 +1,24 @@
+# Node
+node_modules
+.pnpm-store
+.next
+out
+dist
+coverage
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store

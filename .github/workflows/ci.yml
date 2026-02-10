@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - "feature/**"
+  pull_request:
+
+jobs:
+  web_and_shared:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint web
+        run: pnpm --filter @kira/web lint
+
+      - name: Test web
+        run: pnpm --filter @kira/web test
+
+      - name: Lint shared
+        run: pnpm --filter @kira/shared lint
+
+      - name: Test shared
+        run: pnpm --filter @kira/shared test
+
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install API dependencies
+        run: pip install -e 'apps/api[dev]'
+
+      - name: Lint API
+        run: ruff check apps/api
+
+      - name: Test API
+        run: pytest apps/api/tests
