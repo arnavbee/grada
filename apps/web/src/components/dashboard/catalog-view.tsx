@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, DragEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { DashboardShell } from '@/src/components/dashboard/dashboard-shell';
 import { Button } from '@/src/components/ui/button';
@@ -9,6 +9,8 @@ import { cn } from '@/src/lib/cn';
 
 type CatalogStatus = 'draft' | 'processing' | 'needs_review' | 'ready' | 'archived';
 type UploadStatus = 'queued' | 'uploading' | 'completed' | 'completed_local' | 'failed';
+type ExportFormat = 'csv' | 'xlsx';
+type ExportStatus = 'queued' | 'processing' | 'completed' | 'failed';
 
 const MAX_BULK_FILES_PER_BATCH = 20;
 const MAX_BULK_FILE_SIZE_BYTES = 8 * 1024 * 1024;
@@ -51,6 +53,14 @@ const TOTAL_UNITS_OPTIONS = ['24', '26'] as const;
 const PO_PRICE_OPTIONS = ['550', '575', '600', '625', '650', '675', '700', '750'] as const;
 const OSP_OPTIONS = ['90', '95', '100', '120', '125', '130'] as const;
 const STATUS_OPTIONS: CatalogStatus[] = ['draft', 'processing', 'needs_review', 'ready', 'archived'];
+const MARKETPLACE_OPTIONS = ['Generic', 'Myntra', 'Ajio', 'Amazon IN', 'Flipkart', 'Nykaa'] as const;
+const EXPORT_STATUS_OPTIONS: Array<'all' | ExportStatus> = [
+  'all',
+  'queued',
+  'processing',
+  'completed',
+  'failed',
+];
 
 interface CatalogProduct {
   id: string;
@@ -105,6 +115,7 @@ interface UploadItem {
   size: number;
   progress: number;
   status: UploadStatus;
+  file?: File;
   error?: string;
 }
 
@@ -129,6 +140,26 @@ interface TechPackResult {
   validation_flags?: string[];
   extracted_count?: number;
   ocr_text_preview?: string;
+}
+
+interface MarketplaceExportRecord {
+  id: string;
+  company_id: string;
+  requested_by_user_id?: string | null;
+  marketplace: string;
+  export_format: ExportFormat;
+  status: ExportStatus;
+  filters: Record<string, unknown>;
+  file_url?: string | null;
+  error_message?: string | null;
+  row_count: number;
+  created_at: string;
+  completed_at?: string | null;
+}
+
+interface MarketplaceExportListResponse {
+  items: MarketplaceExportRecord[];
+  total: number;
 }
 
 const sampleCatalogRows: CatalogRow[] = [
@@ -253,6 +284,18 @@ function formatStatusLabel(status: CatalogStatus): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function formatExportStatusLabel(status: 'all' | ExportStatus): string {
+  if (status === 'all') return 'All';
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) return '--';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '--';
+  return date.toLocaleString();
+}
+
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -365,6 +408,15 @@ export function CatalogView(): JSX.Element {
   const [techPackError, setTechPackError] = useState<string | null>(null);
   const [isTechPackAnalyzing, setIsTechPackAnalyzing] = useState(false);
   const [techPackResult, setTechPackResult] = useState<TechPackResult | null>(null);
+  const [exportHistory, setExportHistory] = useState<MarketplaceExportRecord[]>([]);
+  const [isExportHistoryLoading, setIsExportHistoryLoading] = useState(false);
+  const [isCreatingExport, setIsCreatingExport] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportMarketplace, setExportMarketplace] = useState<string>(MARKETPLACE_OPTIONS[0]);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('xlsx');
+  const [exportStatusFilter, setExportStatusFilter] = useState<'all' | ExportStatus>('all');
+  const [isExportPanelOpen, setIsExportPanelOpen] = useState(false);
+  const [activeExportTab, setActiveExportTab] = useState<'generate' | 'history'>('generate');
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
@@ -476,6 +528,102 @@ export function CatalogView(): JSX.Element {
     }
   }, [selectedTechPackProductId, persistedProducts]);
 
+  const loadExportHistory = useCallback(async (statusOverride: 'all' | ExportStatus): Promise<void> => {
+    if (!hasAccessToken()) {
+      setExportHistory([]);
+      return;
+    }
+
+    setIsExportHistoryLoading(true);
+    setExportError(null);
+    try {
+      const queryParams = new URLSearchParams({ limit: '20' });
+      if (statusOverride !== 'all') {
+        queryParams.set('status', statusOverride);
+      }
+      const response = await apiRequest<MarketplaceExportListResponse>(`/catalog/exports?${queryParams.toString()}`);
+      setExportHistory(response.items);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to load export history.';
+      setExportError(message);
+    } finally {
+      setIsExportHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadExportHistory(exportStatusFilter);
+  }, [exportStatusFilter, loadExportHistory]);
+
+  async function handleDownloadExport(record: MarketplaceExportRecord): Promise<void> {
+    if (!record.file_url) return;
+
+    const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+    const baseUrl = rawApiUrl.replace('/api/v1', '').replace(/\/+$/, '');
+    const fileUrl = record.file_url.startsWith('http')
+      ? record.file_url
+      : `${baseUrl}${record.file_url.startsWith('/') ? '' : '/'}${record.file_url}`;
+
+    try {
+      const response = await fetch(fileUrl, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Download failed with status ${response.status}.`);
+      }
+      const blob = await response.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `${record.marketplace.toLowerCase().replace(/\s+/g, '-')}-export-${record.id}.${record.export_format}`;
+      link.click();
+      URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to download export.';
+      setExportError(message);
+    }
+  }
+
+  async function handleCreateMarketplaceExport(): Promise<void> {
+    if (!hasAccessToken()) {
+      setExportError('Sign in to generate marketplace exports.');
+      return;
+    }
+
+    const exportFilters: Record<string, string> = {};
+    if (statusFilter !== 'All Statuses') {
+      exportFilters.status = statusFilter;
+    }
+    if (searchValue.trim()) {
+      exportFilters.search = searchValue.trim();
+    }
+
+    setIsCreatingExport(true);
+    setExportError(null);
+    try {
+      const created = await apiRequest<MarketplaceExportRecord>('/catalog/exports', {
+        method: 'POST',
+        body: JSON.stringify({
+          marketplace: exportMarketplace,
+          export_format: exportFormat,
+          filters: exportFilters,
+        }),
+      });
+      setExportHistory((items) => [created, ...items].slice(0, 20));
+
+      if (created.status === 'completed' && created.file_url) {
+        await handleDownloadExport(created);
+      }
+      if (created.status === 'failed') {
+        setExportError(created.error_message ?? 'Export validation failed.');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to create export.';
+      setExportError(message);
+    } finally {
+      setIsCreatingExport(false);
+      await loadExportHistory(exportStatusFilter);
+    }
+  }
+
   const categoryOptions = useMemo(() => ['All Categories', ...CATEGORY_OPTIONS], []);
 
   const colorOptions = useMemo(() => {
@@ -539,16 +687,57 @@ export function CatalogView(): JSX.Element {
 
     if (canPersist) {
       try {
+        const file = item.file;
+        if (!file) {
+          throw new Error('File data missing for upload.');
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+        const normalizedApiUrl = rawApiUrl.endsWith('/api/v1')
+          ? rawApiUrl
+          : `${rawApiUrl.replace(/\/+$/, '')}/api/v1`;
+        const headers: HeadersInit = {};
+        const accessToken = document.cookie
+          .split(';')
+          .map((entry) => entry.trim())
+          .find((entry) => entry.startsWith('kira_access_token='))
+          ?.split('=')[1];
+
+        if (accessToken) {
+          headers.Authorization = `Bearer ${decodeURIComponent(accessToken)}`;
+        }
+
+        const uploadRes = await fetch(`${normalizedApiUrl}/uploads/`, {
+          method: 'POST',
+          headers,
+          body: formData,
+        });
+        if (!uploadRes.ok) {
+          const uploadMessage = await uploadRes.text();
+          throw new Error(uploadMessage || 'Upload API failed.');
+        }
+        const uploadData = (await uploadRes.json()) as { url: string; filename: string };
+        const baseUrl = normalizedApiUrl.replace('/api/v1', '').replace(/\/+$/, '');
+        const fullImageUrl = uploadData.url.startsWith('/static')
+          ? `${baseUrl}${uploadData.url}`
+          : uploadData.url;
+
         await apiRequest(`/catalog/products/${selectedId}/images`, {
           method: 'POST',
           body: JSON.stringify({
-            file_name: item.name,
-            file_url: `uploaded://${encodeURIComponent(item.name)}`,
+            file_name: uploadData.filename,
+            file_url: fullImageUrl,
             mime_type: item.type,
             file_size_bytes: item.size,
             processing_status: 'uploaded',
           }),
         });
+        setCatalogRows((rows) =>
+          rows.map((row) => (row.id === selectedId ? { ...row, primary_image_url: fullImageUrl } : row)),
+        );
         updateUploadItem(item.id, (current) => ({ ...current, status: 'completed', progress: 100 }));
       } catch (error) {
         const message = error instanceof Error ? error.message : 'API upload failed.';
@@ -607,6 +796,7 @@ export function CatalogView(): JSX.Element {
         size: file.size,
         progress: 0,
         status: 'queued',
+        file,
       });
     }
 
@@ -950,32 +1140,6 @@ export function CatalogView(): JSX.Element {
     } finally {
       setIsBulkApplying(false);
     }
-  }
-
-  function handleDownloadCsv(): void {
-    const header = ['Style-No', 'Name', 'Category', 'Color', 'Fabric', 'Composition', 'Woven/Knits', 'Units', 'PO Price', 'OSP'];
-    const dataRows = filteredCatalogRows.map((row) => [
-      row.styleNo,
-      row.name,
-      normalizeCategory(row.category),
-      row.color,
-      row.fabric,
-      row.composition,
-      row.wovenKnits,
-      row.units,
-      row.poPrice,
-      row.price,
-    ]);
-    const csv = [header, ...dataRows]
-      .map((line) => line.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'catalog-export.csv';
-    link.click();
-    URL.revokeObjectURL(url);
   }
 
   function openAddModal(): void {
@@ -1511,101 +1675,143 @@ export function CatalogView(): JSX.Element {
         ) : null}
         {isCatalogLoading ? <p className='mt-3 text-sm text-kira-midgray'>Loading catalog...</p> : null}
 
-        <div className='mt-6 rounded-none border border-kira-warmgray/55 bg-kira-offwhite p-5'>
-          <div className='flex flex-wrap items-center justify-between gap-3'>
-            <div>
-              <h3 className='text-lg font-semibold text-kira-black'>Tech-Pack PDF OCR</h3>
-              <p className='text-sm text-kira-midgray'>
-                Upload a PDF tech-pack to extract measurements and validation flags.
-              </p>
+        {isExportPanelOpen ? (
+          <div className='mt-4 rounded-none border border-kira-warmgray/55 bg-kira-offwhite p-5'>
+            <div className='flex flex-wrap items-center justify-between gap-3 border-b border-kira-warmgray/45 pb-3'>
+              <h3 className='text-base font-semibold uppercase tracking-[0.06em] text-kira-black'>Marketplace Export</h3>
+              <div className='inline-flex border border-kira-warmgray/55'>
+                <button
+                  className={cn(
+                    'kira-focus-ring px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em]',
+                    activeExportTab === 'generate'
+                      ? 'bg-kira-black text-kira-offwhite'
+                      : 'bg-kira-offwhite text-kira-darkgray',
+                  )}
+                  onClick={() => setActiveExportTab('generate')}
+                  type='button'
+                >
+                  Generate
+                </button>
+                <button
+                  className={cn(
+                    'kira-focus-ring border-l border-kira-warmgray/55 px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em]',
+                    activeExportTab === 'history'
+                      ? 'bg-kira-black text-kira-offwhite'
+                      : 'bg-kira-offwhite text-kira-darkgray',
+                  )}
+                  onClick={() => setActiveExportTab('history')}
+                  type='button'
+                >
+                  History
+                </button>
+              </div>
             </div>
-            <p className='text-xs text-kira-midgray'>PDF only • Max {formatBytes(MAX_TECHPACK_FILE_SIZE_BYTES)}</p>
-          </div>
-          <div className='mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_auto]'>
-            <select
-              className='kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-sm text-kira-black'
-              onChange={(event) => setSelectedTechPackProductId(event.target.value)}
-              value={selectedTechPackProductId}
-            >
-              <option value=''>Select product</option>
-              {persistedProducts.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.styleNo} • {product.name}
-                </option>
-              ))}
-            </select>
-            <input
-              accept='.pdf'
-              className='hidden'
-              onChange={handleTechPackFileInput}
-              ref={techPackInputRef}
-              type='file'
-            />
-            <button
-              className='kira-focus-ring border border-kira-warmgray/60 bg-kira-offwhite px-4 py-2 text-sm font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
-              onClick={() => techPackInputRef.current?.click()}
-              type='button'
-            >
-              {techPackFileName ? 'Change PDF' : 'Choose PDF'}
-            </button>
-            <button
-              className='kira-focus-ring bg-kira-black px-4 py-2 text-sm font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:cursor-not-allowed disabled:opacity-60'
-              disabled={isTechPackAnalyzing}
-              onClick={() => void handleAnalyzeTechPack()}
-              type='button'
-            >
-              {isTechPackAnalyzing ? 'Analyzing...' : 'Run OCR'}
-            </button>
-          </div>
-          {techPackFileName ? <p className='mt-2 text-sm text-kira-darkgray'>Selected: {techPackFileName}</p> : null}
-          {techPackError ? <p className='mt-2 text-sm text-rose-700'>{techPackError}</p> : null}
 
-          {techPackResult ? (
-            <div className='mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2'>
-              <div className='border border-kira-warmgray/50'>
-                <div className='border-b border-kira-warmgray/50 bg-kira-warmgray/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-kira-darkgray'>
-                  Extracted Measurements ({techPackResult.extracted_count ?? 0})
+            {activeExportTab === 'generate' ? (
+              <div className='mt-4 space-y-3'>
+                <p className='text-xs text-kira-midgray'>Export uses current search/status filters from this page.</p>
+                <p className='text-xs text-kira-midgray'>Use XLSX for image preview cells. CSV exports image URLs only.</p>
+                <div className='grid grid-cols-1 gap-2 sm:grid-cols-3'>
+                  <select
+                    className='kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-sm text-kira-darkgray'
+                    onChange={(event) => setExportMarketplace(event.target.value)}
+                    value={exportMarketplace}
+                  >
+                    {MARKETPLACE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className='kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-sm text-kira-darkgray'
+                    onChange={(event) => setExportFormat(event.target.value as ExportFormat)}
+                    value={exportFormat}
+                  >
+                    <option value='csv'>CSV</option>
+                    <option value='xlsx'>XLSX</option>
+                  </select>
+                  <button
+                    className='kira-focus-ring bg-kira-black px-4 py-2 text-sm font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:cursor-not-allowed disabled:opacity-60'
+                    disabled={isCreatingExport}
+                    onClick={() => void handleCreateMarketplaceExport()}
+                    type='button'
+                  >
+                    {isCreatingExport ? 'Generating...' : 'Generate Export'}
+                  </button>
                 </div>
-                <div className='max-h-56 overflow-auto'>
+                {exportError ? <p className='text-sm text-rose-700'>{exportError}</p> : null}
+              </div>
+            ) : (
+              <div className='mt-4 space-y-3'>
+                <div className='flex items-center gap-2'>
+                  <label className='text-xs uppercase tracking-[0.08em] text-kira-midgray'>Status</label>
+                  <select
+                    className='kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-xs text-kira-darkgray'
+                    onChange={(event) => setExportStatusFilter(event.target.value as 'all' | ExportStatus)}
+                    value={exportStatusFilter}
+                  >
+                    {EXPORT_STATUS_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {formatExportStatusLabel(option)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {exportError ? <p className='text-sm text-rose-700'>{exportError}</p> : null}
+                {isExportHistoryLoading ? <p className='text-sm text-kira-midgray'>Loading export history...</p> : null}
+
+                <div className='overflow-x-auto border border-kira-warmgray/50'>
                   <table className='min-w-full text-sm'>
-                    <thead>
-                      <tr className='text-left text-kira-midgray'>
-                        <th className='px-3 py-2'>Key</th>
-                        <th className='px-3 py-2'>Value</th>
-                        <th className='px-3 py-2'>Confidence</th>
-                        <th className='px-3 py-2'>Review</th>
+                    <thead className='bg-kira-warmgray/15 text-left text-xs uppercase tracking-[0.06em] text-kira-midgray'>
+                      <tr>
+                        <th className='px-3 py-2'>Created</th>
+                        <th className='px-3 py-2'>Marketplace</th>
+                        <th className='px-3 py-2'>Format</th>
+                        <th className='px-3 py-2'>Status</th>
+                        <th className='px-3 py-2'>Rows</th>
+                        <th className='px-3 py-2'>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(techPackResult.measurements ?? []).map((measurement) => (
-                        <tr className='border-t border-kira-warmgray/35 text-kira-black' key={measurement.measurement_key}>
-                          <td className='px-3 py-2 capitalize'>{measurement.measurement_key}</td>
-                          <td className='px-3 py-2'>
-                            {measurement.measurement_value} {measurement.unit}
+                      {exportHistory.length === 0 ? (
+                        <tr>
+                          <td className='px-3 py-3 text-kira-midgray' colSpan={6}>
+                            No exports yet.
                           </td>
-                          <td className='px-3 py-2'>{Math.round(Number(measurement.confidence_score ?? 0))}%</td>
-                          <td className='px-3 py-2'>{measurement.needs_review ? 'Yes' : 'No'}</td>
                         </tr>
-                      ))}
+                      ) : (
+                        exportHistory.map((record) => (
+                          <tr className='border-t border-kira-warmgray/35 text-kira-black' key={record.id}>
+                            <td className='px-3 py-2'>{formatDateTime(record.created_at)}</td>
+                            <td className='px-3 py-2'>{record.marketplace}</td>
+                            <td className='px-3 py-2 uppercase'>{record.export_format}</td>
+                            <td className='px-3 py-2'>{formatExportStatusLabel(record.status)}</td>
+                            <td className='px-3 py-2'>{record.row_count}</td>
+                            <td className='px-3 py-2'>
+                              {record.file_url ? (
+                                <button
+                                  className='kira-focus-ring border border-kira-warmgray/50 px-2 py-1 text-xs text-kira-darkgray hover:bg-kira-warmgray/20'
+                                  onClick={() => void handleDownloadExport(record)}
+                                  type='button'
+                                >
+                                  Download
+                                </button>
+                              ) : (
+                                <span className='text-xs text-kira-midgray'>{record.error_message ?? '--'}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
-              <div className='border border-kira-warmgray/50'>
-                <div className='border-b border-kira-warmgray/50 bg-kira-warmgray/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-kira-darkgray'>
-                  Validation Flags
-                </div>
-                <ul className='space-y-2 p-3 text-sm text-kira-black'>
-                  {(techPackResult.validation_flags ?? []).length === 0 ? (
-                    <li className='text-kira-darkgray'>No validation flags.</li>
-                  ) : (
-                    (techPackResult.validation_flags ?? []).map((flag) => <li key={flag}>• {flag}</li>)
-                  )}
-                </ul>
-              </div>
-            </div>
-          ) : null}
-        </div>
+            )}
+          </div>
+        ) : null}
 
         {isBulkUploadOpen ? (
           <div className='mt-6 space-y-3 rounded-none border border-kira-warmgray/55 p-5'>
@@ -1753,7 +1959,10 @@ export function CatalogView(): JSX.Element {
             </select>
             <button
               className='kira-focus-ring inline-flex h-10 w-10 items-center justify-center border border-kira-warmgray/55 text-kira-darkgray hover:bg-kira-warmgray/20'
-              onClick={handleDownloadCsv}
+              onClick={() => {
+                setIsExportPanelOpen((open) => !open);
+                setActiveExportTab('generate');
+              }}
               type='button'
             >
               <DownloadIcon />
@@ -1923,6 +2132,102 @@ export function CatalogView(): JSX.Element {
               ) : null}
             </tbody>
           </table>
+        </div>
+
+        <div className='mt-6 rounded-none border border-kira-warmgray/55 bg-kira-offwhite p-5'>
+          <div className='flex flex-wrap items-center justify-between gap-3'>
+            <div>
+              <h3 className='text-lg font-semibold text-kira-black'>Tech-Pack PDF OCR</h3>
+              <p className='text-sm text-kira-midgray'>
+                Upload a PDF tech-pack to extract measurements and validation flags.
+              </p>
+            </div>
+            <p className='text-xs text-kira-midgray'>PDF only • Max {formatBytes(MAX_TECHPACK_FILE_SIZE_BYTES)}</p>
+          </div>
+          <div className='mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_auto]'>
+            <select
+              className='kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-sm text-kira-black'
+              onChange={(event) => setSelectedTechPackProductId(event.target.value)}
+              value={selectedTechPackProductId}
+            >
+              <option value=''>Select product</option>
+              {persistedProducts.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.styleNo} • {product.name}
+                </option>
+              ))}
+            </select>
+            <input
+              accept='.pdf'
+              className='hidden'
+              onChange={handleTechPackFileInput}
+              ref={techPackInputRef}
+              type='file'
+            />
+            <button
+              className='kira-focus-ring border border-kira-warmgray/60 bg-kira-offwhite px-4 py-2 text-sm font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
+              onClick={() => techPackInputRef.current?.click()}
+              type='button'
+            >
+              {techPackFileName ? 'Change PDF' : 'Choose PDF'}
+            </button>
+            <button
+              className='kira-focus-ring bg-kira-black px-4 py-2 text-sm font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:cursor-not-allowed disabled:opacity-60'
+              disabled={isTechPackAnalyzing}
+              onClick={() => void handleAnalyzeTechPack()}
+              type='button'
+            >
+              {isTechPackAnalyzing ? 'Analyzing...' : 'Run OCR'}
+            </button>
+          </div>
+          {techPackFileName ? <p className='mt-2 text-sm text-kira-darkgray'>Selected: {techPackFileName}</p> : null}
+          {techPackError ? <p className='mt-2 text-sm text-rose-700'>{techPackError}</p> : null}
+
+          {techPackResult ? (
+            <div className='mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2'>
+              <div className='border border-kira-warmgray/50'>
+                <div className='border-b border-kira-warmgray/50 bg-kira-warmgray/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-kira-darkgray'>
+                  Extracted Measurements ({techPackResult.extracted_count ?? 0})
+                </div>
+                <div className='max-h-56 overflow-auto'>
+                  <table className='min-w-full text-sm'>
+                    <thead>
+                      <tr className='text-left text-kira-midgray'>
+                        <th className='px-3 py-2'>Key</th>
+                        <th className='px-3 py-2'>Value</th>
+                        <th className='px-3 py-2'>Confidence</th>
+                        <th className='px-3 py-2'>Review</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(techPackResult.measurements ?? []).map((measurement) => (
+                        <tr className='border-t border-kira-warmgray/35 text-kira-black' key={measurement.measurement_key}>
+                          <td className='px-3 py-2 capitalize'>{measurement.measurement_key}</td>
+                          <td className='px-3 py-2'>
+                            {measurement.measurement_value} {measurement.unit}
+                          </td>
+                          <td className='px-3 py-2'>{Math.round(Number(measurement.confidence_score ?? 0))}%</td>
+                          <td className='px-3 py-2'>{measurement.needs_review ? 'Yes' : 'No'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className='border border-kira-warmgray/50'>
+                <div className='border-b border-kira-warmgray/50 bg-kira-warmgray/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-kira-darkgray'>
+                  Validation Flags
+                </div>
+                <ul className='space-y-2 p-3 text-sm text-kira-black'>
+                  {(techPackResult.validation_flags ?? []).length === 0 ? (
+                    <li className='text-kira-darkgray'>No validation flags.</li>
+                  ) : (
+                    (techPackResult.validation_flags ?? []).map((flag) => <li key={flag}>• {flag}</li>)
+                  )}
+                </ul>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 

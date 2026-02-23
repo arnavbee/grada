@@ -61,7 +61,7 @@
 - [x] Build tech-pack PDF flow (upload, OCR, measurement extraction, validation flags).
 - [x] Build catalog table UX: search, filter, inline edit, bulk edit, status transitions.
 - [x] Implement SKU auto-generation from configured pattern.
-- [ ] Build marketplace export generation (CSV/XLSX) with validation + export history.
+- [] Build marketplace export generation (CSV/XLSX) with validation + export history.
 
 ### Phase 3: Module 2 PO Automation (Weeks 5-6)
 

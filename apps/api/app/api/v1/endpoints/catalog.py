@@ -1,5 +1,10 @@
+import csv
+import io
 import json
 import re
+import zipfile
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Annotated, Any
 from uuid import uuid4
 
@@ -44,6 +49,125 @@ DbSession = Annotated[Session, Depends(get_db)]
 ReadUser = Annotated[User, Depends(get_current_user)]
 WriteUser = Annotated[User, Depends(require_roles('admin', 'manager', 'operator'))]
 
+ALLOWED_EXPORT_STATUSES = {'queued', 'processing', 'completed', 'failed'}
+ALLOWED_PRODUCT_STATUSES = {'draft', 'processing', 'needs_review', 'ready', 'archived'}
+EXPORT_DIR = Path('static/exports')
+EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+MAX_EXPORT_VALIDATION_ERRORS = 20
+
+MARKETPLACE_ALIASES = {
+    'myntra': 'myntra',
+    'ajio': 'ajio',
+    'amazon': 'amazon_in',
+    'amazon in': 'amazon_in',
+    'amazon india': 'amazon_in',
+    'amazon_in': 'amazon_in',
+    'flipkart': 'flipkart',
+    'nykaa': 'nykaa',
+    'generic': 'generic',
+}
+
+MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
+    'generic': {
+        'label': 'Generic',
+        'required_fields': ('sku', 'title'),
+        'columns': (
+            ('Style-No', 'sku'),
+            ('Name', 'title'),
+            ('Category', 'category'),
+            ('Color', 'color'),
+            ('Fabric', 'fabric'),
+            ('Composition', 'composition'),
+            ('Woven/Knits', 'woven_knits'),
+            ('Units', 'units'),
+            ('PO Price', 'po_price'),
+            ('OSP', 'osp'),
+            ('Status', 'status'),
+            ('Image Preview', 'image_preview'),
+            ('Primary Image URL', 'image_url'),
+        ),
+    },
+    'myntra': {
+        'label': 'Myntra',
+        'required_fields': ('sku', 'title', 'brand', 'category', 'color', 'size', 'mrp'),
+        'columns': (
+            ('Style ID', 'sku'),
+            ('Product Name', 'title'),
+            ('Brand', 'brand'),
+            ('Category', 'category'),
+            ('Color', 'color'),
+            ('Size', 'size'),
+            ('MRP', 'mrp'),
+            ('Description', 'description'),
+            ('Image Preview', 'image_preview'),
+            ('Primary Image URL', 'image_url'),
+        ),
+    },
+    'ajio': {
+        'label': 'Ajio',
+        'required_fields': ('sku', 'title', 'category', 'color', 'size', 'mrp'),
+        'columns': (
+            ('Seller SKU', 'sku'),
+            ('Product Name', 'title'),
+            ('Department', 'category'),
+            ('Color', 'color'),
+            ('Size', 'size'),
+            ('MRP', 'mrp'),
+            ('Description', 'description'),
+            ('Image Preview', 'image_preview'),
+            ('Primary Image URL', 'image_url'),
+        ),
+    },
+    'amazon_in': {
+        'label': 'Amazon IN',
+        'required_fields': ('sku', 'title', 'brand', 'category', 'mrp'),
+        'columns': (
+            ('seller-sku', 'sku'),
+            ('item-name', 'title'),
+            ('brand-name', 'brand'),
+            ('item-type', 'category'),
+            ('color-name', 'color'),
+            ('size-name', 'size'),
+            ('standard-price', 'mrp'),
+            ('product-description', 'description'),
+            ('image-preview', 'image_preview'),
+            ('main-image-url', 'image_url'),
+        ),
+    },
+    'flipkart': {
+        'label': 'Flipkart',
+        'required_fields': ('sku', 'title', 'brand', 'category', 'color', 'size', 'mrp'),
+        'columns': (
+            ('Seller SKU', 'sku'),
+            ('Product Title', 'title'),
+            ('Brand', 'brand'),
+            ('Category', 'category'),
+            ('Color', 'color'),
+            ('Size', 'size'),
+            ('Selling Price', 'mrp'),
+            ('Description', 'description'),
+            ('Image Preview', 'image_preview'),
+            ('Primary Image URL', 'image_url'),
+        ),
+    },
+    'nykaa': {
+        'label': 'Nykaa',
+        'required_fields': ('sku', 'title', 'brand', 'category', 'color', 'mrp'),
+        'columns': (
+            ('SKU', 'sku'),
+            ('Name', 'title'),
+            ('Brand', 'brand'),
+            ('Category', 'category'),
+            ('Shade', 'color'),
+            ('Size', 'size'),
+            ('MRP', 'mrp'),
+            ('Description', 'description'),
+            ('Image Preview', 'image_preview'),
+            ('Primary Image URL', 'image_url'),
+        ),
+    },
+}
+
 
 def _json_loads(raw: str | None) -> dict[str, Any]:
     if not raw:
@@ -57,6 +181,331 @@ def _json_loads(raw: str | None) -> dict[str, Any]:
 
 def _json_dumps(payload: dict[str, Any] | None) -> str:
     return json.dumps(payload or {}, separators=(',', ':'))
+
+
+def _normalize_marketplace(raw_marketplace: str) -> str:
+    normalized = re.sub(r'\s+', ' ', raw_marketplace.strip().lower())
+    marketplace_key = MARKETPLACE_ALIASES.get(normalized)
+    if marketplace_key is None:
+        allowed = ', '.join(template['label'] for template in MARKETPLACE_EXPORT_TEMPLATES.values())
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'Unsupported marketplace "{raw_marketplace}". Allowed: {allowed}.',
+        )
+    return marketplace_key
+
+
+def _normalize_export_filters(raw_filters: dict[str, Any] | None) -> dict[str, Any]:
+    filters: dict[str, Any] = {}
+    if not raw_filters:
+        return filters
+
+    if 'status' in raw_filters:
+        raw_status = raw_filters['status']
+        if isinstance(raw_status, str):
+            cleaned = raw_status.strip()
+            if cleaned not in ALLOWED_PRODUCT_STATUSES:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f'Unsupported product status filter "{cleaned}".',
+                )
+            filters['status'] = cleaned
+        elif isinstance(raw_status, list):
+            cleaned_statuses = [item.strip() for item in raw_status if isinstance(item, str) and item.strip()]
+            invalid = [item for item in cleaned_statuses if item not in ALLOWED_PRODUCT_STATUSES]
+            if invalid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f'Unsupported product status filters: {", ".join(invalid)}.',
+                )
+            if cleaned_statuses:
+                filters['status'] = cleaned_statuses
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='The "status" filter must be a string or array of strings.',
+            )
+    if 'search' in raw_filters and isinstance(raw_filters['search'], str):
+        search = raw_filters['search'].strip()
+        if search:
+            filters['search'] = search[:120]
+
+    if 'product_ids' in raw_filters:
+        raw_product_ids = raw_filters['product_ids']
+        if not isinstance(raw_product_ids, list):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='The "product_ids" filter must be an array of product ids.',
+            )
+        product_ids = [str(value).strip() for value in raw_product_ids if str(value).strip()]
+        if product_ids:
+            filters['product_ids'] = list(dict.fromkeys(product_ids))
+
+    return filters
+
+
+def _pick_mrp(ai_attributes: dict[str, Any]) -> str:
+    for key in ('mrp', 'price', 'standard_price', 'selling_price'):
+        value = ai_attributes.get(key)
+        if value in (None, ''):
+            continue
+        if isinstance(value, (int, float)):
+            return f'{value:.2f}'
+        return str(value).strip()
+    return ''
+
+
+def _pick_text(ai_attributes: dict[str, Any], keys: tuple[str, ...], fallback: str = '') -> str:
+    for key in keys:
+        value = ai_attributes.get(key)
+        if value in (None, ''):
+            continue
+        return str(value).strip()
+    return fallback
+
+
+def _pick_osp(ai_attributes: dict[str, Any]) -> str:
+    for key in ('osp', 'osp_sar', 'osp_price', 'price'):
+        value = ai_attributes.get(key)
+        if value in (None, ''):
+            continue
+        if isinstance(value, (int, float)):
+            return f'SAR {value}'
+        text_value = str(value).strip()
+        if text_value.upper().startswith('SAR'):
+            return text_value
+        return f'SAR {text_value}'
+    return 'SAR 95'
+
+
+def _normalize_export_image_url(value: str | None) -> str:
+    if value is None:
+        return ''
+    cleaned = value.strip()
+    if not cleaned or cleaned.startswith('uploaded://'):
+        return ''
+    return cleaned
+
+
+def _extract_export_fields(product: Product, image_url: str = '') -> dict[str, str]:
+    ai_attributes = _json_loads(product.ai_attributes_json)
+    default_brand = 'Generic'
+    default_size = 'Free Size'
+    default_mrp = '0.00'
+    default_category = 'DRESSES'
+    default_color = 'Blue'
+    return {
+        'sku': (product.sku or '').strip(),
+        'title': (product.title or '').strip(),
+        'brand': (product.brand or '').strip() or default_brand,
+        'category': (product.category or '').strip() or default_category,
+        'color': (product.color or '').strip() or default_color,
+        'size': (product.size or '').strip() or default_size,
+        'description': (product.description or '').strip(),
+        'mrp': _pick_mrp(ai_attributes) or default_mrp,
+        'fabric': _pick_text(ai_attributes, ('fabric',), fallback='Poly Georgette'),
+        'composition': _pick_text(ai_attributes, ('composition',), fallback='100% Polyester'),
+        'woven_knits': _pick_text(ai_attributes, ('woven_knits', 'wovenKnits'), fallback='Woven'),
+        'units': _pick_text(ai_attributes, ('units', 'total_units', 'totalUnits'), fallback='24'),
+        'po_price': _pick_text(ai_attributes, ('po_price', 'poPrice', 'po_price_sar'), fallback='600'),
+        'osp': _pick_osp(ai_attributes),
+        'status': (product.status or '').strip(),
+        'image_url': _normalize_export_image_url(image_url),
+        'image_preview': _normalize_export_image_url(image_url),
+    }
+
+
+def _collect_export_validation_errors(
+    products: list[Product], marketplace_key: str, primary_image_map: dict[str, str]
+) -> list[str]:
+    template = MARKETPLACE_EXPORT_TEMPLATES[marketplace_key]
+    required_fields = template['required_fields']
+    errors: list[str] = []
+
+    for product in products:
+        fields = _extract_export_fields(product, primary_image_map.get(product.id, ''))
+        missing_fields = [field for field in required_fields if fields.get(field, '') == '']
+        if missing_fields:
+            missing_label = ', '.join(missing_fields)
+            errors.append(f'{product.sku}: missing {missing_label}')
+        if len(errors) >= MAX_EXPORT_VALIDATION_ERRORS:
+            break
+    return errors
+
+
+def _query_export_products(db: Session, company_id: str, filters: dict[str, Any]) -> list[Product]:
+    query = db.query(Product).filter(Product.company_id == company_id)
+
+    status_filter = filters.get('status')
+    if isinstance(status_filter, list) and status_filter:
+        query = query.filter(Product.status.in_(status_filter))
+    elif isinstance(status_filter, str) and status_filter:
+        query = query.filter(Product.status == status_filter)
+
+    search = filters.get('search')
+    if isinstance(search, str) and search:
+        term = f'%{search}%'
+        query = query.filter(or_(Product.sku.ilike(term), Product.title.ilike(term), Product.category.ilike(term)))
+
+    product_ids = filters.get('product_ids')
+    if isinstance(product_ids, list) and product_ids:
+        query = query.filter(Product.id.in_(product_ids))
+
+    return query.order_by(Product.updated_at.desc()).all()
+
+
+def _build_primary_image_map(db: Session, company_id: str, product_ids: list[str]) -> dict[str, str]:
+    if not product_ids:
+        return {}
+    rows = (
+        db.query(ProductImage)
+        .filter(ProductImage.company_id == company_id, ProductImage.product_id.in_(product_ids))
+        .order_by(ProductImage.created_at.asc())
+        .all()
+    )
+    image_map: dict[str, str] = {}
+    for image in rows:
+        if image.product_id in image_map:
+            continue
+        image_map[image.product_id] = image.file_url
+    return image_map
+
+
+def _generate_csv_bytes(headers: list[str], rows: list[list[str]]) -> bytes:
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers)
+    writer.writerows(rows)
+    return output.getvalue().encode('utf-8')
+
+
+def _excel_column_name(column_index: int) -> str:
+    result = ''
+    index = column_index
+    while index > 0:
+        index, remainder = divmod(index - 1, 26)
+        result = chr(65 + remainder) + result
+    return result
+
+
+def _xml_escape(value: str) -> str:
+    return (
+        value.replace('&', '&amp;')
+        .replace('<', '&lt;')
+        .replace('>', '&gt;')
+        .replace('"', '&quot;')
+        .replace("'", '&apos;')
+    )
+
+
+def _generate_xlsx_bytes(
+    headers: list[str],
+    rows: list[list[str]],
+    formula_cells: dict[tuple[int, int], str] | None = None,
+) -> bytes:
+    formulas = formula_cells or {}
+    all_rows = [headers, *rows]
+    sheet_rows: list[str] = []
+    for row_index, row in enumerate(all_rows, start=1):
+        cells: list[str] = []
+        for column_index, value in enumerate(row, start=1):
+            cell_ref = f'{_excel_column_name(column_index)}{row_index}'
+            formula = formulas.get((row_index, column_index))
+            if formula:
+                cells.append(f'<c r="{cell_ref}"><f>{_xml_escape(formula)}</f></c>')
+            else:
+                escaped = _xml_escape(value)
+                cells.append(
+                    f'<c r="{cell_ref}" t="inlineStr"><is><t xml:space="preserve">{escaped}</t></is></c>'
+                )
+        sheet_rows.append(f'<row r="{row_index}">{"".join(cells)}</row>')
+
+    sheet_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f'<sheetData>{"".join(sheet_rows)}</sheetData>'
+        '</worksheet>'
+    )
+    workbook_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        '<sheets><sheet name="Export" sheetId="1" r:id="rId1"/></sheets>'
+        '</workbook>'
+    )
+    content_types_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/xl/workbook.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+        '<Override PartName="/xl/worksheets/sheet1.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        '</Types>'
+    )
+    root_rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
+        'Target="xl/workbook.xml"/>'
+        '</Relationships>'
+    )
+    workbook_rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
+        'Target="worksheets/sheet1.xml"/>'
+        '</Relationships>'
+    )
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, mode='w', compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr('[Content_Types].xml', content_types_xml)
+        archive.writestr('_rels/.rels', root_rels_xml)
+        archive.writestr('xl/workbook.xml', workbook_xml)
+        archive.writestr('xl/_rels/workbook.xml.rels', workbook_rels_xml)
+        archive.writestr('xl/worksheets/sheet1.xml', sheet_xml)
+    return buffer.getvalue()
+
+
+def _build_export_file(
+    products: list[Product], marketplace_key: str, export_format: str, primary_image_map: dict[str, str]
+) -> tuple[bytes, int]:
+    template = MARKETPLACE_EXPORT_TEMPLATES[marketplace_key]
+    columns: tuple[tuple[str, str], ...] = template['columns']
+    headers = [column[0] for column in columns]
+    rows: list[list[str]] = []
+    formula_cells: dict[tuple[int, int], str] = {}
+    for product in products:
+        fields = _extract_export_fields(product, primary_image_map.get(product.id, ''))
+        data_row = [fields.get(column_key, '') for _, column_key in columns]
+        rows.append(data_row)
+
+    if export_format == 'xlsx':
+        for data_row_index, data_row in enumerate(rows):
+            excel_row_index = data_row_index + 2  # +1 for 1-indexing, +1 for header row
+            for column_index, (_, column_key) in enumerate(columns, start=1):
+                if column_key != 'image_preview':
+                    continue
+                image_url = data_row[column_index - 1]
+                if not image_url:
+                    continue
+                escaped_url = image_url.replace('"', '""')
+                formula_cells[(excel_row_index, column_index)] = f'IMAGE("{escaped_url}")'
+
+    if export_format == 'csv':
+        return _generate_csv_bytes(headers, rows), len(rows)
+    return _generate_xlsx_bytes(headers, rows, formula_cells), len(rows)
+
+
+def _write_export_file(content: bytes, marketplace_key: str, export_format: str) -> str:
+    file_name = f'{marketplace_key}-{datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")}-{uuid4().hex[:8]}.{export_format}'
+    file_path = EXPORT_DIR / file_name
+    file_path.write_bytes(content)
+    return f'/static/exports/{file_name}'
 
 
 def _sku_token(value: str | None, fallback: str) -> str:
@@ -452,23 +901,71 @@ def create_export(
     db: DbSession,
     current_user: WriteUser,
 ) -> MarketplaceExportResponse:
+    marketplace_key = _normalize_marketplace(payload.marketplace)
+    template = MARKETPLACE_EXPORT_TEMPLATES[marketplace_key]
+    normalized_filters = _normalize_export_filters(payload.filters)
+
     export = MarketplaceExport(
         id=str(uuid4()),
         company_id=current_user.company_id,
         requested_by_user_id=current_user.id,
-        marketplace=payload.marketplace.strip(),
+        marketplace=template['label'],
         export_format=payload.export_format,
-        status='queued',
-        filters_json=_json_dumps(payload.filters),
+        status='processing',
+        filters_json=_json_dumps(normalized_filters),
     )
     db.add(export)
+    db.flush()
+
+    try:
+        products = _query_export_products(db, current_user.company_id, normalized_filters)
+        if len(products) == 0:
+            raise ValueError('No products matched the selected filters for export.')
+        product_ids = [product.id for product in products]
+        primary_image_map = _build_primary_image_map(db, current_user.company_id, product_ids)
+
+        validation_errors = _collect_export_validation_errors(products, marketplace_key, primary_image_map)
+        if validation_errors:
+            preview = '; '.join(validation_errors[:MAX_EXPORT_VALIDATION_ERRORS])
+            overflow = len(validation_errors) - MAX_EXPORT_VALIDATION_ERRORS
+            suffix = f' (+{overflow} more)' if overflow > 0 else ''
+            raise ValueError(f'Validation failed: {preview}{suffix}')
+
+        file_content, row_count = _build_export_file(
+            products=products,
+            marketplace_key=marketplace_key,
+            export_format=payload.export_format,
+            primary_image_map=primary_image_map,
+        )
+        export.file_url = _write_export_file(file_content, marketplace_key, payload.export_format)
+        export.row_count = row_count
+        export.status = 'completed'
+        export.error_message = None
+        export.completed_at = datetime.now(timezone.utc)
+    except ValueError as err:
+        export.status = 'failed'
+        export.error_message = str(err)[:512]
+        export.file_url = None
+        export.row_count = 0
+        export.completed_at = datetime.now(timezone.utc)
+    except Exception:
+        export.status = 'failed'
+        export.error_message = 'Export generation failed due to an internal error.'
+        export.file_url = None
+        export.row_count = 0
+        export.completed_at = datetime.now(timezone.utc)
 
     log_audit(
         db,
         action='catalog.export.create',
         user_id=current_user.id,
         company_id=current_user.company_id,
-        metadata={'export_id': export.id, 'marketplace': export.marketplace},
+        metadata={
+            'export_id': export.id,
+            'marketplace': export.marketplace,
+            'status': export.status,
+            'row_count': export.row_count,
+        },
     )
     db.commit()
     db.refresh(export)
@@ -479,10 +976,26 @@ def create_export(
 def list_exports(
     db: DbSession,
     current_user: ReadUser,
+    marketplace: str | None = Query(default=None, max_length=64),
+    status_filter: str | None = Query(default=None, alias='status', max_length=32),
     limit: int = Query(default=25, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> MarketplaceExportListResponse:
     query = db.query(MarketplaceExport).filter(MarketplaceExport.company_id == current_user.company_id)
+
+    if marketplace:
+        marketplace_key = _normalize_marketplace(marketplace)
+        query = query.filter(MarketplaceExport.marketplace == MARKETPLACE_EXPORT_TEMPLATES[marketplace_key]['label'])
+
+    if status_filter:
+        cleaned_status = status_filter.strip().lower()
+        if cleaned_status not in ALLOWED_EXPORT_STATUSES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f'Unsupported export status filter "{status_filter}".',
+            )
+        query = query.filter(MarketplaceExport.status == cleaned_status)
+
     total = query.count()
     rows = query.order_by(MarketplaceExport.created_at.desc()).offset(offset).limit(limit).all()
     return MarketplaceExportListResponse(items=[_to_export_response(row) for row in rows], total=total)

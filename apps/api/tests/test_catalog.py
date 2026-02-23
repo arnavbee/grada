@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -39,8 +40,8 @@ def test_catalog_product_export_and_job_flow() -> None:
             'category': 'Shirts',
             'color': 'Navy',
             'size': 'M',
-            'status': 'draft',
-            'ai_attributes': {'fabric': 'linen', 'fit': 'regular'},
+            'status': 'ready',
+            'ai_attributes': {'fabric': 'linen', 'fit': 'regular', 'mrp': 1499},
         },
     )
     assert create_product.status_code == 201
@@ -87,14 +88,50 @@ def test_catalog_product_export_and_job_flow() -> None:
     create_export = client.post(
         '/api/v1/catalog/exports',
         headers=headers,
-        json={'marketplace': 'Amazon', 'export_format': 'csv', 'filters': {'status': 'ready'}},
+        json={'marketplace': 'Amazon IN', 'export_format': 'csv', 'filters': {'status': 'needs_review'}},
     )
     assert create_export.status_code == 201
-    assert create_export.json()['status'] == 'queued'
+    export_body = create_export.json()
+    assert export_body['status'] == 'completed'
+    assert export_body['row_count'] >= 1
+    assert export_body['file_url']
+    assert export_body['file_url'].endswith('.csv')
+    assert export_body['completed_at'] is not None
+
+    csv_path = Path('static') / export_body['file_url'].removeprefix('/static/')
+    assert csv_path.exists()
+    csv_contents = csv_path.read_text(encoding='utf-8')
+    assert 'image-preview' in csv_contents
+    assert 'main-image-url' in csv_contents
+    assert 'https://cdn.example.com/linen-shirt-front.jpg' in csv_contents
+
+    create_xlsx_export = client.post(
+        '/api/v1/catalog/exports',
+        headers=headers,
+        json={'marketplace': 'Myntra', 'export_format': 'xlsx', 'filters': {'status': 'needs_review'}},
+    )
+    assert create_xlsx_export.status_code == 201
+    xlsx_body = create_xlsx_export.json()
+    assert xlsx_body['status'] == 'completed'
+    assert xlsx_body['file_url']
+    assert xlsx_body['file_url'].endswith('.xlsx')
+
+    xlsx_path = Path('static') / xlsx_body['file_url'].removeprefix('/static/')
+    assert xlsx_path.exists()
+
+    failed_export = client.post(
+        '/api/v1/catalog/exports',
+        headers=headers,
+        json={'marketplace': 'Flipkart', 'export_format': 'csv', 'filters': {'status': 'archived'}},
+    )
+    assert failed_export.status_code == 201
+    failed_export_body = failed_export.json()
+    assert failed_export_body['status'] == 'failed'
+    assert failed_export_body['error_message'] is not None
 
     list_exports = client.get('/api/v1/catalog/exports', headers=headers)
     assert list_exports.status_code == 200
-    assert list_exports.json()['total'] >= 1
+    assert list_exports.json()['total'] >= 3
 
     create_job = client.post(
         '/api/v1/catalog/jobs',
@@ -135,3 +172,68 @@ def test_catalog_product_export_and_job_flow() -> None:
     assert final_job['status'] == 'completed'
     assert final_job['result']['extracted_count'] >= 3
     assert len(final_job['result']['measurements']) >= 3
+
+
+def test_marketplace_export_uses_defaults_for_missing_optional_fields() -> None:
+    headers = _auth_headers()
+
+    create_product = client.post(
+        '/api/v1/catalog/products',
+        headers=headers,
+        json={
+            'sku': 'MISSING-OPTIONALS-1',
+            'title': 'Sample Dress',
+            'category': "Women's Dress",
+            'color': 'Brown',
+            'status': 'processing',
+        },
+    )
+    assert create_product.status_code == 201
+
+    create_export = client.post(
+        '/api/v1/catalog/exports',
+        headers=headers,
+        json={'marketplace': 'Myntra', 'export_format': 'csv', 'filters': {'status': 'processing'}},
+    )
+    assert create_export.status_code == 201
+    export_body = create_export.json()
+    assert export_body['status'] == 'completed'
+    assert export_body['row_count'] >= 1
+    assert export_body['file_url']
+
+    csv_path = Path('static') / export_body['file_url'].removeprefix('/static/')
+    assert csv_path.exists()
+
+
+def test_generic_export_has_catalog_shape() -> None:
+    headers = _auth_headers()
+
+    create_product = client.post(
+        '/api/v1/catalog/products',
+        headers=headers,
+        json={
+            'sku': 'GENERIC-SHAPE-1',
+            'title': 'Catalog Item',
+            'category': "Women's Dress",
+            'color': 'Navy',
+            'status': 'ready',
+            'ai_attributes': {'fabric': 'Cotton Poplin', 'composition': '100% Cotton', 'units': '26'},
+        },
+    )
+    assert create_product.status_code == 201
+
+    create_export = client.post(
+        '/api/v1/catalog/exports',
+        headers=headers,
+        json={'marketplace': 'Generic', 'export_format': 'csv', 'filters': {'status': 'ready'}},
+    )
+    assert create_export.status_code == 201
+    export_body = create_export.json()
+    assert export_body['status'] == 'completed'
+    assert export_body['file_url']
+
+    csv_path = Path('static') / export_body['file_url'].removeprefix('/static/')
+    assert csv_path.exists()
+    csv_contents = csv_path.read_text(encoding='utf-8')
+    assert 'Style-No,Name,Category,Color,Fabric,Composition,Woven/Knits,Units,PO Price,OSP,Status,Image Preview,Primary Image URL' in csv_contents
+    assert 'GENERIC-SHAPE-1,Catalog Item' in csv_contents

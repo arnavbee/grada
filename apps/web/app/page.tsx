@@ -138,7 +138,7 @@ export default function LandingPage(): JSX.Element {
           </div>
 
           <Card
-            className="animate-enter kira-soft-glow !border-kira-darkgray/20 !bg-kira-black !text-kira-offwhite md:col-span-4 md:p-5"
+            className="animate-enter kira-soft-glow !border-kira-darkgray/20 !bg-kira-black !text-kira-offwhite p-6 md:col-span-4 md:p-6"
             style={{ animationDelay: "120ms" }}
           >
             <p className="text-xs uppercase tracking-[0.1em] text-kira-warmgray">Snapshot</p>
