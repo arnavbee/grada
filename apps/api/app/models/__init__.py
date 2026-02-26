@@ -1,3 +1,4 @@
+from app.models.ai_correction import AICorrection
 from app.models.audit_log import AuditLog
 from app.models.company import Company
 from app.models.company_settings import CompanySettings
@@ -9,6 +10,7 @@ from app.models.product_measurement import ProductMeasurement
 from app.models.user import User
 
 __all__ = [
+    'AICorrection',
     'AuditLog',
     'Company',
     'CompanySettings',

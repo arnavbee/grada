@@ -1,4 +1,5 @@
 import time
+import hashlib
 from pathlib import Path
 from uuid import uuid4
 
@@ -237,3 +238,84 @@ def test_generic_export_has_catalog_shape() -> None:
     csv_contents = csv_path.read_text(encoding='utf-8')
     assert 'Style-No,Name,Category,Color,Fabric,Composition,Woven/Knits,Units,PO Price,OSP,Status,Image Preview,Primary Image URL' in csv_contents
     assert 'GENERIC-SHAPE-1,Catalog Item' in csv_contents
+
+
+def test_analyze_image_returns_hash_and_source_context(monkeypatch) -> None:
+    headers = _auth_headers()
+
+    def _fake_analyze_image(_: str) -> dict[str, object]:
+        return {
+            'category': {'value': 'DRESSES', 'confidence': 97},
+            'style_name': {'value': 'Maxi Dress', 'confidence': 88, 'source': 'vision_model'},
+            'color': {'value': 'Blue', 'confidence': 92, 'based_on': 'color histogram'},
+            'fabric': {'value': 'Poly Georgette'},
+            'composition': '100% Polyester',
+            'woven_knits': {'value': 'Woven', 'confidence': 85, 'learned_from': 'catalog corrections'},
+        }
+
+    monkeypatch.setattr('app.services.ai.ai_service.analyze_image', _fake_analyze_image)
+
+    image_data_url = 'data:image/png;base64,aGVsbG8='
+    analyze_response = client.post(
+        '/api/v1/catalog/analyze-image',
+        headers=headers,
+        json={'image_url': image_data_url},
+    )
+    assert analyze_response.status_code == 200
+
+    body = analyze_response.json()
+    assert body['image_hash'] == hashlib.sha256(b'hello').hexdigest()
+    assert body['category']['source'] == 'vision_model'
+    assert body['style_name']['source'] == 'vision_model'
+    assert body['color']['based_on'] == 'color histogram'
+    assert body['fabric']['learned_from'] == 'Catalog priors and historical apparel patterns'
+    assert body['composition']['value'] == '100% Polyester'
+
+
+def test_ai_correction_logging_and_learning_stats() -> None:
+    headers = _auth_headers()
+
+    create_product = client.post(
+        '/api/v1/catalog/products',
+        headers=headers,
+        json={
+            'title': 'Feedback Dress',
+            'sku': 'FDBK-001',
+            'category': 'DRESSES',
+            'color': 'Blue',
+            'status': 'draft',
+        },
+    )
+    assert create_product.status_code == 201
+    product_id = create_product.json()['id']
+
+    log_correction = client.post(
+        '/api/v1/catalog/log-correction',
+        headers=headers,
+        json={
+            'product_id': product_id,
+            'image_hash': hashlib.sha256(b'feedback').hexdigest(),
+            'field_name': 'color',
+            'feedback_type': 'reject',
+            'suggested_value': 'Blue',
+            'corrected_value': 'Navy',
+            'reason_code': 'lighting_issue',
+            'notes': 'Image had cool white balance.',
+            'source': 'vision_model',
+            'based_on': 'dominant palette extraction',
+            'learned_from': 'user override',
+            'confidence_score': 54,
+        },
+    )
+    assert log_correction.status_code == 201
+    correction_body = log_correction.json()
+    assert correction_body['field_name'] == 'color'
+    assert correction_body['feedback_type'] == 'reject'
+    assert correction_body['retraining_status'] in {'queued', 'processing', 'completed'}
+
+    learning_stats = client.get('/api/v1/catalog/learning-stats', headers=headers)
+    assert learning_stats.status_code == 200
+    stats_body = learning_stats.json()
+    assert stats_body['corrections_received'] >= 1
+    assert stats_body['time_saved_minutes'] >= 0
+    assert any(item['field_name'] == 'color' for item in stats_body['field_accuracy'])

@@ -1,20 +1,26 @@
 import csv
+import hashlib
 import io
 import json
 import re
 import zipfile
+from base64 import b64decode, b64encode
 from datetime import datetime, timezone
+from mimetypes import guess_type
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import unquote_to_bytes, urlparse
+from urllib.request import Request, urlopen
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
 from app.core.audit import log_audit
 from app.db.session import get_db
+from app.models.ai_correction import AICorrection
 from app.models.company_settings import CompanySettings
 from app.models.marketplace_export import MarketplaceExport
 from app.models.processing_job import ProcessingJob
@@ -23,6 +29,7 @@ from app.models.product_image import ProductImage
 from app.models.product_measurement import ProductMeasurement
 from app.models.user import User
 from app.schemas.catalog import (
+    AICorrectionResponse,
     JobStatus,
     JobType,
     MarketplaceExportCreateRequest,
@@ -32,6 +39,9 @@ from app.schemas.catalog import (
     ProcessingJobListResponse,
     ProcessingJobResponse,
     ProductCreateRequest,
+    LearningFieldAccuracy,
+    LearningStatsResponse,
+    LogCorrectionRequest,
     ProductImageCreateRequest,
     ProductImageResponse,
     ProductListResponse,
@@ -40,8 +50,12 @@ from app.schemas.catalog import (
     ProductResponse,
     ProductStatus,
     ProductUpdateRequest,
+    AnalyzeImageRequest,
+    AnalyzeImageResponse,
+    GenerateStyleCodeRequest,
+    GenerateStyleCodeResponse,
 )
-from app.services.ai import process_image_analysis_job, process_techpack_ocr_job
+from app.services.ai import process_ai_correction_retraining, process_image_analysis_job, process_techpack_ocr_job
 
 router = APIRouter(prefix='/catalog', tags=['catalog'])
 
@@ -54,6 +68,9 @@ ALLOWED_PRODUCT_STATUSES = {'draft', 'processing', 'needs_review', 'ready', 'arc
 EXPORT_DIR = Path('static/exports')
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 MAX_EXPORT_VALIDATION_ERRORS = 20
+AI_ANALYSIS_FIELDS = ('category', 'style_name', 'color', 'fabric', 'composition', 'woven_knits')
+API_ROOT_DIR = Path(__file__).resolve().parents[4]
+API_STATIC_DIR = API_ROOT_DIR / 'static'
 
 MARKETPLACE_ALIASES = {
     'myntra': 'myntra',
@@ -242,6 +259,116 @@ def _normalize_export_filters(raw_filters: dict[str, Any] | None) -> dict[str, A
             filters['product_ids'] = list(dict.fromkeys(product_ids))
 
     return filters
+
+
+def _compute_image_hash(image_url: str) -> str:
+    normalized = image_url.strip()
+    try:
+        if normalized.startswith('data:'):
+            header, _, payload = normalized.partition(',')
+            if ';base64' in header:
+                image_bytes = b64decode(payload.encode('utf-8'), validate=False)
+            else:
+                image_bytes = unquote_to_bytes(payload)
+        else:
+            image_bytes = normalized.encode('utf-8')
+    except Exception:
+        image_bytes = normalized.encode('utf-8')
+    return hashlib.sha256(image_bytes).hexdigest()
+
+
+def _coerce_local_image_url_to_data_url(image_url: str) -> str:
+    normalized = image_url.strip()
+    if not normalized or normalized.startswith('data:'):
+        return normalized
+
+    parsed = urlparse(normalized)
+    local_static_paths: list[Path] = []
+
+    # Handle both absolute URLs (/static/...) and full URLs (.../static/...).
+    static_relative = ''
+    if normalized.startswith('/static/'):
+        static_relative = normalized.removeprefix('/static/')
+    elif parsed.path.startswith('/static/'):
+        static_relative = parsed.path.removeprefix('/static/')
+
+    if static_relative:
+        local_static_paths.append(API_STATIC_DIR / static_relative)
+        local_static_paths.append(Path('static') / static_relative)
+
+    for local_path in local_static_paths:
+        if local_path.exists():
+            image_bytes = local_path.read_bytes()
+            mime_type = guess_type(local_path.name)[0] or 'image/jpeg'
+            encoded = b64encode(image_bytes).decode('ascii')
+            return f'data:{mime_type};base64,{encoded}'
+
+    # If image is referenced via localhost, fetch it server-side and convert.
+    if parsed.scheme in {'http', 'https'} and parsed.hostname in {'127.0.0.1', 'localhost'}:
+        try:
+            request = Request(normalized, headers={'User-Agent': 'kira-ai-analyzer/1.0'})
+            with urlopen(request, timeout=6) as response:
+                image_bytes = response.read()
+                mime_type = response.headers.get_content_type() or 'image/jpeg'
+            if image_bytes:
+                encoded = b64encode(image_bytes).decode('ascii')
+                return f'data:{mime_type};base64,{encoded}'
+        except Exception:
+            return normalized
+
+    return normalized
+
+
+def _normalize_analysis_field(raw_field: Any) -> dict[str, Any]:
+    if isinstance(raw_field, dict):
+        raw_value = raw_field.get('value')
+        raw_confidence = raw_field.get('confidence')
+        source = raw_field.get('source')
+        based_on = raw_field.get('based_on') or raw_field.get('basedOn')
+        learned_from = raw_field.get('learned_from') or raw_field.get('learnedFrom')
+    else:
+        raw_value = raw_field
+        raw_confidence = None
+        source = None
+        based_on = None
+        learned_from = None
+
+    value = str(raw_value).strip() if isinstance(raw_value, str) and raw_value.strip() else None
+    confidence: float | None = None
+    if isinstance(raw_confidence, (int, float)):
+        confidence = max(0.0, min(100.0, float(raw_confidence)))
+
+    normalized_source = source.strip() if isinstance(source, str) and source.strip() else 'vision_model'
+    normalized_based_on = (
+        based_on.strip()
+        if isinstance(based_on, str) and based_on.strip()
+        else 'Image texture, silhouette, and color cues'
+    )
+    normalized_learned_from = (
+        learned_from.strip()
+        if isinstance(learned_from, str) and learned_from.strip()
+        else 'Catalog priors and historical apparel patterns'
+    )
+
+    return {
+        'value': value,
+        'confidence': confidence,
+        'source': normalized_source,
+        'based_on': normalized_based_on,
+        'learned_from': normalized_learned_from,
+    }
+
+
+def _normalize_analysis_result(raw_result: Any, image_hash: str) -> AnalyzeImageResponse:
+    payload: dict[str, Any]
+    if isinstance(raw_result, dict):
+        payload = raw_result
+    else:
+        payload = {}
+
+    normalized: dict[str, Any] = {field: _normalize_analysis_field(payload.get(field)) for field in AI_ANALYSIS_FIELDS}
+    normalized['image_hash'] = image_hash
+    return AnalyzeImageResponse(**normalized)
 
 
 def _pick_mrp(ai_attributes: dict[str, Any]) -> str:
@@ -641,6 +768,49 @@ def _to_job_response(record: ProcessingJob) -> ProcessingJobResponse:
     )
 
 
+def _to_ai_correction_response(record: AICorrection) -> AICorrectionResponse:
+    return AICorrectionResponse(
+        id=record.id,
+        company_id=record.company_id,
+        product_id=record.product_id,
+        image_hash=record.image_hash,
+        field_name=record.field_name,
+        feedback_type=record.feedback_type,
+        suggested_value=record.suggested_value,
+        corrected_value=record.corrected_value,
+        reason_code=record.reason_code,
+        notes=record.notes,
+        source=record.source,
+        based_on=record.based_on,
+        learned_from=record.learned_from,
+        confidence_score=float(record.confidence_score) if record.confidence_score is not None else None,
+        retraining_status=record.retraining_status,
+        retraining_notes=record.retraining_notes,
+        created_by_user_id=record.created_by_user_id,
+        created_at=record.created_at,
+        processed_at=record.processed_at,
+    )
+
+
+def _build_learning_insights(items_processed: int, field_accuracy: list[LearningFieldAccuracy]) -> list[str]:
+    insights: list[str] = []
+    if items_processed > 0:
+        insights.append(f'AI analyzed {items_processed} catalog image(s) so far.')
+    if field_accuracy:
+        top = max(field_accuracy, key=lambda item: item.accuracy_percent)
+        weakest = min(field_accuracy, key=lambda item: item.accuracy_percent)
+        insights.append(
+            f'Highest confidence alignment is on {top.field_name.replace("_", " ").title()} at {top.accuracy_percent:.1f}%.'
+        )
+        if weakest.field_name != top.field_name:
+            insights.append(
+                f'Most corrections are needed for {weakest.field_name.replace("_", " ").title()} ({weakest.accuracy_percent:.1f}% accepted).'
+            )
+    if not insights:
+        insights.append('No AI learning data yet. Start by running image analysis and giving field feedback.')
+    return insights
+
+
 def _get_company_product_or_404(db: Session, company_id: str, product_id: str) -> Product:
     product = db.query(Product).filter(Product.id == product_id, Product.company_id == company_id).first()
     if product is None:
@@ -893,6 +1063,158 @@ def add_product_measurement(
     db.commit()
     db.refresh(measurement)
     return _to_measurement_response(measurement)
+
+
+@router.post('/analyze-image', response_model=AnalyzeImageResponse)
+def analyze_image_direct(
+    payload: AnalyzeImageRequest,
+    current_user: WriteUser,
+) -> AnalyzeImageResponse:
+    # Import locally or at module level (already imported ai_service at module if we check ai.py, but actually catalog imports process_image_analysis_job not ai_service)
+    from app.services.ai import ai_service
+
+    analysis_image_url = _coerce_local_image_url_to_data_url(payload.image_url)
+    image_hash = _compute_image_hash(analysis_image_url)
+    # Synchronously call the AI service and normalize output for UI reliability.
+    result = ai_service.analyze_image(analysis_image_url)
+    if isinstance(result, dict) and isinstance(result.get('error'), str):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f'AI analysis failed: {result["error"]}',
+        )
+    return _normalize_analysis_result(result, image_hash)
+
+
+@router.post('/generate-style-code', response_model=GenerateStyleCodeResponse)
+def generate_style_code(
+    payload: GenerateStyleCodeRequest,
+    db: DbSession,
+    current_user: WriteUser,
+) -> GenerateStyleCodeResponse:
+    company_settings = (
+        db.query(CompanySettings).filter(CompanySettings.company_id == current_user.company_id).first()
+    )
+    
+    # We can reuse the _generate_sku logic but pass a dummy ProductCreateRequest
+    # to format the SKU.
+    dummy_payload = ProductCreateRequest(
+        title="Dummy",
+        brand=payload.brand,
+        category=payload.category,
+        color="NA",
+        size="OS"
+    )
+    sku = _generate_sku(db, current_user.company_id, company_settings, dummy_payload)
+    return GenerateStyleCodeResponse(style_code=sku)
+
+
+@router.post('/log-correction', response_model=AICorrectionResponse, status_code=status.HTTP_201_CREATED)
+def log_correction(
+    payload: LogCorrectionRequest,
+    background_tasks: BackgroundTasks,
+    db: DbSession,
+    current_user: WriteUser,
+) -> AICorrectionResponse:
+    if payload.product_id is not None:
+        _get_company_product_or_404(db, current_user.company_id, payload.product_id)
+
+    correction = AICorrection(
+        id=str(uuid4()),
+        company_id=current_user.company_id,
+        product_id=payload.product_id,
+        image_hash=payload.image_hash,
+        field_name=payload.field_name.strip().lower(),
+        feedback_type=payload.feedback_type,
+        suggested_value=payload.suggested_value,
+        corrected_value=payload.corrected_value,
+        reason_code=payload.reason_code,
+        notes=payload.notes,
+        source=payload.source,
+        based_on=payload.based_on,
+        learned_from=payload.learned_from,
+        confidence_score=payload.confidence_score,
+        retraining_status='queued',
+        created_by_user_id=current_user.id,
+    )
+    db.add(correction)
+    log_audit(
+        db,
+        action='catalog.ai_correction.log',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={'field_name': correction.field_name, 'feedback_type': correction.feedback_type},
+    )
+    db.commit()
+    db.refresh(correction)
+
+    # Queue lightweight retraining preparation in the background.
+    background_tasks.add_task(process_ai_correction_retraining, correction.id)
+    return _to_ai_correction_response(correction)
+
+
+@router.get('/learning-stats', response_model=LearningStatsResponse)
+def get_learning_stats(
+    db: DbSession,
+    current_user: ReadUser,
+) -> LearningStatsResponse:
+    items_processed = (
+        db.query(func.count(ProductImage.id))
+        .filter(
+            ProductImage.company_id == current_user.company_id,
+            ProductImage.analysis_json.isnot(None),
+            ProductImage.analysis_json != '{}',
+        )
+        .scalar()
+        or 0
+    )
+    corrections = (
+        db.query(AICorrection)
+        .filter(AICorrection.company_id == current_user.company_id)
+        .order_by(AICorrection.created_at.desc())
+        .all()
+    )
+    corrections_received = len(corrections)
+    pending_retraining = sum(1 for correction in corrections if correction.retraining_status in {'queued', 'processing'})
+
+    grouped: dict[str, dict[str, int]] = {}
+    for correction in corrections:
+        field = correction.field_name or 'unknown'
+        slot = grouped.setdefault(field, {'accept': 0, 'reject': 0})
+        if correction.feedback_type == 'accept':
+            slot['accept'] += 1
+        else:
+            slot['reject'] += 1
+
+    field_accuracy: list[LearningFieldAccuracy] = []
+    for field_name, counts in grouped.items():
+        accepted = counts['accept']
+        rejected = counts['reject']
+        total = accepted + rejected
+        accuracy = (accepted / total * 100.0) if total > 0 else 0.0
+        field_accuracy.append(
+            LearningFieldAccuracy(
+                field_name=field_name,
+                accepted_count=accepted,
+                rejected_count=rejected,
+                total_feedback=total,
+                accuracy_percent=round(accuracy, 2),
+            )
+        )
+    field_accuracy.sort(key=lambda item: item.total_feedback, reverse=True)
+
+    # Conservative estimate for AI-assisted workflow:
+    # ~2 min saved per analyzed item + ~30 sec per logged correction.
+    time_saved_minutes = int(round((items_processed * 2.0) + (corrections_received * 0.5)))
+    insights = _build_learning_insights(items_processed, field_accuracy)
+
+    return LearningStatsResponse(
+        items_processed=items_processed,
+        corrections_received=corrections_received,
+        time_saved_minutes=time_saved_minutes,
+        pending_retraining=pending_retraining,
+        field_accuracy=field_accuracy,
+        insights=insights,
+    )
 
 
 @router.post('/exports', response_model=MarketplaceExportResponse, status_code=status.HTTP_201_CREATED)

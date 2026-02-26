@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.base import utcnow
 from app.db.session import SessionLocal
+from app.models.ai_correction import AICorrection
 from app.models.processing_job import ProcessingJob
 from app.models.product_image import ProductImage
 from app.models.product_measurement import ProductMeasurement
@@ -51,15 +52,28 @@ class AIService:
     def analyze_image(self, image_url: str) -> dict[str, Any]:
         """
         Analyze a product image to extract structured data using GPT-4o.
-        Returns a dictionary with keys: category, color, pattern, tags, description.
+        Returns a dictionary with keys: category, style_name, color, fabric, composition, woven_knits
+        and optionally a confidence_score for each.
         """
         prompt = """
         Analyze this fashion product image and extract the following structured data in JSON format:
-        - category: The specific category of the item (e.g., 'Men's T-Shirt', 'Women's Dress').
-        - color: The dominant color(s).
-        - pattern: The pattern (e.g., 'Solid', 'Striped', 'Floral').
-        - tags: A list of relevant keywords for search (e.g., 'casual', 'cotton', 'summer').
-        - description: A short, marketing-ready product description (1-2 sentences).
+        - category: The specific category ('DRESSES' or 'CORD SETS').
+        - style_name: The style name (e.g., 'Maxi Dress', 'Midi Dress', 'Knee Length', 'Knot Cord Set').
+        - color: The dominant color (e.g., 'Beige', 'Black', 'Blue', 'Bottle Green', 'Brown', 'Green', 'Grey', 'Lilac', 'Maroon', 'Mustard', 'Navy', 'Pink', 'Purple', 'Silver', 'White', 'Wine').
+        - fabric: The fabric type (e.g., 'Cotton Poplin', 'Pleated Knitted Fabric', 'Poly Georgette', 'Poly Weightless Ggt', 'Polymoss', 'polycrepe').
+        - composition: The composition ('100% Cotton' or '100% Polyester').
+        - woven_knits: Whether it is 'Knits' or 'Woven'.
+        
+        For each field, provide a prediction and a confidence score between 0 and 100.
+        Format the JSON strictly as:
+        {
+            "category": {"value": "...", "confidence": 95},
+            "style_name": {"value": "...", "confidence": 80},
+            "color": {"value": "...", "confidence": 90},
+            "fabric": {"value": "...", "confidence": 60},
+            "composition": {"value": "...", "confidence": 75},
+            "woven_knits": {"value": "...", "confidence": 85}
+        }
         
         Return ONLY valid JSON.
         """
@@ -362,6 +376,39 @@ def process_techpack_ocr_job(job_id: str):
             job.status = 'failed'
             job.error_message = str(e)
             job.completed_at = utcnow()
+            db.commit()
+    finally:
+        db.close()
+
+
+def process_ai_correction_retraining(correction_id: str):
+    """
+    Lightweight retraining queue worker for logged AI corrections.
+    This MVP marks correction events as processed and stores a short note.
+    """
+    db: Session = SessionLocal()
+    correction: AICorrection | None = None
+    try:
+        correction = db.query(AICorrection).filter(AICorrection.id == correction_id).first()
+        if not correction:
+            return
+
+        correction.retraining_status = 'processing'
+        db.commit()
+
+        if correction.feedback_type == 'reject':
+            correction.retraining_notes = 'Queued negative sample for prompt tuning.'
+        else:
+            correction.retraining_notes = 'Queued positive sample for confidence calibration.'
+
+        correction.retraining_status = 'completed'
+        correction.processed_at = utcnow()
+        db.commit()
+    except Exception as e:
+        if correction:
+            correction.retraining_status = 'failed'
+            correction.retraining_notes = str(e)[:255]
+            correction.processed_at = utcnow()
             db.commit()
     finally:
         db.close()

@@ -8,6 +8,7 @@ ExportFormat = Literal['csv', 'xlsx']
 ExportStatus = Literal['queued', 'processing', 'completed', 'failed']
 JobType = Literal['image_analysis', 'techpack_ocr', 'measurement_validation', 'marketplace_export']
 JobStatus = Literal['queued', 'processing', 'running', 'completed', 'failed']
+FeedbackType = Literal['accept', 'reject']
 
 
 class ProductCreateRequest(BaseModel):
@@ -173,3 +174,90 @@ class ProcessingJobResponse(BaseModel):
 class ProcessingJobListResponse(BaseModel):
     items: list[ProcessingJobResponse]
     total: int
+
+
+class AnalyzeImageRequest(BaseModel):
+    image_url: str = Field(min_length=1)
+
+
+class AnalyzeImageFieldResponse(BaseModel):
+    value: str | None = None
+    confidence: float | None = Field(default=None, ge=0, le=100)
+    source: str | None = None
+    based_on: str | None = None
+    learned_from: str | None = None
+
+
+class AnalyzeImageResponse(BaseModel):
+    category: AnalyzeImageFieldResponse = Field(default_factory=AnalyzeImageFieldResponse)
+    style_name: AnalyzeImageFieldResponse = Field(default_factory=AnalyzeImageFieldResponse)
+    color: AnalyzeImageFieldResponse = Field(default_factory=AnalyzeImageFieldResponse)
+    fabric: AnalyzeImageFieldResponse = Field(default_factory=AnalyzeImageFieldResponse)
+    composition: AnalyzeImageFieldResponse = Field(default_factory=AnalyzeImageFieldResponse)
+    woven_knits: AnalyzeImageFieldResponse = Field(default_factory=AnalyzeImageFieldResponse)
+    image_hash: str | None = Field(default=None, min_length=64, max_length=64)
+
+
+class GenerateStyleCodeRequest(BaseModel):
+    brand: str | None = None
+    category: str | None = None
+
+
+class GenerateStyleCodeResponse(BaseModel):
+    style_code: str
+
+
+class LogCorrectionRequest(BaseModel):
+    product_id: str | None = None
+    image_hash: str | None = Field(default=None, min_length=64, max_length=64)
+    field_name: str = Field(min_length=1, max_length=64)
+    feedback_type: FeedbackType
+    suggested_value: str | None = Field(default=None, max_length=255)
+    corrected_value: str | None = Field(default=None, max_length=255)
+    reason_code: str | None = Field(default=None, max_length=64)
+    notes: str | None = Field(default=None, max_length=500)
+    source: str | None = Field(default=None, max_length=64)
+    based_on: str | None = Field(default=None, max_length=500)
+    learned_from: str | None = Field(default=None, max_length=500)
+    confidence_score: float | None = Field(default=None, ge=0, le=100)
+
+
+class AICorrectionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    company_id: str
+    product_id: str | None
+    image_hash: str | None
+    field_name: str
+    feedback_type: FeedbackType
+    suggested_value: str | None
+    corrected_value: str | None
+    reason_code: str | None
+    notes: str | None
+    source: str | None
+    based_on: str | None
+    learned_from: str | None
+    confidence_score: float | None
+    retraining_status: str
+    retraining_notes: str | None
+    created_by_user_id: str | None
+    created_at: datetime
+    processed_at: datetime | None
+
+
+class LearningFieldAccuracy(BaseModel):
+    field_name: str
+    accepted_count: int
+    rejected_count: int
+    total_feedback: int
+    accuracy_percent: float
+
+
+class LearningStatsResponse(BaseModel):
+    items_processed: int
+    corrections_received: int
+    time_saved_minutes: int
+    pending_retraining: int
+    field_accuracy: list[LearningFieldAccuracy]
+    insights: list[str]

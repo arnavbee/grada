@@ -20,6 +20,14 @@ class Settings(BaseSettings):
 
     frontend_origins: str = 'http://localhost:3000,http://127.0.0.1:3000'
 
+    # Optional S3-compatible object storage (Cloudflare R2, S3, MinIO, etc.)
+    R2_ENDPOINT: str | None = None
+    R2_ACCESS_KEY_ID: str | None = None
+    R2_SECRET_ACCESS_KEY: str | None = None
+    R2_BUCKET: str | None = None
+    R2_PUBLIC_BASE_URL: str | None = None
+    R2_REGION: str = 'auto'
+
 
 @lru_cache
 def get_settings() -> Settings:
