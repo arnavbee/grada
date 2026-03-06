@@ -1,4 +1,4 @@
-# Kira Web Monorepo
+# Grada Web Monorepo
 
 Phase 0 foundation for the WholesaleFlow full stack MVP.
 
