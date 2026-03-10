@@ -25,3 +25,8 @@ __pycache__/
 
 # Generated exports
 apps/api/static/exports/
+
+# Local/generated runtime artifacts
+apps/web/.next-dev/
+apps/api/kira.db
+apps/api/static/uploads/

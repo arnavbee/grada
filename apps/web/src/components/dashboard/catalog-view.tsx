@@ -5,6 +5,7 @@ import { ChangeEvent, DragEvent, FormEvent, useCallback, useEffect, useMemo, use
 import { DashboardShell } from '@/src/components/dashboard/dashboard-shell';
 import { Button } from '@/src/components/ui/button';
 import { apiRequest } from '@/src/lib/api-client';
+import { getResolvedApiBaseUrl, getResolvedApiOriginUrl } from '@/src/lib/api-url';
 import { cn } from '@/src/lib/cn';
 
 type CatalogStatus = 'draft' | 'processing' | 'needs_review' | 'ready' | 'archived';
@@ -13,6 +14,19 @@ type ExportFormat = 'csv' | 'xlsx';
 type ExportStatus = 'queued' | 'processing' | 'completed' | 'failed';
 type AiFieldKey = 'category' | 'styleName' | 'color' | 'fabric' | 'composition' | 'wovenKnits';
 type FeedbackType = 'accept' | 'reject';
+type BatchActionKind = '' | 'update_fabric' | 'duplicate' | 'export_selected' | 'delete_selected' | 'find_replace' | 'adjust_price';
+type BatchFindReplaceField = 'styleName' | 'category' | 'color' | 'fabric';
+type PriceAdjustMode = 'percent_up' | 'percent_down' | 'add_fixed' | 'set_exact';
+type TemplateConstrainedField = 'category' | 'styleName' | 'color' | 'fabric' | 'composition' | 'wovenKnits';
+
+interface OutOfBoundsPromptState {
+  id: string;
+  field: TemplateConstrainedField;
+  value: string;
+  source: 'user_input' | 'ai_suggestion';
+  onConfirm: (addToTemplate: boolean) => void;
+  onCancel: () => void;
+}
 
 const MAX_BULK_FILES_PER_BATCH = 20;
 const MAX_BULK_FILE_SIZE_BYTES = 8 * 1024 * 1024;
@@ -84,6 +98,20 @@ const CORRECTION_REASON_OPTIONS = [
   { value: 'fabric_texture', label: 'Fabric/texture confusion' },
   { value: 'other', label: 'Other' },
 ] as const;
+const BATCH_FIND_REPLACE_FIELD_LABELS: Record<BatchFindReplaceField, string> = {
+  styleName: 'Style Name',
+  category: 'Category',
+  color: 'Color',
+  fabric: 'Fabric',
+};
+const TEMPLATE_FIELD_LABELS: Record<TemplateConstrainedField, string> = {
+  category: 'Category',
+  styleName: 'Style Name',
+  color: 'Color',
+  fabric: 'Fabric',
+  composition: 'Composition',
+  wovenKnits: 'Woven / Knits',
+};
 
 interface CatalogProduct {
   id: string;
@@ -143,6 +171,21 @@ interface UploadItem {
   file?: File;
   error?: string;
   previewUrl?: string;
+  analysis?: {
+    styleNo: string;
+    styleName: string;
+    category: string;
+    color: string;
+    fabric: string;
+    composition: string;
+    wovenKnits: string;
+    units: string;
+    poPrice: string;
+    ospSar: string;
+    confidence: number;
+    needsReview: boolean;
+  };
+  approved?: boolean;
 }
 
 interface ProductImageResponse {
@@ -235,6 +278,29 @@ interface LearningStatsResponse {
   insights: string[];
 }
 
+interface CatalogTemplateRecord {
+  id: string;
+  company_id: string;
+  name: string;
+  description?: string | null;
+  defaults: Record<string, string>;
+  allowed_categories: string[];
+  allowed_style_names: string[];
+  allowed_colors: string[];
+  allowed_fabrics: string[];
+  allowed_compositions: string[];
+  allowed_woven_knits: string[];
+  style_code_pattern?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CatalogTemplateListResponse {
+  items: CatalogTemplateRecord[];
+  total: number;
+}
+
 const sampleCatalogRows: CatalogRow[] = [
   {
     id: 'sample-1',
@@ -318,6 +384,42 @@ const sampleCatalogRows: CatalogRow[] = [
   },
 ];
 
+const defaultCatalogTemplateDraft: {
+  name: string;
+  description: string;
+  defaults: Record<string, string>;
+  allowed_categories: string[];
+  allowed_style_names: string[];
+  allowed_colors: string[];
+  allowed_fabrics: string[];
+  allowed_compositions: string[];
+  allowed_woven_knits: string[];
+  style_code_pattern: string;
+  is_active: boolean;
+} = {
+  name: 'Winter 2026',
+  description: 'Default template for winter collection',
+  defaults: {
+    category: 'DRESSES',
+    styleName: 'Midi Dress',
+    composition: '100% Polyester',
+    wovenKnits: 'Woven',
+    poPrice: '600',
+    ospSar: '95',
+    units: '24',
+    color: 'Black',
+    fabric: 'Poly Georgette',
+  },
+  allowed_categories: ['DRESSES', 'CORD SETS'],
+  allowed_style_names: ['Maxi Dress', 'Midi Dress', 'Knee Length', 'Knot Cord Set'],
+  allowed_colors: ['Black', 'Bottle Green', 'Brown', 'Navy'],
+  allowed_fabrics: ['Poly Georgette', 'Polymoss', 'polycrepe'],
+  allowed_compositions: ['100% Cotton', '100% Polyester'],
+  allowed_woven_knits: ['Knits', 'Woven'],
+  style_code_pattern: 'HRD-{CATEGORY}-{YY}-{BRAND}',
+  is_active: true,
+};
+
 function hasAccessToken(): boolean {
   if (typeof document === 'undefined') {
     return false;
@@ -335,8 +437,7 @@ function getImageUrl(imageUrl: string | null | undefined): string | null {
 
   // If it's a relative path starting with /static, prepend the API base URL
   if (imageUrl.startsWith('/static')) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-    const baseUrl = apiUrl.replace('/api/v1', '').replace(/\/+$/, '');
+    const baseUrl = getResolvedApiOriginUrl();
     return `${baseUrl}${imageUrl}`;
   }
 
@@ -392,6 +493,67 @@ function colorDot(color: string): string {
   if (token === 'black') return '#18181B';
   if (token === 'white') return '#D4D4D8';
   return '#7A7C88';
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function parseSarPrice(value: string): number {
+  const parsed = Number.parseFloat(value.replace(/[^0-9.]/g, ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatSarPrice(value: number): string {
+  const normalized = Number.isFinite(value) ? Math.max(0, value) : 0;
+  const rendered = Number.isInteger(normalized)
+    ? String(normalized)
+    : normalized.toFixed(2).replace(/\.?0+$/, '');
+  return `SAR ${rendered}`;
+}
+
+function parseCommaSeparatedTokens(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item, index, list) => list.findIndex((candidate) => candidate.toLowerCase() === item.toLowerCase()) === index);
+}
+
+function includesToken(list: string[], value: string): boolean {
+  return list.some((item) => item.toLowerCase() === value.toLowerCase());
+}
+
+function buildAiAttributesFromRow(
+  row: CatalogRow,
+  overrides: Partial<Pick<CatalogRow, 'fabric' | 'composition' | 'wovenKnits' | 'units' | 'poPrice' | 'price'>> = {},
+): Record<string, string> {
+  const nextPrice = overrides.price ?? row.price;
+  return {
+    fabric: overrides.fabric ?? row.fabric,
+    composition: overrides.composition ?? row.composition,
+    woven_knits: overrides.wovenKnits ?? row.wovenKnits,
+    units: overrides.units ?? row.units,
+    po_price: overrides.poPrice ?? row.poPrice,
+    osp: String(parseSarPrice(nextPrice)),
+  };
+}
+
+function buildDuplicateStyleNo(baseStyleNo: string, existingStyleNos: Set<string>): string {
+  const normalizedBase = baseStyleNo
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 70) || 'STYLE';
+  let suffix = 1;
+  let candidate = `${normalizedBase}-COPY`;
+  while (existingStyleNos.has(candidate)) {
+    suffix += 1;
+    candidate = `${normalizedBase}-COPY-${String(suffix).padStart(2, '0')}`;
+  }
+  return candidate;
 }
 
 function parseAiContext(rawField: unknown): AiFieldContext | undefined {
@@ -560,11 +722,11 @@ function FieldLabel({
   confidence?: number,
   context?: AiFieldContext,
 }): JSX.Element {
-  let badgeColor = 'bg-kira-warmgray/30 text-kira-darkgray';
+  let badgeColor = 'border-[#C7CFCA] bg-[#EEF1EF] text-[#4B5563]';
   if (confidence !== undefined) {
-    if (confidence >= 85) badgeColor = 'bg-green-100 text-green-800 border-green-200';
-    else if (confidence >= 60) badgeColor = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    else badgeColor = 'bg-red-100 text-red-800 border-red-200';
+    if (confidence >= 85) badgeColor = 'border-[#9EDAB7] bg-[#DDF4E7] text-[#1E7145]';
+    else if (confidence >= 60) badgeColor = 'border-[#E6D7A7] bg-[#FAF2D8] text-[#7A641A]';
+    else badgeColor = 'border-[#E4BABA] bg-[#FCE7E7] text-[#9F3A3A]';
   }
   const tooltip = [
     `AI Confidence: ${confidence ?? '--'}%`,
@@ -580,11 +742,15 @@ function FieldLabel({
         <span
           title={tooltip}
           className={cn(
-            "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border cursor-help",
+            "inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold cursor-help",
             badgeColor
           )}
         >
-          {confidence}% AI
+          <svg aria-hidden='true' className='h-2.5 w-2.5' fill='none' viewBox='0 0 12 12'>
+            <circle cx='6' cy='6' r='4.25' stroke='currentColor' strokeWidth='1.5' />
+            <path d='M6 3.5V8.5M3.5 6H8.5' stroke='currentColor' strokeLinecap='round' strokeWidth='1.2' />
+          </svg>
+          {confidence}%
         </span>
       )}
     </div>
@@ -609,24 +775,27 @@ function AiSuggestionRow({
   isFeedbackLocked: boolean,
 }): JSX.Element | null {
   if (!value) return null;
-  let badgeColor = 'bg-kira-warmgray/30 text-kira-darkgray';
+  let badgeColor = 'border-[#C7CFCA] bg-[#EEF1EF] text-[#4B5563]';
   if (confidence !== undefined) {
-    if (confidence >= 85) badgeColor = 'bg-[#E3F6ED] text-[#1E7145]';
-    else if (confidence >= 60) badgeColor = 'bg-yellow-100 text-yellow-800';
-    else badgeColor = 'bg-red-100 text-red-800';
+    if (confidence >= 85) badgeColor = 'border-[#9EDAB7] bg-[#DDF4E7] text-[#1E7145]';
+    else if (confidence >= 60) badgeColor = 'border-[#E6D7A7] bg-[#FAF2D8] text-[#7A641A]';
+    else badgeColor = 'border-[#E4BABA] bg-[#FCE7E7] text-[#9F3A3A]';
   }
 
   return (
-    <div className='flex items-center justify-between gap-3 border border-[#DCEADF] bg-white px-3 py-2 text-[13px]'>
-      <div className='min-w-0'>
-        <p className='text-[11px] uppercase tracking-[0.08em] text-[#6D7772]'>{label}</p>
-        <p className='truncate font-medium text-kira-black'>{value}</p>
-      </div>
-      <div className='flex items-center gap-2'>
+    <div className='grid w-full grid-cols-[84px_minmax(0,1fr)] items-center gap-x-2 border-b border-[#CFE0D6] py-1 text-[12px] last:border-b-0'>
+      <p className='text-[#59625E]'>{label}</p>
+      <div
+        className={cn(
+          'group/ai-answer relative flex min-w-0 items-center justify-end gap-1',
+          !isFeedbackLocked && 'pr-0 transition-[padding-right] duration-150 hover:pr-14',
+        )}
+      >
+        <p className='min-w-0 max-w-full whitespace-nowrap text-right font-medium leading-none text-kira-black'>{value}</p>
         {confidence !== undefined && (
           <span
             className={cn(
-              'px-1.5 py-0.5 rounded flex items-center justify-center text-[10px] font-bold tracking-tight min-w-[40px]',
+              'inline-flex min-w-[36px] items-center justify-center rounded-sm border px-1 py-0.5 text-[9px] font-bold',
               badgeColor,
             )}
           >
@@ -634,26 +803,30 @@ function AiSuggestionRow({
           </span>
         )}
         {!isFeedbackLocked ? (
-          <div className='inline-flex items-center gap-1 border border-kira-warmgray/45 bg-kira-offwhite p-0.5'>
+          <div className='pointer-events-none absolute right-0 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover/ai-answer:pointer-events-auto group-hover/ai-answer:opacity-100'>
             <button
               type='button'
-              className='inline-flex h-7 w-7 items-center justify-center rounded text-base text-[#1E7145] hover:bg-[#E3F6ED] disabled:opacity-50'
+              className='inline-flex h-6 w-6 items-center justify-center rounded border border-[#CFE8D8] bg-[#F4FBF7] text-[#1E7145] transition-all hover:-translate-y-0.5 hover:border-[#8BD0A9] hover:bg-[#E3F6ED] hover:shadow-[0_2px_8px_rgba(30,113,69,0.2)] disabled:opacity-50 disabled:transform-none disabled:shadow-none'
               disabled={isSubmitting}
               onClick={() => onFeedback(fieldKey, 'accept')}
               title='Mark this suggestion as correct'
               aria-label='Mark suggestion as correct'
             >
-              <i className='ri-check-line' />
+              <svg aria-hidden='true' className='h-3.5 w-3.5' fill='none' viewBox='0 0 20 20'>
+                <path d='M4 10.5L8 14.5L16 6.5' stroke='currentColor' strokeLinecap='round' strokeLinejoin='round' strokeWidth='2' />
+              </svg>
             </button>
             <button
               type='button'
-              className='inline-flex h-7 w-7 items-center justify-center rounded text-base text-[#9F3A3A] hover:bg-[#FDECEC] disabled:opacity-50'
+              className='inline-flex h-6 w-6 items-center justify-center rounded border border-[#F0D2D2] bg-[#FFF6F6] text-[#9F3A3A] transition-all hover:-translate-y-0.5 hover:border-[#E7A8A8] hover:bg-[#FDECEC] hover:shadow-[0_2px_8px_rgba(159,58,58,0.2)] disabled:opacity-50 disabled:transform-none disabled:shadow-none'
               disabled={isSubmitting}
               onClick={() => onFeedback(fieldKey, 'reject')}
               title='Report this suggestion as incorrect'
               aria-label='Mark suggestion as incorrect'
             >
-              <i className='ri-close-line' />
+              <svg aria-hidden='true' className='h-3.5 w-3.5' fill='none' viewBox='0 0 20 20'>
+                <path d='M6 6L14 14M14 6L6 14' stroke='currentColor' strokeLinecap='round' strokeWidth='2' />
+              </svg>
             </button>
           </div>
         ) : null}
@@ -675,6 +848,16 @@ export function CatalogView(): JSX.Element {
   const [bulkStatus, setBulkStatus] = useState<CatalogStatus | ''>('');
   const [bulkUnitsValue, setBulkUnitsValue] = useState('');
   const [isBulkApplying, setIsBulkApplying] = useState(false);
+  const [batchAction, setBatchAction] = useState<BatchActionKind>('');
+  const [batchFabricValue, setBatchFabricValue] = useState<string>(FABRIC_OPTIONS[0]);
+  const [isBatchActionApplying, setIsBatchActionApplying] = useState(false);
+  const [isFindReplaceOpen, setIsFindReplaceOpen] = useState(false);
+  const [findReplaceField, setFindReplaceField] = useState<BatchFindReplaceField>('styleName');
+  const [findReplaceQuery, setFindReplaceQuery] = useState('');
+  const [findReplaceReplacement, setFindReplaceReplacement] = useState('');
+  const [isPriceAdjustOpen, setIsPriceAdjustOpen] = useState(false);
+  const [priceAdjustMode, setPriceAdjustMode] = useState<PriceAdjustMode>('percent_up');
+  const [priceAdjustValue, setPriceAdjustValue] = useState('');
 
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
@@ -683,20 +866,56 @@ export function CatalogView(): JSX.Element {
   const [selectedUploadProductId, setSelectedUploadProductId] = useState('');
   const [isUploadProcessing, setIsUploadProcessing] = useState(false);
   const [isBulkAnalyzing, setIsBulkAnalyzing] = useState(false);
+  const [isBulkReviewOpen, setIsBulkReviewOpen] = useState(false);
+  const [bulkReviewFilter, setBulkReviewFilter] = useState<'all' | 'ready' | 'needs_review' | 'approved' | 'failed'>('all');
+  const [bulkReviewQuery, setBulkReviewQuery] = useState('');
+  const [isSavingReviewedItems, setIsSavingReviewedItems] = useState(false);
   const [bulkComposition, setBulkComposition] = useState('100% Polyester');
   const [bulkWovenKnits, setBulkWovenKnits] = useState('Woven');
   const [bulkPoPrice, setBulkPoPrice] = useState('600');
   const [bulkOspSar, setBulkOspSar] = useState('95');
   const [exportHistory, setExportHistory] = useState<MarketplaceExportRecord[]>([]);
   const [isExportHistoryLoading, setIsExportHistoryLoading] = useState(false);
-  const [isCreatingExport, setIsCreatingExport] = useState(false);
+  const [isExportPanelOpen, setIsExportPanelOpen] = useState(false);
+  const [selectedExportFormat, setSelectedExportFormat] = useState<ExportFormat>('csv');
+  const [exportMarketplaces, setExportMarketplaces] = useState<string[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportHistoryItems, setExportHistoryItems] = useState<MarketplaceExportRecord[]>([]);
+
+  // Out-of-bounds Prompt State
+  const [outOfBoundsPrompt, setOutOfBoundsPrompt] = useState<OutOfBoundsPromptState | null>(null);
+
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportMarketplace, setExportMarketplace] = useState<string>(MARKETPLACE_OPTIONS[0]);
   const [exportFormat, setExportFormat] = useState<ExportFormat>('xlsx');
   const [exportStatusFilter, setExportStatusFilter] = useState<'all' | ExportStatus>('all');
-  const [isExportPanelOpen, setIsExportPanelOpen] = useState(false);
   const [isLearningPanelOpen, setIsLearningPanelOpen] = useState(false);
+  const [isTemplatePanelOpen, setIsTemplatePanelOpen] = useState(false);
   const [activeExportTab, setActiveExportTab] = useState<'generate' | 'history'>('generate');
+  const [isCreatingExport, setIsCreatingExport] = useState(false);
+
+  const [catalogTemplates, setCatalogTemplates] = useState<CatalogTemplateRecord[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [isTemplateSaving, setIsTemplateSaving] = useState(false);
+  const [templateNotice, setTemplateNotice] = useState<string | null>(null);
+  const [templateName, setTemplateName] = useState(defaultCatalogTemplateDraft.name);
+  const [templateDescription, setTemplateDescription] = useState(defaultCatalogTemplateDraft.description);
+  const [templateDefaultCategory, setTemplateDefaultCategory] = useState(defaultCatalogTemplateDraft.defaults.category);
+  const [templateDefaultStyleName, setTemplateDefaultStyleName] = useState(defaultCatalogTemplateDraft.defaults.styleName);
+  const [templateDefaultColor, setTemplateDefaultColor] = useState(defaultCatalogTemplateDraft.defaults.color);
+  const [templateDefaultFabric, setTemplateDefaultFabric] = useState(defaultCatalogTemplateDraft.defaults.fabric);
+  const [templateDefaultComposition, setTemplateDefaultComposition] = useState(defaultCatalogTemplateDraft.defaults.composition);
+  const [templateDefaultWovenKnits, setTemplateDefaultWovenKnits] = useState(defaultCatalogTemplateDraft.defaults.wovenKnits);
+  const [templateDefaultUnits, setTemplateDefaultUnits] = useState(defaultCatalogTemplateDraft.defaults.units);
+  const [templateDefaultPoPrice, setTemplateDefaultPoPrice] = useState(defaultCatalogTemplateDraft.defaults.poPrice);
+  const [templateDefaultOspSar, setTemplateDefaultOspSar] = useState(defaultCatalogTemplateDraft.defaults.ospSar);
+  const [templateAllowedCategories, setTemplateAllowedCategories] = useState(defaultCatalogTemplateDraft.allowed_categories.join(', '));
+  const [templateAllowedStyleNames, setTemplateAllowedStyleNames] = useState(defaultCatalogTemplateDraft.allowed_style_names.join(', '));
+  const [templateAllowedColors, setTemplateAllowedColors] = useState(defaultCatalogTemplateDraft.allowed_colors.join(', '));
+  const [templateAllowedFabrics, setTemplateAllowedFabrics] = useState(defaultCatalogTemplateDraft.allowed_fabrics.join(', '));
+  const [templateAllowedCompositions, setTemplateAllowedCompositions] = useState(defaultCatalogTemplateDraft.allowed_compositions.join(', '));
+  const [templateAllowedWovenKnits, setTemplateAllowedWovenKnits] = useState(defaultCatalogTemplateDraft.allowed_woven_knits.join(', '));
+  const [templateStylePattern, setTemplateStylePattern] = useState(defaultCatalogTemplateDraft.style_code_pattern);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
@@ -905,11 +1124,57 @@ export function CatalogView(): JSX.Element {
     void loadLearningStats();
   }, [isLearningPanelOpen, loadLearningStats]);
 
+  const loadCatalogTemplates = useCallback(async (): Promise<void> => {
+    if (!hasAccessToken()) {
+      const localTemplate: CatalogTemplateRecord = {
+        id: 'local-default-template',
+        company_id: 'local',
+        name: defaultCatalogTemplateDraft.name,
+        description: defaultCatalogTemplateDraft.description,
+        defaults: { ...defaultCatalogTemplateDraft.defaults },
+        allowed_categories: [...defaultCatalogTemplateDraft.allowed_categories],
+        allowed_style_names: [...defaultCatalogTemplateDraft.allowed_style_names],
+        allowed_colors: [...defaultCatalogTemplateDraft.allowed_colors],
+        allowed_fabrics: [...defaultCatalogTemplateDraft.allowed_fabrics],
+        allowed_compositions: [...defaultCatalogTemplateDraft.allowed_compositions],
+        allowed_woven_knits: [...defaultCatalogTemplateDraft.allowed_woven_knits],
+        style_code_pattern: defaultCatalogTemplateDraft.style_code_pattern,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setCatalogTemplates([localTemplate]);
+      setSelectedTemplateId(localTemplate.id);
+      return;
+    }
+
+    try {
+      const response = await apiRequest<CatalogTemplateListResponse>('/catalog/templates?limit=100');
+      if (response.items.length === 0) {
+        setCatalogTemplates([]);
+        setSelectedTemplateId('');
+        return;
+      }
+      setCatalogTemplates(response.items);
+      setSelectedTemplateId((current) => {
+        if (current && response.items.some((item) => item.id === current)) return current;
+        const active = response.items.find((item) => item.is_active);
+        return active?.id ?? response.items[0]?.id ?? '';
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to load templates.';
+      setTemplateNotice(message);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCatalogTemplates();
+  }, [loadCatalogTemplates]);
+
   async function handleDownloadExport(record: MarketplaceExportRecord): Promise<void> {
     if (!record.file_url) return;
 
-    const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-    const baseUrl = rawApiUrl.replace('/api/v1', '').replace(/\/+$/, '');
+    const baseUrl = getResolvedApiOriginUrl();
     const fileUrl = record.file_url.startsWith('http')
       ? record.file_url
       : `${baseUrl}${record.file_url.startsWith('/') ? '' : '/'}${record.file_url}`;
@@ -932,18 +1197,22 @@ export function CatalogView(): JSX.Element {
     }
   }
 
-  async function handleCreateMarketplaceExport(): Promise<void> {
+  async function handleCreateMarketplaceExport(
+    overrideFilters?: Record<string, unknown>,
+  ): Promise<MarketplaceExportRecord | null> {
     if (!hasAccessToken()) {
       setExportError('Sign in to generate marketplace exports.');
-      return;
+      return null;
     }
 
-    const exportFilters: Record<string, string> = {};
-    if (statusFilter !== 'All Statuses') {
-      exportFilters.status = statusFilter;
-    }
-    if (searchValue.trim()) {
-      exportFilters.search = searchValue.trim();
+    const exportFilters: Record<string, unknown> = overrideFilters ?? {};
+    if (!overrideFilters) {
+      if (statusFilter !== 'All Statuses') {
+        exportFilters.status = statusFilter;
+      }
+      if (searchValue.trim()) {
+        exportFilters.search = searchValue.trim();
+      }
     }
 
     setIsCreatingExport(true);
@@ -965,9 +1234,11 @@ export function CatalogView(): JSX.Element {
       if (created.status === 'failed') {
         setExportError(created.error_message ?? 'Export validation failed.');
       }
+      return created;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to create export.';
       setExportError(message);
+      return null;
     } finally {
       setIsCreatingExport(false);
       await loadExportHistory(exportStatusFilter);
@@ -975,6 +1246,217 @@ export function CatalogView(): JSX.Element {
   }
 
   const categoryOptions = useMemo(() => ['All Categories', ...CATEGORY_OPTIONS], []);
+
+  const activeTemplate = useMemo(
+    () => catalogTemplates.find((template) => template.id === selectedTemplateId) ?? null,
+    [catalogTemplates, selectedTemplateId],
+  );
+
+  const templateLabelToApiMap: Record<TemplateConstrainedField, 'allowed_categories' | 'allowed_style_names' | 'allowed_colors' | 'allowed_fabrics' | 'allowed_compositions' | 'allowed_woven_knits'> = {
+    category: 'allowed_categories',
+    styleName: 'allowed_style_names',
+    color: 'allowed_colors',
+    fabric: 'allowed_fabrics',
+    composition: 'allowed_compositions',
+    wovenKnits: 'allowed_woven_knits'
+  };
+
+  const getTemplateAllowedList = useCallback((field: TemplateConstrainedField): string[] => {
+    if (!activeTemplate) return [];
+    const mappedKey = templateLabelToApiMap[field];
+    return activeTemplate[mappedKey] || [];
+  }, [activeTemplate]);
+
+  const checkAndPromptOutOfBounds = useCallback(
+    (
+      id: string,
+      field: TemplateConstrainedField,
+      value: string,
+      source: 'user_input' | 'ai_suggestion',
+      proceedFn: () => void
+    ) => {
+      // Allow empty values immediately
+      if (!value || value.trim() === '') {
+        proceedFn();
+        return;
+      }
+
+      // If no active template, or value is in the allowed list, proceed immediately
+      const allowedList = getTemplateAllowedList(field);
+      if (!activeTemplate || allowedList.length === 0 || includesToken(allowedList, value)) {
+        proceedFn();
+        return;
+      }
+
+      // If value is unknown/unrecognized and we have a template in place, prompt the user
+      setOutOfBoundsPrompt({
+        id,
+        field,
+        value,
+        source,
+        onConfirm: async (addToTemplate: boolean) => {
+          if (addToTemplate && activeTemplate && activeTemplate.id !== 'local-default-template') {
+            const listKey = templateLabelToApiMap[field];
+            const currentList = activeTemplate[listKey];
+            const patchData = { [listKey]: [...currentList, value] };
+            try {
+              const res = await apiRequest<CatalogTemplateRecord>(`/catalog/templates/${activeTemplate.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify(patchData),
+              });
+              setCatalogTemplates(prev => prev.map(t => t.id === res.id ? res : t));
+            } catch (err) {
+              console.error('Failed to update template list', err);
+            }
+          }
+          proceedFn();
+          setOutOfBoundsPrompt(null);
+        },
+        onCancel: () => {
+          setOutOfBoundsPrompt(null);
+        }
+      });
+    }, [activeTemplate, getTemplateAllowedList]);
+
+  const templateColorOptions = useMemo(() => {
+    if (!activeTemplate || activeTemplate.allowed_colors.length === 0) return [...COLOR_OPTIONS];
+    return activeTemplate.allowed_colors;
+  }, [activeTemplate]);
+
+  const templateCategoryOptions = useMemo(() => {
+    if (!activeTemplate || activeTemplate.allowed_categories.length === 0) return [...CATEGORY_OPTIONS];
+    return activeTemplate.allowed_categories;
+  }, [activeTemplate]);
+
+  const templateStyleNameOptions = useMemo(() => {
+    if (!activeTemplate || activeTemplate.allowed_style_names.length === 0) return [...STYLE_NAME_OPTIONS];
+    return activeTemplate.allowed_style_names;
+  }, [activeTemplate]);
+
+  const templateCompositionOptions = useMemo(() => {
+    if (!activeTemplate || activeTemplate.allowed_compositions.length === 0) return [...COMPOSITION_OPTIONS];
+    return activeTemplate.allowed_compositions;
+  }, [activeTemplate]);
+
+  const templateWovenKnitsOptions = useMemo(() => {
+    if (!activeTemplate || activeTemplate.allowed_woven_knits.length === 0) return [...WOVEN_KNITS_OPTIONS];
+    return activeTemplate.allowed_woven_knits;
+  }, [activeTemplate]);
+
+  const getAllowedTemplateValues = useCallback((field: TemplateConstrainedField): string[] => {
+    if (!activeTemplate) return [];
+    if (field === 'category') return activeTemplate.allowed_categories;
+    if (field === 'styleName') return activeTemplate.allowed_style_names;
+    if (field === 'color') return activeTemplate.allowed_colors;
+    if (field === 'fabric') return activeTemplate.allowed_fabrics;
+    if (field === 'composition') return activeTemplate.allowed_compositions;
+    return activeTemplate.allowed_woven_knits;
+  }, [activeTemplate]);
+
+  async function appendAllowedTemplateValue(field: TemplateConstrainedField, value: string): Promise<void> {
+    if (!activeTemplate) return;
+    const normalized = value.trim();
+    if (!normalized) return;
+
+    const mergeToken = (list: string[]) => (includesToken(list, normalized) ? list : [...list, normalized]);
+    const nextAllowedCategories = field === 'category' ? mergeToken(activeTemplate.allowed_categories) : activeTemplate.allowed_categories;
+    const nextAllowedStyleNames = field === 'styleName' ? mergeToken(activeTemplate.allowed_style_names) : activeTemplate.allowed_style_names;
+    const nextAllowedColors = field === 'color' ? mergeToken(activeTemplate.allowed_colors) : activeTemplate.allowed_colors;
+    const nextAllowedFabrics = field === 'fabric' ? mergeToken(activeTemplate.allowed_fabrics) : activeTemplate.allowed_fabrics;
+    const nextAllowedCompositions = field === 'composition' ? mergeToken(activeTemplate.allowed_compositions) : activeTemplate.allowed_compositions;
+    const nextAllowedWovenKnits = field === 'wovenKnits' ? mergeToken(activeTemplate.allowed_woven_knits) : activeTemplate.allowed_woven_knits;
+
+    setCatalogTemplates((items) =>
+      items.map((template) =>
+        template.id === activeTemplate.id
+          ? {
+            ...template,
+            allowed_categories: nextAllowedCategories,
+            allowed_style_names: nextAllowedStyleNames,
+            allowed_colors: nextAllowedColors,
+            allowed_fabrics: nextAllowedFabrics,
+            allowed_compositions: nextAllowedCompositions,
+            allowed_woven_knits: nextAllowedWovenKnits,
+          }
+          : template,
+      ),
+    );
+
+    setTemplateAllowedCategories(nextAllowedCategories.join(', '));
+    setTemplateAllowedStyleNames(nextAllowedStyleNames.join(', '));
+    setTemplateAllowedColors(nextAllowedColors.join(', '));
+    setTemplateAllowedFabrics(nextAllowedFabrics.join(', '));
+    setTemplateAllowedCompositions(nextAllowedCompositions.join(', '));
+    setTemplateAllowedWovenKnits(nextAllowedWovenKnits.join(', '));
+
+    if (!hasAccessToken() || !selectedTemplateId || selectedTemplateId.startsWith('local-')) {
+      return;
+    }
+
+    try {
+      const saved = await apiRequest<CatalogTemplateRecord>(`/catalog/templates/${selectedTemplateId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          allowed_categories: nextAllowedCategories,
+          allowed_style_names: nextAllowedStyleNames,
+          allowed_colors: nextAllowedColors,
+          allowed_fabrics: nextAllowedFabrics,
+          allowed_compositions: nextAllowedCompositions,
+          allowed_woven_knits: nextAllowedWovenKnits,
+        }),
+      });
+      setCatalogTemplates((items) => items.map((item) => (item.id === saved.id ? saved : item)));
+    } catch {
+      setTemplateNotice('Could not persist updated allowed list. Changes remain local.');
+    }
+  }
+
+  async function ensureTemplateValueAllowed(
+    field: TemplateConstrainedField,
+    value: string | undefined,
+    approvalCache?: Map<string, boolean>,
+  ): Promise<boolean> {
+    const candidate = value?.trim();
+    if (!candidate) return true;
+
+    const allowedList = getAllowedTemplateValues(field);
+    if (allowedList.length === 0 || includesToken(allowedList, candidate)) {
+      return true;
+    }
+
+    const cacheKey = `${field}:${candidate.toLowerCase()}`;
+    if (approvalCache?.has(cacheKey)) {
+      return approvalCache.get(cacheKey) ?? false;
+    }
+
+    if (typeof window === 'undefined') {
+      approvalCache?.set(cacheKey, true);
+      return true;
+    }
+
+    const useValue = window.confirm(
+      `"${candidate}" is outside allowed ${TEMPLATE_FIELD_LABELS[field]} list. Use it anyway?`,
+    );
+    if (!useValue) {
+      approvalCache?.set(cacheKey, false);
+      return false;
+    }
+
+    const includeValue = window.confirm(
+      `Add "${candidate}" to allowed ${TEMPLATE_FIELD_LABELS[field]} list for this template?`,
+    );
+    if (includeValue) {
+      await appendAllowedTemplateValue(field, candidate);
+    }
+
+    approvalCache?.set(cacheKey, true);
+    return true;
+  }
+
+  const templateFabricOptions = useMemo(() => {
+    if (!activeTemplate || activeTemplate.allowed_fabrics.length === 0) return [...FABRIC_OPTIONS];
+    return activeTemplate.allowed_fabrics;
+  }, [activeTemplate]);
 
   const colorOptions = useMemo(() => {
     const colors = Array.from(new Set(catalogRows.map((row) => row.color))).sort();
@@ -1002,6 +1484,23 @@ export function CatalogView(): JSX.Element {
     const cordSets = catalogRows.filter((row) => normalizeCategory(row.category) === 'CORD SETS').length;
     return { total, dresses, cordSets };
   }, [catalogRows]);
+
+  useEffect(() => {
+    if (!activeTemplate) return;
+    const defaults = activeTemplate.defaults ?? {};
+    if (typeof defaults.composition === 'string' && defaults.composition.trim()) {
+      setBulkComposition(defaults.composition);
+    }
+    if (typeof defaults.wovenKnits === 'string' && defaults.wovenKnits.trim()) {
+      setBulkWovenKnits(defaults.wovenKnits);
+    }
+    if (typeof defaults.poPrice === 'string' && defaults.poPrice.trim()) {
+      setBulkPoPrice(defaults.poPrice);
+    }
+    if (typeof defaults.ospSar === 'string' && defaults.ospSar.trim()) {
+      setBulkOspSar(defaults.ospSar);
+    }
+  }, [activeTemplate]);
 
   const lowConfidenceFields = useMemo(
     () =>
@@ -1053,16 +1552,91 @@ export function CatalogView(): JSX.Element {
   }, [catalogRows]);
 
   const selectedIdSet = useMemo(() => new Set(selectedRowIds), [selectedRowIds]);
+  const selectedRows = useMemo(
+    () => catalogRows.filter((row) => selectedIdSet.has(row.id)),
+    [catalogRows, selectedIdSet],
+  );
   const selectedVisibleCount = useMemo(
     () => filteredCatalogRows.filter((row) => selectedIdSet.has(row.id)).length,
     [filteredCatalogRows, selectedIdSet],
   );
   const allVisibleSelected = filteredCatalogRows.length > 0 && selectedVisibleCount === filteredCatalogRows.length;
+  const bulkReviewRows = useMemo(() => {
+    const query = bulkReviewQuery.trim().toLowerCase();
+    return uploadItems.filter((item) => {
+      if (bulkReviewFilter === 'failed' && item.status !== 'failed') return false;
+      if (bulkReviewFilter === 'approved' && item.approved !== true) return false;
+      if (bulkReviewFilter === 'ready' && (!item.analysis || item.analysis.needsReview)) return false;
+      if (bulkReviewFilter === 'needs_review' && (!item.analysis || !item.analysis.needsReview)) return false;
+      if (query.length === 0) return true;
+      const haystack = [
+        item.name,
+        item.analysis?.styleNo,
+        item.analysis?.styleName,
+        item.analysis?.category,
+        item.analysis?.color,
+        item.analysis?.fabric,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [uploadItems, bulkReviewFilter, bulkReviewQuery]);
+
+  const bulkReviewStats = useMemo(() => {
+    const analyzed = uploadItems.filter((item) => Boolean(item.analysis));
+    const ready = analyzed.filter((item) => item.analysis && !item.analysis.needsReview).length;
+    const needsReview = analyzed.filter((item) => item.analysis?.needsReview).length;
+    const approved = analyzed.filter((item) => item.approved).length;
+    const failed = uploadItems.filter((item) => item.status === 'failed').length;
+    return { analyzed: analyzed.length, ready, needsReview, approved, failed };
+  }, [uploadItems]);
 
   const isEditMode = editingRowId !== null;
 
   function updateUploadItem(itemId: string, updater: (item: UploadItem) => UploadItem): void {
     setUploadItems((items) => items.map((item) => (item.id === itemId ? updater(item) : item)));
+  }
+
+  function updateUploadAnalysisField(
+    itemId: string,
+    field: keyof NonNullable<UploadItem['analysis']>,
+    value: string | number | boolean,
+  ): void {
+    setUploadItems((items) =>
+      items.map((item) => {
+        if (item.id !== itemId || !item.analysis) return item;
+        const nextAnalysis = { ...item.analysis, [field]: value } as NonNullable<UploadItem['analysis']>;
+        if (field === 'confidence') {
+          nextAnalysis.needsReview = Number(nextAnalysis.confidence) < 82;
+        }
+        if (field !== 'needsReview' && field !== 'confidence') {
+          const nextNeedsReview = Number(nextAnalysis.confidence) < 82;
+          nextAnalysis.needsReview = nextNeedsReview;
+        }
+        return { ...item, analysis: nextAnalysis };
+      }),
+    );
+  }
+
+  function toggleUploadApproval(itemId: string): void {
+    setUploadItems((items) =>
+      items.map((item) => {
+        if (item.id !== itemId) return item;
+        if (!item.analysis) return item;
+        return { ...item, approved: !item.approved };
+      }),
+    );
+  }
+
+  function approveAllReadyUploads(): void {
+    setUploadItems((items) =>
+      items.map((item) => {
+        if (!item.analysis || item.analysis.needsReview) return item;
+        return { ...item, approved: true };
+      }),
+    );
   }
 
   async function runSingleUpload(item: UploadItem): Promise<void> {
@@ -1107,35 +1681,153 @@ export function CatalogView(): JSX.Element {
     let hasFailures = false;
 
     try {
-      const newItems = [...uploadItems];
-      for (const item of newItems) {
+      const pendingItems = uploadItems.filter((item) => item.status !== 'completed' && item.status !== 'uploading');
+      for (const item of pendingItems) {
         if (!item.file) continue;
 
-        // Skip if already completed or uploading
-        if (item.status === 'completed' || item.status === 'uploading') continue;
-
         try {
-          updateUploadItem(item.id, (current) => ({ ...current, status: 'uploading', progress: 25 }));
+          updateUploadItem(item.id, (current) => ({ ...current, status: 'uploading', progress: 25, error: undefined }));
 
           const base64DataUrl = await fileToDataUrl(item.file);
-
           const analysisRes = await apiRequest<AnalyzeImageApiResult>('/catalog/analyze-image', {
             method: 'POST',
             body: JSON.stringify({ image_url: base64DataUrl }),
           });
 
           const resolvedCategory = normalizeCategory(normalizeAiValue(analysisRes.category?.value));
-          const resolvedStyleName = pickOptionValue(analysisRes.style_name?.value, STYLE_NAME_OPTIONS);
-          const resolvedColor = pickOptionValue(analysisRes.color?.value, COLOR_OPTIONS) ?? seasonalRecommendation.color;
-          const resolvedFabric = pickOptionValue(analysisRes.fabric?.value, FABRIC_OPTIONS) ?? seasonalRecommendation.fabric;
-          const resolvedComposition = pickOptionValue(analysisRes.composition?.value, COMPOSITION_OPTIONS) ?? bulkComposition;
-          const resolvedWovenKnits = pickOptionValue(analysisRes.woven_knits?.value, WOVEN_KNITS_OPTIONS) ?? bulkWovenKnits;
+          const resolvedStyleName = pickOptionValue(analysisRes.style_name?.value, STYLE_NAME_OPTIONS) ?? normalizeAiValue(analysisRes.style_name?.value);
+          const resolvedColor = pickOptionValue(analysisRes.color?.value, COLOR_OPTIONS) ?? normalizeAiValue(analysisRes.color?.value) ?? seasonalRecommendation.color;
+          const resolvedFabric = pickOptionValue(analysisRes.fabric?.value, FABRIC_OPTIONS) ?? normalizeAiValue(analysisRes.fabric?.value) ?? seasonalRecommendation.fabric;
+          const resolvedComposition = pickOptionValue(analysisRes.composition?.value, COMPOSITION_OPTIONS) ?? normalizeAiValue(analysisRes.composition?.value) ?? bulkComposition;
+          const resolvedWovenKnits = pickOptionValue(analysisRes.woven_knits?.value, WOVEN_KNITS_OPTIONS) ?? normalizeAiValue(analysisRes.woven_knits?.value) ?? bulkWovenKnits;
+
+          const styleRes = await apiRequest<{ style_code: string }>('/catalog/generate-style-code', {
+            method: 'POST',
+            body: JSON.stringify({
+              brand: 'GEN',
+              category: resolvedCategory,
+              pattern: activeTemplate?.style_code_pattern ?? undefined,
+            }),
+          });
+
+          const confidenceValues = [
+            analysisRes.category?.confidence,
+            analysisRes.style_name?.confidence,
+            analysisRes.color?.confidence,
+            analysisRes.fabric?.confidence,
+            analysisRes.composition?.confidence,
+            analysisRes.woven_knits?.confidence,
+          ].filter((value): value is number => typeof value === 'number');
+          const avgConfidence = confidenceValues.length > 0
+            ? Math.round(confidenceValues.reduce((sum, value) => sum + value, 0) / confidenceValues.length)
+            : 0;
+          const defaultName = item.name.split('.')[0] || 'Bulk Item';
+          const analysisPayload = {
+            styleNo: styleRes.style_code,
+            styleName: resolvedStyleName ?? defaultName,
+            category: resolvedCategory,
+            color: resolvedColor,
+            fabric: resolvedFabric,
+            composition: resolvedComposition,
+            wovenKnits: resolvedWovenKnits,
+            units: activeTemplate?.defaults?.units ?? '24',
+            poPrice: bulkPoPrice,
+            ospSar: bulkOspSar,
+            confidence: avgConfidence,
+            needsReview: avgConfidence < 82,
+          };
+
+          updateUploadItem(item.id, (current) => ({
+            ...current,
+            status: 'completed_local',
+            progress: 100,
+            analysis: analysisPayload,
+            approved: analysisPayload.needsReview ? false : (current.approved ?? true),
+          }));
+        } catch (error) {
+          hasFailures = true;
+          updateUploadItem(item.id, (current) => ({
+            ...current,
+            status: 'failed',
+            error: error instanceof Error ? error.message : 'Analysis failed',
+            progress: 100,
+          }));
+        }
+      }
+
+      setUploadMessage(
+        hasFailures
+          ? 'Analysis finished with some failures. Review failed rows and retry.'
+          : 'Analysis complete. Review items before saving to catalog.',
+      );
+      return !hasFailures;
+    } finally {
+      setIsBulkAnalyzing(false);
+    }
+  }
+
+  async function handleSaveAllToCatalog(): Promise<void> {
+    if (uploadItems.length === 0 || isBulkAnalyzing) return;
+    const hasPendingAnalysis = uploadItems.some(
+      (item) => !item.analysis && item.status !== 'failed' && item.status !== 'completed',
+    );
+    if (hasPendingAnalysis) {
+      await handleAnalyzeAll();
+    }
+    setIsBulkReviewOpen(true);
+  }
+
+  async function handleSaveReviewedItems(saveOnlyApproved: boolean): Promise<void> {
+    if (isSavingReviewedItems) return;
+    if (!hasAccessToken()) {
+      setUploadMessage('Sign in to save analyzed items.');
+      return;
+    }
+
+    const candidates = uploadItems.filter((item) => {
+      if (!item.analysis) return false;
+      if (item.status === 'completed') return false;
+      if (saveOnlyApproved) return item.approved === true;
+      return true;
+    });
+
+    if (candidates.length === 0) {
+      setUploadMessage(saveOnlyApproved ? 'No approved items to save.' : 'No analyzed items to save.');
+      return;
+    }
+
+    setIsSavingReviewedItems(true);
+    let successCount = 0;
+    let failedCount = 0;
+    const approvalCache = new Map<string, boolean>();
+
+    try {
+      for (const item of candidates) {
+        if (!item.file || !item.analysis) continue;
+        const allowedCategory = await ensureTemplateValueAllowed('category', item.analysis.category, approvalCache);
+        const allowedStyleName = await ensureTemplateValueAllowed('styleName', item.analysis.styleName, approvalCache);
+        const allowedColor = await ensureTemplateValueAllowed('color', item.analysis.color, approvalCache);
+        const allowedFabric = await ensureTemplateValueAllowed('fabric', item.analysis.fabric, approvalCache);
+        const allowedComposition = await ensureTemplateValueAllowed('composition', item.analysis.composition, approvalCache);
+        const allowedWovenKnits = await ensureTemplateValueAllowed('wovenKnits', item.analysis.wovenKnits, approvalCache);
+        if (!allowedCategory || !allowedStyleName || !allowedColor || !allowedFabric || !allowedComposition || !allowedWovenKnits) {
+          failedCount += 1;
+          updateUploadItem(item.id, (current) => ({
+            ...current,
+            status: 'failed',
+            error: 'Skipped: one or more values were not approved from allowed template options.',
+            progress: 100,
+          }));
+          continue;
+        }
+        try {
+          updateUploadItem(item.id, (current) => ({ ...current, status: 'uploading', progress: 30, error: undefined }));
 
           const formData = new FormData();
           formData.append('file', item.file);
 
-          const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-          const normalizedApiUrl = rawApiUrl.endsWith('/api/v1') ? rawApiUrl : `${rawApiUrl.replace(/\/+$/, '')}/api/v1`;
+          const normalizedApiUrl = getResolvedApiBaseUrl();
+          const baseUrl = getResolvedApiOriginUrl();
           const headers: HeadersInit = {};
           const accessToken = document.cookie
             .split(';')
@@ -1149,38 +1841,29 @@ export function CatalogView(): JSX.Element {
             body: formData,
           });
 
-          if (!uploadRes.ok) throw new Error('Upload failed');
+          if (!uploadRes.ok) throw new Error('Image upload failed.');
           const uploadData = await uploadRes.json() as { url: string, filename: string };
           const uploadedUrl = uploadData.url.startsWith('/static')
-            ? `${rawApiUrl.replace('/api/v1', '')}${uploadData.url}`
+            ? `${baseUrl}${uploadData.url}`
             : uploadData.url;
 
-          // Generate a style code
-          const styleRes = await apiRequest<{ style_code: string }>('/catalog/generate-style-code', {
-            method: 'POST',
-            body: JSON.stringify({ brand: 'GEN', category: resolvedCategory })
-          });
-
-          // Create the product combining AI findings with bulk settings
-          const defaultName = item.name.split('.')[0] || 'Bulk Item';
-          const resolvedTitle = resolvedStyleName ?? defaultName;
           const created = await apiRequest<ProductResponse>('/catalog/products', {
             method: 'POST',
             body: JSON.stringify({
-              sku: styleRes.style_code,
-              title: resolvedTitle,
-              category: resolvedCategory,
-              color: resolvedColor,
-              status: 'draft',
+              sku: item.analysis.styleNo.trim().toUpperCase(),
+              title: item.analysis.styleName,
+              category: item.analysis.category,
+              color: item.analysis.color,
+              status: item.analysis.needsReview ? 'needs_review' : 'draft',
               ai_attributes: {
-                fabric: resolvedFabric,
-                composition: resolvedComposition,
-                woven_knits: resolvedWovenKnits,
-                units: '24',
-                po_price: bulkPoPrice,
-                osp: `SAR ${bulkOspSar}`,
+                fabric: item.analysis.fabric,
+                composition: item.analysis.composition,
+                woven_knits: item.analysis.wovenKnits,
+                units: item.analysis.units,
+                po_price: item.analysis.poPrice,
+                osp: `SAR ${item.analysis.ospSar}`,
               },
-            })
+            }),
           });
 
           await apiRequest(`/catalog/products/${created.id}/images`, {
@@ -1198,15 +1881,15 @@ export function CatalogView(): JSX.Element {
             id: created.id,
             primary_image_url: uploadedUrl,
             styleNo: created.sku,
-            name: created.title || resolvedTitle,
-            category: normalizeCategory(created.category ?? resolvedCategory),
-            color: created.color ?? resolvedColor,
-            fabric: resolvedFabric,
-            composition: resolvedComposition,
-            wovenKnits: resolvedWovenKnits,
-            units: '24',
-            poPrice: bulkPoPrice,
-            price: `SAR ${bulkOspSar}`,
+            name: created.title || item.analysis.styleName,
+            category: normalizeCategory(created.category ?? item.analysis.category),
+            color: created.color ?? item.analysis.color,
+            fabric: item.analysis.fabric,
+            composition: item.analysis.composition,
+            wovenKnits: item.analysis.wovenKnits,
+            units: item.analysis.units,
+            poPrice: item.analysis.poPrice,
+            price: formatSarPrice(Number.parseFloat(item.analysis.ospSar)),
             status: created.status as CatalogStatus,
             persisted: true,
             imageName: item.name,
@@ -1214,36 +1897,26 @@ export function CatalogView(): JSX.Element {
 
           setCatalogRows((prev) => [newRow, ...prev]);
           persistedProductsRef.current = [newRow, ...persistedProductsRef.current];
-          updateUploadItem(item.id, (current) => ({ ...current, status: 'completed', progress: 100 }));
-
+          updateUploadItem(item.id, (current) => ({ ...current, status: 'completed', progress: 100, approved: true }));
+          successCount += 1;
         } catch (error) {
-          hasFailures = true;
+          failedCount += 1;
           updateUploadItem(item.id, (current) => ({
             ...current,
             status: 'failed',
-            error: error instanceof Error ? error.message : 'Analysis failed',
-            progress: 100
+            error: error instanceof Error ? error.message : 'Save failed',
+            progress: 100,
           }));
         }
       }
-      setUploadMessage(
-        hasFailures
-          ? 'Bulk analyze finished with some failures. Review failed rows and retry.'
-          : 'Bulk analyze complete. Items saved to catalog.',
-      );
-      return !hasFailures;
-    } finally {
-      setIsBulkAnalyzing(false);
-    }
-  }
 
-  async function handleSaveAllToCatalog(): Promise<void> {
-    if (uploadItems.length === 0 || isBulkAnalyzing) return;
-    const savedSuccessfully = await handleAnalyzeAll();
-    if (savedSuccessfully) {
-      setIsBulkUploadOpen(false);
-      setUploadItems([]);
-      queueRef.current = [];
+      if (failedCount > 0) {
+        setUploadMessage(`Saved ${successCount} item(s). ${failedCount} item(s) failed.`);
+      } else {
+        setUploadMessage(`Saved ${successCount} item(s) to catalog.`);
+      }
+    } finally {
+      setIsSavingReviewedItems(false);
     }
   }
 
@@ -1523,6 +2196,541 @@ export function CatalogView(): JSX.Element {
     }
   }
 
+  async function handleBatchUpdateFabric(): Promise<void> {
+    if (selectedRows.length === 0) return;
+    const nextFabric = batchFabricValue.trim();
+    if (!nextFabric) {
+      setCatalogNotice('Select a fabric value to apply.');
+      return;
+    }
+
+    const selectedSet = new Set(selectedRowIds);
+    const persistedTargets = selectedRows.filter((row) => row.persisted);
+    let failedPersisted = 0;
+
+    if (persistedTargets.length > 0) {
+      if (!hasAccessToken()) {
+        setCatalogNotice('Sign in to persist fabric updates. Applied locally for now.');
+      } else {
+        const results = await Promise.allSettled(
+          persistedTargets.map((row) =>
+            apiRequest<ProductResponse>(`/catalog/products/${row.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({
+                ai_attributes: buildAiAttributesFromRow(row, { fabric: nextFabric }),
+              }),
+            }),
+          ),
+        );
+        failedPersisted = results.filter((result) => result.status === 'rejected').length;
+      }
+    }
+
+    setCatalogRows((rows) => rows.map((row) => (selectedSet.has(row.id) ? { ...row, fabric: nextFabric } : row)));
+    setCatalogNotice(
+      failedPersisted > 0
+        ? `Fabric updated, but ${failedPersisted} persisted row(s) failed to sync.`
+        : `Fabric updated for ${selectedRows.length} row(s).`,
+    );
+  }
+
+  async function handleDuplicateSelectedRows(): Promise<void> {
+    if (selectedRows.length === 0) return;
+
+    const existingStyleNos = new Set(catalogRows.map((row) => row.styleNo.toUpperCase()));
+    const duplicates: CatalogRow[] = [];
+    let persistedCreated = 0;
+    let localCreated = 0;
+    let persistedFailures = 0;
+
+    for (const [index, row] of selectedRows.entries()) {
+      const duplicateStyleNo = buildDuplicateStyleNo(row.styleNo, existingStyleNos);
+      existingStyleNos.add(duplicateStyleNo);
+
+      if (row.persisted && hasAccessToken()) {
+        try {
+          const created = await apiRequest<ProductResponse>('/catalog/products', {
+            method: 'POST',
+            body: JSON.stringify({
+              sku: duplicateStyleNo,
+              title: row.name,
+              category: normalizeCategory(row.category),
+              color: row.color,
+              status: row.status,
+              ai_attributes: buildAiAttributesFromRow(row),
+            }),
+          });
+
+          const resolvedImageUrl = row.primary_image_url ? (getImageUrl(row.primary_image_url) ?? row.primary_image_url) : null;
+          if (resolvedImageUrl) {
+            try {
+              await apiRequest<ProductImageResponse>(`/catalog/products/${created.id}/images`, {
+                method: 'POST',
+                body: JSON.stringify({
+                  file_name: row.imageName ?? `${duplicateStyleNo}.jpg`,
+                  file_url: resolvedImageUrl,
+                  processing_status: 'uploaded',
+                }),
+              });
+            } catch {
+              // Duplicate should still succeed even if image cloning fails.
+            }
+          }
+
+          duplicates.push({
+            ...row,
+            id: created.id,
+            styleNo: created.sku,
+            name: created.title,
+            category: normalizeCategory(created.category ?? row.category),
+            color: created.color ?? row.color,
+            persisted: true,
+          });
+          persistedCreated += 1;
+          continue;
+        } catch {
+          persistedFailures += 1;
+        }
+      }
+
+      duplicates.push({
+        ...row,
+        id: `local-copy-${Date.now()}-${index}`,
+        styleNo: duplicateStyleNo,
+        persisted: false,
+      });
+      localCreated += 1;
+    }
+
+    if (duplicates.length === 0) {
+      setCatalogNotice('No rows duplicated.');
+      return;
+    }
+
+    setCatalogRows((rows) => [...duplicates, ...rows]);
+    setSelectedRowIds(duplicates.map((row) => row.id));
+    setCatalogNotice(
+      `Duplicated ${duplicates.length} row(s) (${persistedCreated} saved, ${localCreated} local).${persistedFailures > 0 ? ` ${persistedFailures} fallback(s) created locally due to API errors.` : ''}`,
+    );
+  }
+
+  async function handleExportSelectedRows(): Promise<void> {
+    if (!hasAccessToken()) {
+      setCatalogNotice('Sign in to export selected rows.');
+      return;
+    }
+    const selectedPersistedIds = selectedRows.filter((row) => row.persisted).map((row) => row.id);
+    if (selectedPersistedIds.length === 0) {
+      setCatalogNotice('Only saved catalog items can be exported.');
+      return;
+    }
+
+    const created = await handleCreateMarketplaceExport({ product_ids: selectedPersistedIds });
+    if (created) {
+      setCatalogNotice(`Export generated for ${selectedPersistedIds.length} selected item(s).`);
+      setIsExportPanelOpen(true);
+      setActiveExportTab('history');
+    }
+  }
+
+  async function handleDeleteSelectedRows(): Promise<void> {
+    if (selectedRows.length === 0) return;
+    if (typeof window !== 'undefined' && !window.confirm(`Delete ${selectedRows.length} selected item(s)?`)) {
+      return;
+    }
+
+    const removableIds = new Set<string>();
+    const localTargets = selectedRows.filter((row) => !row.persisted);
+    localTargets.forEach((row) => removableIds.add(row.id));
+
+    const persistedTargets = selectedRows.filter((row) => row.persisted);
+    let failedPersisted = 0;
+    if (persistedTargets.length > 0) {
+      if (!hasAccessToken()) {
+        setCatalogNotice('Sign in to delete persisted rows. Local rows were removed.');
+      } else {
+        const results = await Promise.allSettled(
+          persistedTargets.map((row) =>
+            apiRequest(`/catalog/products/${row.id}`, {
+              method: 'DELETE',
+            }),
+          ),
+        );
+        results.forEach((result, index) => {
+          const row = persistedTargets[index];
+          if (!row) return;
+          if (result.status === 'fulfilled') removableIds.add(row.id);
+          else failedPersisted += 1;
+        });
+      }
+    }
+
+    if (removableIds.size === 0) {
+      setCatalogNotice('No selected rows were deleted.');
+      return;
+    }
+
+    setCatalogRows((rows) => rows.filter((row) => !removableIds.has(row.id)));
+    setSelectedRowIds((ids) => ids.filter((id) => !removableIds.has(id)));
+    setCatalogNotice(
+      failedPersisted > 0
+        ? `Deleted ${removableIds.size} row(s); ${failedPersisted} persisted delete(s) failed.`
+        : `Deleted ${removableIds.size} selected row(s).`,
+    );
+  }
+
+  async function handleRunBatchAction(): Promise<void> {
+    if (selectedRows.length === 0) {
+      setCatalogNotice('Select at least one row first.');
+      return;
+    }
+    if (!batchAction) {
+      setCatalogNotice('Choose a batch action.');
+      return;
+    }
+    if (batchAction === 'find_replace') {
+      setIsFindReplaceOpen(true);
+      return;
+    }
+    if (batchAction === 'adjust_price') {
+      setIsPriceAdjustOpen(true);
+      return;
+    }
+
+    setIsBatchActionApplying(true);
+    try {
+      if (batchAction === 'update_fabric') {
+        await handleBatchUpdateFabric();
+      } else if (batchAction === 'duplicate') {
+        await handleDuplicateSelectedRows();
+      } else if (batchAction === 'export_selected') {
+        await handleExportSelectedRows();
+      } else if (batchAction === 'delete_selected') {
+        await handleDeleteSelectedRows();
+      }
+    } finally {
+      setIsBatchActionApplying(false);
+    }
+  }
+
+  async function handleApplyFindReplace(): Promise<void> {
+    if (selectedRows.length === 0) return;
+    const query = findReplaceQuery.trim();
+    if (!query) {
+      setCatalogNotice('Enter text to find.');
+      return;
+    }
+
+    const regex = new RegExp(escapeRegExp(query), 'gi');
+    const changedRows = new Map<string, CatalogRow>();
+
+    selectedRows.forEach((row) => {
+      const sourceValue =
+        findReplaceField === 'styleName'
+          ? row.name
+          : findReplaceField === 'category'
+            ? row.category
+            : findReplaceField === 'color'
+              ? row.color
+              : row.fabric;
+
+      const replacedValue = sourceValue.replace(regex, findReplaceReplacement).trim();
+      if (!replacedValue || replacedValue === sourceValue) return;
+
+      if (findReplaceField === 'styleName') {
+        changedRows.set(row.id, { ...row, name: replacedValue });
+      } else if (findReplaceField === 'category') {
+        changedRows.set(row.id, { ...row, category: normalizeCategory(replacedValue) });
+      } else if (findReplaceField === 'color') {
+        changedRows.set(row.id, { ...row, color: replacedValue });
+      } else {
+        changedRows.set(row.id, { ...row, fabric: replacedValue });
+      }
+    });
+
+    if (changedRows.size === 0) {
+      setCatalogNotice('No matching values found in selected rows.');
+      return;
+    }
+
+    let failedPersisted = 0;
+    const changedPersistedRows = Array.from(changedRows.values()).filter((row) => row.persisted);
+    if (changedPersistedRows.length > 0) {
+      if (!hasAccessToken()) {
+        setCatalogNotice('Sign in to persist find/replace updates. Applied locally for now.');
+      } else {
+        const results = await Promise.allSettled(
+          changedPersistedRows.map((row) => {
+            if (findReplaceField === 'styleName') {
+              return apiRequest<ProductResponse>(`/catalog/products/${row.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ title: row.name }),
+              });
+            }
+            if (findReplaceField === 'category') {
+              return apiRequest<ProductResponse>(`/catalog/products/${row.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ category: row.category }),
+              });
+            }
+            if (findReplaceField === 'color') {
+              return apiRequest<ProductResponse>(`/catalog/products/${row.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ color: row.color }),
+              });
+            }
+            return apiRequest<ProductResponse>(`/catalog/products/${row.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({
+                ai_attributes: buildAiAttributesFromRow(row),
+              }),
+            });
+          }),
+        );
+        failedPersisted = results.filter((result) => result.status === 'rejected').length;
+      }
+    }
+
+    setCatalogRows((rows) => rows.map((row) => changedRows.get(row.id) ?? row));
+    setCatalogNotice(
+      failedPersisted > 0
+        ? `Find & replace applied to ${changedRows.size} row(s), but ${failedPersisted} persisted update(s) failed.`
+        : `Find & replace applied to ${changedRows.size} row(s).`,
+    );
+    setIsFindReplaceOpen(false);
+  }
+
+  async function handleApplyPriceAdjustment(): Promise<void> {
+    if (selectedRows.length === 0) return;
+    const rawAmount = Number.parseFloat(priceAdjustValue);
+    if (!Number.isFinite(rawAmount) || rawAmount < 0) {
+      setCatalogNotice('Enter a valid adjustment value.');
+      return;
+    }
+
+    const changedRows = new Map<string, CatalogRow>();
+    selectedRows.forEach((row) => {
+      const currentPrice = parseSarPrice(row.price);
+      let nextPrice = currentPrice;
+      if (priceAdjustMode === 'percent_up') nextPrice = currentPrice * (1 + rawAmount / 100);
+      if (priceAdjustMode === 'percent_down') nextPrice = currentPrice * (1 - rawAmount / 100);
+      if (priceAdjustMode === 'add_fixed') nextPrice = currentPrice + rawAmount;
+      if (priceAdjustMode === 'set_exact') nextPrice = rawAmount;
+      nextPrice = Math.max(0, nextPrice);
+
+      if (Math.abs(nextPrice - currentPrice) < 0.0001) return;
+      changedRows.set(row.id, { ...row, price: formatSarPrice(nextPrice) });
+    });
+
+    if (changedRows.size === 0) {
+      setCatalogNotice('No price changes were applied.');
+      return;
+    }
+
+    let failedPersisted = 0;
+    const changedPersistedRows = Array.from(changedRows.values()).filter((row) => row.persisted);
+    if (changedPersistedRows.length > 0) {
+      if (!hasAccessToken()) {
+        setCatalogNotice('Sign in to persist price adjustments. Applied locally for now.');
+      } else {
+        const results = await Promise.allSettled(
+          changedPersistedRows.map((row) =>
+            apiRequest<ProductResponse>(`/catalog/products/${row.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({
+                ai_attributes: buildAiAttributesFromRow(row),
+              }),
+            }),
+          ),
+        );
+        failedPersisted = results.filter((result) => result.status === 'rejected').length;
+      }
+    }
+
+    setCatalogRows((rows) => rows.map((row) => changedRows.get(row.id) ?? row));
+    setCatalogNotice(
+      failedPersisted > 0
+        ? `Adjusted prices for ${changedRows.size} row(s), but ${failedPersisted} persisted update(s) failed.`
+        : `Adjusted prices for ${changedRows.size} row(s).`,
+    );
+    setIsPriceAdjustOpen(false);
+  }
+
+  function hydrateTemplateEditor(template: CatalogTemplateRecord | null): void {
+    if (!template) {
+      setTemplateName(defaultCatalogTemplateDraft.name);
+      setTemplateDescription(defaultCatalogTemplateDraft.description);
+      setTemplateDefaultCategory(defaultCatalogTemplateDraft.defaults.category);
+      setTemplateDefaultStyleName(defaultCatalogTemplateDraft.defaults.styleName);
+      setTemplateDefaultColor(defaultCatalogTemplateDraft.defaults.color);
+      setTemplateDefaultFabric(defaultCatalogTemplateDraft.defaults.fabric);
+      setTemplateDefaultComposition(defaultCatalogTemplateDraft.defaults.composition);
+      setTemplateDefaultWovenKnits(defaultCatalogTemplateDraft.defaults.wovenKnits);
+      setTemplateDefaultUnits(defaultCatalogTemplateDraft.defaults.units);
+      setTemplateDefaultPoPrice(defaultCatalogTemplateDraft.defaults.poPrice);
+      setTemplateDefaultOspSar(defaultCatalogTemplateDraft.defaults.ospSar);
+      setTemplateAllowedCategories(defaultCatalogTemplateDraft.allowed_categories.join(', '));
+      setTemplateAllowedStyleNames(defaultCatalogTemplateDraft.allowed_style_names.join(', '));
+      setTemplateAllowedColors(defaultCatalogTemplateDraft.allowed_colors.join(', '));
+      setTemplateAllowedFabrics(defaultCatalogTemplateDraft.allowed_fabrics.join(', '));
+      setTemplateAllowedCompositions(defaultCatalogTemplateDraft.allowed_compositions.join(', '));
+      setTemplateAllowedWovenKnits(defaultCatalogTemplateDraft.allowed_woven_knits.join(', '));
+      setTemplateStylePattern(defaultCatalogTemplateDraft.style_code_pattern);
+      return;
+    }
+
+    setTemplateName(template.name);
+    setTemplateDescription(template.description ?? '');
+    setTemplateDefaultCategory(template.defaults.category ?? CATEGORY_OPTIONS[0]);
+    setTemplateDefaultStyleName(template.defaults.styleName ?? STYLE_NAME_OPTIONS[0]);
+    setTemplateDefaultColor(template.defaults.color ?? COLOR_OPTIONS[1]);
+    setTemplateDefaultFabric(template.defaults.fabric ?? FABRIC_OPTIONS[0]);
+    setTemplateDefaultComposition(template.defaults.composition ?? COMPOSITION_OPTIONS[1]);
+    setTemplateDefaultWovenKnits(template.defaults.wovenKnits ?? WOVEN_KNITS_OPTIONS[1]);
+    setTemplateDefaultUnits(template.defaults.units ?? TOTAL_UNITS_OPTIONS[0]);
+    setTemplateDefaultPoPrice(template.defaults.poPrice ?? PO_PRICE_OPTIONS[2]);
+    setTemplateDefaultOspSar(template.defaults.ospSar ?? OSP_OPTIONS[1]);
+    setTemplateAllowedCategories(template.allowed_categories.join(', '));
+    setTemplateAllowedStyleNames(template.allowed_style_names.join(', '));
+    setTemplateAllowedColors(template.allowed_colors.join(', '));
+    setTemplateAllowedFabrics(template.allowed_fabrics.join(', '));
+    setTemplateAllowedCompositions(template.allowed_compositions.join(', '));
+    setTemplateAllowedWovenKnits(template.allowed_woven_knits.join(', '));
+    setTemplateStylePattern(template.style_code_pattern ?? '');
+  }
+
+  useEffect(() => {
+    hydrateTemplateEditor(activeTemplate);
+  }, [activeTemplate]);
+
+  function startNewTemplateDraft(): void {
+    setSelectedTemplateId('');
+    hydrateTemplateEditor(null);
+    setTemplateNotice('New template draft.');
+  }
+
+  async function handleSaveTemplate(mode: 'existing' | 'new' | 'auto' = 'auto'): Promise<void> {
+    const defaultsPayload: Record<string, string> = {
+      category: templateDefaultCategory || CATEGORY_OPTIONS[0],
+      styleName: templateDefaultStyleName || STYLE_NAME_OPTIONS[0],
+      color: templateDefaultColor || COLOR_OPTIONS[1],
+      fabric: templateDefaultFabric || FABRIC_OPTIONS[0],
+      composition: templateDefaultComposition || COMPOSITION_OPTIONS[1],
+      wovenKnits: templateDefaultWovenKnits || WOVEN_KNITS_OPTIONS[1],
+      units: templateDefaultUnits || TOTAL_UNITS_OPTIONS[0],
+      poPrice: templateDefaultPoPrice || PO_PRICE_OPTIONS[2],
+      ospSar: templateDefaultOspSar || OSP_OPTIONS[1],
+    };
+
+    const payload = {
+      name: templateName.trim(),
+      description: templateDescription.trim() || undefined,
+      defaults: defaultsPayload,
+      allowed_categories: parseCommaSeparatedTokens(templateAllowedCategories),
+      allowed_style_names: parseCommaSeparatedTokens(templateAllowedStyleNames),
+      allowed_colors: parseCommaSeparatedTokens(templateAllowedColors),
+      allowed_fabrics: parseCommaSeparatedTokens(templateAllowedFabrics),
+      allowed_compositions: parseCommaSeparatedTokens(templateAllowedCompositions),
+      allowed_woven_knits: parseCommaSeparatedTokens(templateAllowedWovenKnits),
+      style_code_pattern: templateStylePattern.trim() || undefined,
+      is_active: true,
+    };
+
+    if (!payload.name) {
+      setTemplateNotice('Template name is required.');
+      return;
+    }
+
+    if (!hasAccessToken()) {
+      const localTemplate: CatalogTemplateRecord = {
+        id: `local-template-${Date.now()}`,
+        company_id: 'local',
+        name: payload.name,
+        description: payload.description ?? null,
+        defaults: payload.defaults,
+        allowed_categories: payload.allowed_categories,
+        allowed_style_names: payload.allowed_style_names,
+        allowed_colors: payload.allowed_colors,
+        allowed_fabrics: payload.allowed_fabrics,
+        allowed_compositions: payload.allowed_compositions,
+        allowed_woven_knits: payload.allowed_woven_knits,
+        style_code_pattern: payload.style_code_pattern ?? null,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setCatalogTemplates((items) => [localTemplate, ...items]);
+      setSelectedTemplateId(localTemplate.id);
+      setTemplateNotice('Saved local template (sign in to persist).');
+      return;
+    }
+
+    setIsTemplateSaving(true);
+    setTemplateNotice(null);
+    try {
+      if (mode === 'existing' && !selectedTemplateId) {
+        setTemplateNotice('Select a template first, or use Save As New.');
+        return;
+      }
+
+      const shouldCreateNew = mode === 'new' || (mode === 'auto' && !selectedTemplateId);
+      const saved = shouldCreateNew
+        ? await apiRequest<CatalogTemplateRecord>('/catalog/templates', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        })
+        : await apiRequest<CatalogTemplateRecord>(`/catalog/templates/${selectedTemplateId}`, {
+          method: 'PATCH',
+          body: JSON.stringify(payload),
+        });
+
+      setCatalogTemplates((items) => {
+        const exists = items.some((item) => item.id === saved.id);
+        if (exists) return items.map((item) => (item.id === saved.id ? saved : item));
+        return [saved, ...items];
+      });
+      setSelectedTemplateId(saved.id);
+      setTemplateNotice(shouldCreateNew ? 'Template saved as new.' : 'Template updated.');
+    } catch (error) {
+      setTemplateNotice(error instanceof Error ? error.message : 'Failed to save template.');
+    } finally {
+      setIsTemplateSaving(false);
+    }
+  }
+
+  async function handleDuplicateTemplate(): Promise<void> {
+    const source = activeTemplate;
+    if (!source) return;
+    setTemplateName(`${source.name} Copy`);
+    setSelectedTemplateId('');
+    setTemplateNotice('Duplicating template. Click Save to create.');
+  }
+
+  async function handleDeleteTemplate(): Promise<void> {
+    if (!selectedTemplateId) return;
+    if (typeof window !== 'undefined' && !window.confirm('Delete this template?')) return;
+
+    if (!hasAccessToken() || selectedTemplateId.startsWith('local-template') || selectedTemplateId === 'local-default-template') {
+      setCatalogTemplates((items) => items.filter((item) => item.id !== selectedTemplateId));
+      setSelectedTemplateId('');
+      setTemplateNotice('Template removed.');
+      return;
+    }
+
+    setIsTemplateSaving(true);
+    setTemplateNotice(null);
+    try {
+      await apiRequest(`/catalog/templates/${selectedTemplateId}`, { method: 'DELETE' });
+      setCatalogTemplates((items) => items.filter((item) => item.id !== selectedTemplateId));
+      setSelectedTemplateId('');
+      setTemplateNotice('Template deleted.');
+    } catch (error) {
+      setTemplateNotice(error instanceof Error ? error.message : 'Failed to delete template.');
+    } finally {
+      setIsTemplateSaving(false);
+    }
+  }
+
   function openAddModal(): void {
     setEditingRowId(null);
     setItemStyleNo('');
@@ -1566,15 +2774,43 @@ export function CatalogView(): JSX.Element {
         }
       }
     } else {
-      setItemCategory(CATEGORY_OPTIONS[0]);
-      setItemStyleName(STYLE_NAME_OPTIONS[0]);
-      setItemColor(COLOR_OPTIONS[1]);
-      setItemFabric(FABRIC_OPTIONS[0]);
-      setItemComposition(COMPOSITION_OPTIONS[1]);
-      setItemWovenKnits(WOVEN_KNITS_OPTIONS[1]);
-      setItemTotalUnits(TOTAL_UNITS_OPTIONS[0]);
-      setItemPoPrice(PO_PRICE_OPTIONS[2]);
-      setItemOspSar(OSP_OPTIONS[1]);
+      const defaults = activeTemplate?.defaults ?? {};
+      setItemCategory(
+        pickOptionValue(typeof defaults.category === 'string' ? defaults.category : undefined, CATEGORY_OPTIONS)
+        ?? CATEGORY_OPTIONS[0],
+      );
+      setItemStyleName(
+        pickOptionValue(typeof defaults.styleName === 'string' ? defaults.styleName : undefined, STYLE_NAME_OPTIONS)
+        ?? STYLE_NAME_OPTIONS[0],
+      );
+      setItemColor(
+        pickOptionValue(typeof defaults.color === 'string' ? defaults.color : undefined, COLOR_OPTIONS)
+        ?? COLOR_OPTIONS[1],
+      );
+      setItemFabric(
+        pickOptionValue(typeof defaults.fabric === 'string' ? defaults.fabric : undefined, FABRIC_OPTIONS)
+        ?? FABRIC_OPTIONS[0],
+      );
+      setItemComposition(
+        pickOptionValue(typeof defaults.composition === 'string' ? defaults.composition : undefined, COMPOSITION_OPTIONS)
+        ?? COMPOSITION_OPTIONS[1],
+      );
+      setItemWovenKnits(
+        pickOptionValue(typeof defaults.wovenKnits === 'string' ? defaults.wovenKnits : undefined, WOVEN_KNITS_OPTIONS)
+        ?? WOVEN_KNITS_OPTIONS[1],
+      );
+      setItemTotalUnits(
+        pickOptionValue(typeof defaults.units === 'string' ? defaults.units : undefined, TOTAL_UNITS_OPTIONS)
+        ?? TOTAL_UNITS_OPTIONS[0],
+      );
+      setItemPoPrice(
+        pickOptionValue(typeof defaults.poPrice === 'string' ? defaults.poPrice : undefined, PO_PRICE_OPTIONS)
+        ?? PO_PRICE_OPTIONS[2],
+      );
+      setItemOspSar(
+        pickOptionValue(typeof defaults.ospSar === 'string' ? defaults.ospSar : undefined, OSP_OPTIONS)
+        ?? OSP_OPTIONS[1],
+      );
     }
 
     setIsAddModalOpen(true);
@@ -1727,10 +2963,7 @@ export function CatalogView(): JSX.Element {
         const formData = new FormData();
         formData.append('file', selectedFile);
 
-        const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-        const normalizedApiUrl = rawApiUrl.endsWith('/api/v1')
-          ? rawApiUrl
-          : `${rawApiUrl.replace(/\/+$/, '')}/api/v1`;
+        const normalizedApiUrl = getResolvedApiBaseUrl();
 
         const headers: HeadersInit = {};
         const accessToken = document.cookie
@@ -1754,7 +2987,7 @@ export function CatalogView(): JSX.Element {
         }
 
         const uploadData = await uploadRes.json() as { url: string; filename: string };
-        const baseUrl = normalizedApiUrl.replace('/api/v1', '').replace(/\/+$/, '');
+        const baseUrl = getResolvedApiOriginUrl();
         const fullImageUrl = uploadData.url.startsWith('/static')
           ? `${baseUrl}${uploadData.url}`
           : uploadData.url;
@@ -1814,7 +3047,7 @@ export function CatalogView(): JSX.Element {
       if (styleContext) newContext.styleName = styleContext;
       const styleNameField = result.style_name;
       if (styleNameField?.value) {
-        const matchingStyle = pickOptionValue(styleNameField.value, STYLE_NAME_OPTIONS);
+        const matchingStyle = pickOptionValue(styleNameField.value, STYLE_NAME_OPTIONS) ?? normalizeAiValue(styleNameField.value);
         if (matchingStyle) {
           suggestions.styleName = matchingStyle;
           if (typeof styleNameField.confidence === 'number') {
@@ -1892,22 +3125,28 @@ export function CatalogView(): JSX.Element {
     }
   }
 
-  function handleAcceptAllAI(): void {
+  async function handleAcceptAllAI(): Promise<void> {
     if (!aiSuggestions) return;
 
-    if (aiSuggestions.values.category) setItemCategory(aiSuggestions.values.category);
-    if (aiSuggestions.values.color) setItemColor(aiSuggestions.values.color);
-    if (aiSuggestions.values.styleName) setItemStyleName(aiSuggestions.values.styleName);
-    if (aiSuggestions.values.fabric) setItemFabric(aiSuggestions.values.fabric);
-    if (aiSuggestions.values.composition) setItemComposition(aiSuggestions.values.composition);
-    if (aiSuggestions.values.wovenKnits) setItemWovenKnits(aiSuggestions.values.wovenKnits);
+    const nextCategory = aiSuggestions.values.category;
+    if (nextCategory && await ensureTemplateValueAllowed('category', nextCategory)) setItemCategory(nextCategory);
+    const nextColor = aiSuggestions.values.color;
+    if (nextColor && await ensureTemplateValueAllowed('color', nextColor)) setItemColor(nextColor);
+    const nextStyleName = aiSuggestions.values.styleName;
+    if (nextStyleName && await ensureTemplateValueAllowed('styleName', nextStyleName)) setItemStyleName(nextStyleName);
+    const nextFabric = aiSuggestions.values.fabric;
+    if (nextFabric && await ensureTemplateValueAllowed('fabric', nextFabric)) setItemFabric(nextFabric);
+    const nextComposition = aiSuggestions.values.composition;
+    if (nextComposition && await ensureTemplateValueAllowed('composition', nextComposition)) setItemComposition(nextComposition);
+    const nextWovenKnits = aiSuggestions.values.wovenKnits;
+    if (nextWovenKnits && await ensureTemplateValueAllowed('wovenKnits', nextWovenKnits)) setItemWovenKnits(nextWovenKnits);
 
     // Set field confidence so the badges appear on the inputs
     setFieldConfidence(aiSuggestions.confidence);
     setFieldContext(aiSuggestions.context);
 
     setIsAiSuggestionsVisible(false);
-    setCatalogNotice('AI suggestions accepted and applied.');
+    setCatalogNotice('AI suggestions reviewed and applied.');
   }
 
   function applySimilarItemDefaults(row: CatalogRow): void {
@@ -1953,6 +3192,23 @@ export function CatalogView(): JSX.Element {
     if (!normalizedStyleNo) {
       setAddItemError('Style No is required.');
       return;
+    }
+
+    const approvalCache = new Map<string, boolean>();
+    const constrainedValues: Array<[TemplateConstrainedField, string]> = [
+      ['category', itemCategory],
+      ['styleName', itemStyleName],
+      ['color', itemColor],
+      ['fabric', itemFabric],
+      ['composition', itemComposition],
+      ['wovenKnits', itemWovenKnits],
+    ];
+    for (const [field, value] of constrainedValues) {
+      const allowed = await ensureTemplateValueAllowed(field, value, approvalCache);
+      if (!allowed) {
+        setAddItemError(`"${value}" is outside allowed ${TEMPLATE_FIELD_LABELS[field]} list.`);
+        return;
+      }
     }
 
     if (rememberLastValues) {
@@ -2085,11 +3341,7 @@ export function CatalogView(): JSX.Element {
           const formData = new FormData();
           formData.append('file', selectedImageFileRef.current);
 
-          // Normalize API URL to include /api/v1 if not present
-          const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-          const normalizedApiUrl = rawApiUrl.endsWith('/api/v1')
-            ? rawApiUrl
-            : `${rawApiUrl.replace(/\/+$/, '')}/api/v1`;
+          const normalizedApiUrl = getResolvedApiBaseUrl();
 
           const headers: HeadersInit = {};
           const accessToken = document.cookie
@@ -2110,7 +3362,7 @@ export function CatalogView(): JSX.Element {
 
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json() as { url: string; filename: string };
-            const baseUrl = normalizedApiUrl.replace('/api/v1', '').replace(/\/+$/, '');
+            const baseUrl = getResolvedApiOriginUrl();
             imageUrl = uploadData.url.startsWith('/static')
               ? `${baseUrl}${uploadData.url}`
               : uploadData.url;
@@ -2173,6 +3425,55 @@ export function CatalogView(): JSX.Element {
     }
   }
 
+  const applyAiSuggestionToRow = useCallback(
+    (rowId: string, itemAi: AiSuggestionsState, fieldKey: AiFieldKey, bypassPrompt = false) => {
+      setCatalogRows((prev) => {
+        const idx = prev.findIndex((r) => r.id === rowId);
+        if (idx === -1) return prev;
+        const targetRow = prev[idx];
+        if (!targetRow) return prev;
+        const val = itemAi.values[fieldKey];
+        if (!val) return prev;
+
+        // Bypassing prompt if it was already acknowledged
+        if (!bypassPrompt && checkAndPromptOutOfBounds) {
+          const proceed = () => applyAiSuggestionToRow(rowId, itemAi, fieldKey, true);
+          checkAndPromptOutOfBounds(rowId, fieldKey, val, 'ai_suggestion', proceed);
+          return prev;
+        }
+
+        const nextRow: CatalogRow = {
+          id: targetRow.id || '',
+          styleNo: targetRow.styleNo || '',
+          name: targetRow.name || '',
+          category: targetRow.category || '',
+          color: targetRow.color || '',
+          fabric: targetRow.fabric || '',
+          composition: targetRow.composition || '',
+          wovenKnits: targetRow.wovenKnits || '',
+          units: targetRow.units || '',
+          poPrice: targetRow.poPrice || '',
+          price: targetRow.price || '',
+          status: targetRow.status || 'draft',
+          persisted: targetRow.persisted || false,
+          primary_image_url: targetRow.primary_image_url,
+          imageName: targetRow.imageName,
+        };
+        if (fieldKey === 'category') nextRow.category = val;
+        if (fieldKey === 'styleName') nextRow.name = val;
+        if (fieldKey === 'color') nextRow.color = val;
+        if (fieldKey === 'fabric') nextRow.fabric = val;
+        if (fieldKey === 'composition') nextRow.composition = val;
+        if (fieldKey === 'wovenKnits') nextRow.wovenKnits = val;
+
+        const updatedArray = [...prev];
+        updatedArray[idx] = nextRow;
+        return updatedArray;
+      });
+    },
+    [checkAndPromptOutOfBounds]
+  );
+
   return (
     <>
       <DashboardShell hideHeader>
@@ -2182,7 +3483,26 @@ export function CatalogView(): JSX.Element {
               <h1 className='font-serif text-5xl font-semibold leading-tight'>Catalog</h1>
               <p className='mt-2 text-lg text-kira-midgray'>Manage your clothing inventory</p>
             </div>
-            <div className='flex items-center gap-3'>
+            <div className='flex flex-wrap items-center justify-end gap-3'>
+              <select
+                className='kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-sm text-kira-darkgray'
+                onChange={(event) => setSelectedTemplateId(event.target.value)}
+                value={selectedTemplateId}
+              >
+                <option value=''>No Template</option>
+                {catalogTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type='button'
+                className='kira-focus-ring border border-kira-warmgray/55 px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray hover:bg-kira-warmgray/20'
+                onClick={() => setIsTemplatePanelOpen(true)}
+              >
+                Manage Templates
+              </button>
               <button
                 type='button'
                 aria-label='AI learning'
@@ -2193,7 +3513,7 @@ export function CatalogView(): JSX.Element {
                     : 'text-[#1E7145] hover:bg-[#E3F6ED] hover:text-[#185D39]',
                 )}
                 onClick={() => {
-                  setIsLearningPanelOpen((open) => !open);
+                  setIsLearningPanelOpen(true);
                 }}
               >
                 <BrainIcon />
@@ -2231,90 +3551,6 @@ export function CatalogView(): JSX.Element {
               <p className='mt-5 text-5xl font-semibold leading-none text-kira-black'>{stats.cordSets}</p>
             </div>
           </div>
-
-          {isLearningPanelOpen ? (
-            <div className='mt-6 rounded-none border border-kira-warmgray/55 bg-kira-offwhite p-6'>
-              <div className='flex items-center justify-between'>
-                <h3 className='text-sm font-semibold uppercase tracking-[0.08em] text-kira-black'>AI Learning Progress</h3>
-                <div className='flex items-center gap-2'>
-                  <button
-                    type='button'
-                    className='kira-focus-ring border border-kira-warmgray/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
-                    onClick={() => void loadLearningStats()}
-                  >
-                    Refresh
-                  </button>
-                  <button
-                    type='button'
-                    aria-label='Close AI learning'
-                    className='kira-focus-ring inline-flex h-8 w-8 items-center justify-center text-kira-midgray hover:text-kira-black'
-                    onClick={() => setIsLearningPanelOpen(false)}
-                  >
-                    <CloseIcon />
-                  </button>
-                </div>
-              </div>
-              {isLearningStatsLoading ? <p className='mt-3 text-sm text-kira-midgray'>Loading learning stats...</p> : null}
-              {learningStatsError ? <p className='mt-3 text-sm text-rose-700'>{learningStatsError}</p> : null}
-              {learningStats ? (
-                <>
-                  <div className='mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4'>
-                    <div className='border border-kira-warmgray/45 bg-kira-offwhite px-3 py-3'>
-                      <p className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Items Processed</p>
-                      <p className='mt-2 text-2xl font-semibold text-kira-black'>{learningStats.items_processed}</p>
-                    </div>
-                    <div className='border border-kira-warmgray/45 bg-kira-offwhite px-3 py-3'>
-                      <p className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Corrections</p>
-                      <p className='mt-2 text-2xl font-semibold text-kira-black'>{learningStats.corrections_received}</p>
-                    </div>
-                    <div className='border border-kira-warmgray/45 bg-kira-offwhite px-3 py-3'>
-                      <p className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Time Saved</p>
-                      <p className='mt-2 text-2xl font-semibold text-kira-black'>{learningStats.time_saved_minutes}m</p>
-                    </div>
-                    <div className='border border-kira-warmgray/45 bg-kira-offwhite px-3 py-3'>
-                      <p className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Retraining Queue</p>
-                      <p className='mt-2 text-2xl font-semibold text-kira-black'>{learningStats.pending_retraining}</p>
-                    </div>
-                  </div>
-                  <div className='mt-4 grid grid-cols-1 gap-5 lg:grid-cols-2'>
-                    <div>
-                      <p className='text-xs font-semibold uppercase tracking-[0.08em] text-kira-midgray'>Field Accuracy</p>
-                      <div className='mt-3 space-y-2'>
-                        {learningStats.field_accuracy.length === 0 ? (
-                          <p className='text-sm text-kira-midgray'>No feedback yet.</p>
-                        ) : (
-                          learningStats.field_accuracy.slice(0, 6).map((item) => (
-                            <div key={item.field_name}>
-                              <div className='flex items-center justify-between text-xs text-kira-darkgray'>
-                                <span>{item.field_name.replace(/_/g, ' ')}</span>
-                                <span>{item.accuracy_percent.toFixed(1)}%</span>
-                              </div>
-                              <div className='mt-1 h-2 w-full bg-kira-warmgray/25'>
-                                <div
-                                  className='h-full bg-[#1E7145]'
-                                  style={{ width: `${Math.max(0, Math.min(100, item.accuracy_percent))}%` }}
-                                />
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <p className='text-xs font-semibold uppercase tracking-[0.08em] text-kira-midgray'>What AI Has Learned</p>
-                      <ul className='mt-3 space-y-2 text-sm text-kira-darkgray'>
-                        {learningStats.insights.map((insight, index) => (
-                          <li className='border-l-2 border-kira-warmgray/60 pl-3' key={`${insight}-${index}`}>
-                            {insight}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </>
-              ) : null}
-            </div>
-          ) : null}
 
           {catalogNotice ? (
             <p className='mt-4 rounded-md bg-kira-warmgray/20 px-3 py-2 text-sm text-kira-black'>{catalogNotice}</p>
@@ -2523,41 +3759,81 @@ export function CatalogView(): JSX.Element {
           </div>
 
           {selectedRowIds.length > 0 ? (
-            <div className='mt-4 flex flex-wrap items-center gap-3 rounded-none border border-kira-warmgray/55 bg-kira-offwhite p-3'>
-              <p className='text-sm font-semibold text-kira-black'>{selectedRowIds.length} selected</p>
-              <input
-                className='kira-focus-ring w-28 border border-kira-warmgray/55 bg-transparent px-2 py-1 text-sm text-kira-black'
-                onChange={(event) => setBulkUnitsValue(event.target.value)}
-                placeholder='Units'
-                value={bulkUnitsValue}
-              />
-              <select
-                className='kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-1.5 text-sm text-kira-darkgray'
-                onChange={(event) => setBulkStatus(event.target.value as CatalogStatus | '')}
-                value={bulkStatus}
-              >
-                <option value=''>Bulk Status</option>
-                {STATUS_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {formatStatusLabel(option)}
-                  </option>
-                ))}
-              </select>
-              <button
-                className='kira-focus-ring bg-kira-black px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:cursor-not-allowed disabled:opacity-60'
-                disabled={isBulkApplying}
-                onClick={() => void handleApplyBulkEdit()}
-                type='button'
-              >
-                {isBulkApplying ? 'Applying...' : 'Apply Bulk Edit'}
-              </button>
-              <button
-                className='kira-focus-ring border border-kira-warmgray/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
-                onClick={() => setSelectedRowIds([])}
-                type='button'
-              >
-                Clear Selection
-              </button>
+            <div className='mt-4 rounded-none border border-kira-warmgray/55 bg-kira-offwhite p-3'>
+              <div className='flex flex-wrap items-center gap-3'>
+                <p className='text-sm font-semibold text-kira-black'>{selectedRowIds.length} selected</p>
+                <input
+                  className='kira-focus-ring w-28 border border-kira-warmgray/55 bg-transparent px-2 py-1 text-sm text-kira-black'
+                  onChange={(event) => setBulkUnitsValue(event.target.value)}
+                  placeholder='Units'
+                  value={bulkUnitsValue}
+                />
+                <select
+                  className='kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-1.5 text-sm text-kira-darkgray'
+                  onChange={(event) => setBulkStatus(event.target.value as CatalogStatus | '')}
+                  value={bulkStatus}
+                >
+                  <option value=''>Bulk Status</option>
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {formatStatusLabel(option)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className='kira-focus-ring bg-kira-black px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:cursor-not-allowed disabled:opacity-60'
+                  disabled={isBulkApplying}
+                  onClick={() => void handleApplyBulkEdit()}
+                  type='button'
+                >
+                  {isBulkApplying ? 'Applying...' : 'Apply Bulk Edit'}
+                </button>
+                <button
+                  className='kira-focus-ring border border-kira-warmgray/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
+                  onClick={() => setSelectedRowIds([])}
+                  type='button'
+                >
+                  Clear Selection
+                </button>
+              </div>
+
+              <div className='mt-3 flex flex-wrap items-center gap-3 border-t border-kira-warmgray/40 pt-3'>
+                <span className='text-[11px] font-semibold uppercase tracking-[0.08em] text-kira-midgray'>Batch Actions</span>
+                <select
+                  className='kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-1.5 text-sm text-kira-darkgray'
+                  onChange={(event) => setBatchAction(event.target.value as BatchActionKind)}
+                  value={batchAction}
+                >
+                  <option value=''>Select Action</option>
+                  <option value='update_fabric'>Update Fabric</option>
+                  <option value='find_replace'>Find & Replace</option>
+                  <option value='adjust_price'>Adjust Price</option>
+                  <option value='duplicate'>Duplicate Selected</option>
+                  <option value='export_selected'>Export Selected</option>
+                  <option value='delete_selected'>Delete Selected</option>
+                </select>
+                {batchAction === 'update_fabric' ? (
+                  <select
+                    className='kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-1.5 text-sm text-kira-darkgray'
+                    onChange={(event) => setBatchFabricValue(event.target.value)}
+                    value={batchFabricValue}
+                  >
+                    {FABRIC_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+                <button
+                  className='kira-focus-ring bg-kira-black px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:cursor-not-allowed disabled:opacity-60'
+                  disabled={isBatchActionApplying || batchAction === ''}
+                  onClick={() => void handleRunBatchAction()}
+                  type='button'
+                >
+                  {isBatchActionApplying ? 'Running...' : 'Run Action'}
+                </button>
+              </div>
             </div>
           ) : null}
 
@@ -2672,7 +3948,374 @@ export function CatalogView(): JSX.Element {
             </table>
           </div>
         </section>
+        {outOfBoundsPrompt && (
+          <div className='fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4'>
+            <div className='kira-modal-open w-full max-w-md border border-kira-warmgray/50 bg-[#FAFAFA] p-6 shadow-2xl'>
+              <h3 className='mb-3 font-serif text-2xl font-semibold text-kira-black'>Unrecognized Value</h3>
+              <p className='mb-4 text-sm text-kira-darkgray'>
+                The value <span className='font-semibold text-kira-black'>"{outOfBoundsPrompt.value}"</span> is not in the allowed list for <span className='font-semibold text-kira-black'>{TEMPLATE_FIELD_LABELS[outOfBoundsPrompt.field]}</span> based on the current template.
+              </p>
+              {activeTemplate && activeTemplate.id !== 'local-default-template' ? (
+                <label className='mb-6 flex cursor-pointer items-start gap-2'>
+                  <input
+                    type="checkbox"
+                    id="add-to-template-cb"
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-kira-brown focus:ring-kira-brown"
+                  />
+                  <span className='text-sm text-kira-darkgray leading-tight'>
+                    Add <span className='font-semibold'>"{outOfBoundsPrompt.value}"</span> to the allowed {TEMPLATE_FIELD_LABELS[outOfBoundsPrompt.field]} list permanently for this template.
+                  </span>
+                </label>
+              ) : null}
+              <div className='flex justify-end gap-3 border-t border-kira-warmgray/35 pt-4'>
+                <button
+                  className='kira-focus-ring border border-kira-warmgray/55 px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray hover:bg-kira-warmgray/20'
+                  onClick={outOfBoundsPrompt.onCancel}
+                >
+                  Cancel
+                </button>
+                <button
+                  className='kira-focus-ring bg-kira-black px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite hover:bg-kira-black/90'
+                  onClick={() => {
+                    const cb = document.getElementById('add-to-template-cb') as HTMLInputElement;
+                    outOfBoundsPrompt.onConfirm(cb ? cb.checked : false);
+                  }}
+                >
+                  Use Anyway
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Global Datalists for Template Allowed Lists */}
+        <datalist id="list-category">
+          {templateCategoryOptions.map(o => <option key={o} value={o} />)}
+        </datalist>
+        <datalist id="list-styleName">
+          {templateStyleNameOptions.map(o => <option key={o} value={o} />)}
+        </datalist>
+        <datalist id="list-color">
+          {templateColorOptions.map(o => <option key={o} value={o} />)}
+        </datalist>
+        <datalist id="list-fabric">
+          {templateFabricOptions.map(o => <option key={o} value={o} />)}
+        </datalist>
+        <datalist id="list-composition">
+          {templateCompositionOptions.map(o => <option key={o} value={o} />)}
+        </datalist>
+        <datalist id="list-wovenKnits">
+          {templateWovenKnitsOptions.map(o => <option key={o} value={o} />)}
+        </datalist>
+
       </DashboardShell>
+      {isLearningPanelOpen ? (
+        <div className='fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4 md:p-6'>
+          <div className='kira-modal-open mx-auto my-2 w-full max-w-[1280px] border border-[#BCD6E7] bg-[#D8E9F5] shadow-[0_30px_90px_rgba(6,6,6,0.24)]'>
+            <div className='max-h-[calc(100vh-8rem)] overflow-y-auto p-5 md:p-6'>
+              <div className='flex items-start justify-between'>
+                <div>
+                  <div className='flex items-center gap-2 text-[#0A5F9F]'>
+                    <svg aria-hidden='true' className='h-4 w-4' fill='none' viewBox='0 0 16 16'>
+                      <path d='M8 1.5L9.9 5.3L14 6.1L11 9L11.7 13.1L8 11.1L4.3 13.1L5 9L2 6.1L6.1 5.3L8 1.5Z' stroke='currentColor' strokeWidth='1.2' />
+                    </svg>
+                    <h3 className='text-2xl leading-none md:text-3xl'>AI Learning Progress</h3>
+                  </div>
+                  <p className='mt-2 text-sm text-[#2B77AF] md:text-base'>The AI learns from your corrections to improve accuracy over time</p>
+                </div>
+                <button
+                  type='button'
+                  aria-label='Close AI learning'
+                  className='kira-focus-ring inline-flex h-8 w-8 items-center justify-center text-[#5B6772] hover:text-kira-black'
+                  onClick={() => setIsLearningPanelOpen(false)}
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+
+              {isLearningStatsLoading ? <p className='mt-5 text-sm text-[#48627A]'>Loading learning stats...</p> : null}
+              {learningStatsError ? <p className='mt-5 text-sm text-rose-700'>{learningStatsError}</p> : null}
+
+              {learningStats ? (
+                <>
+                  <div className='mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+                    <div className='border border-[#D9DDE1] bg-[#F4F4F5] px-4 py-5 text-center'>
+                      <p className='text-[11px] uppercase tracking-[0.08em] text-[#7D8790]'>Items Processed</p>
+                      <p className='mt-2 text-4xl font-semibold leading-none text-[#085C98]'>{learningStats.items_processed}</p>
+                    </div>
+                    <div className='border border-[#D9DDE1] bg-[#F4F4F5] px-4 py-5 text-center'>
+                      <p className='text-[11px] uppercase tracking-[0.08em] text-[#7D8790]'>Corrections Received</p>
+                      <p className='mt-2 text-4xl font-semibold leading-none text-[#085C98]'>{learningStats.corrections_received}</p>
+                    </div>
+                    <div className='border border-[#D9DDE1] bg-[#F4F4F5] px-4 py-5 text-center'>
+                      <p className='text-[11px] uppercase tracking-[0.08em] text-[#7D8790]'>Time Saved</p>
+                      <p className='mt-2 text-4xl font-semibold leading-none text-[#085C98]'>{learningStats.time_saved_minutes} min</p>
+                    </div>
+                    <div className='border border-[#D9DDE1] bg-[#F4F4F5] px-4 py-5 text-center'>
+                      <p className='text-[11px] uppercase tracking-[0.08em] text-[#7D8790]'>Avg Accuracy</p>
+                      <p className='mt-2 text-4xl font-semibold leading-none text-[#129364]'>
+                        {learningStats.field_accuracy.length > 0
+                          ? `${Math.round(
+                            learningStats.field_accuracy.reduce((sum, item) => sum + item.accuracy_percent, 0)
+                            / learningStats.field_accuracy.length,
+                          )}%`
+                          : '--'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className='mt-4 border border-[#D9DDE1] bg-[#F5F5F5] p-4'>
+                    <p className='text-sm uppercase tracking-[0.07em] text-[#48525C]'>Field Accuracy</p>
+                    <div className='mt-4'>
+                      {learningStats.field_accuracy.length === 0 ? (
+                        <p className='text-sm text-[#6B7280]'>No feedback yet.</p>
+                      ) : (
+                        <div className='flex'>
+                          <div className='mr-3 flex h-40 flex-col justify-between text-[11px] text-[#6E7680]'>
+                            <span>100</span>
+                            <span>75</span>
+                            <span>50</span>
+                            <span>25</span>
+                            <span>0</span>
+                          </div>
+                          <div className='relative flex-1'>
+                            <div className='absolute inset-0 flex h-40 flex-col justify-between'>
+                              <div className='border-t border-[#D3D8DC]' />
+                              <div className='border-t border-[#D3D8DC]' />
+                              <div className='border-t border-[#D3D8DC]' />
+                              <div className='border-t border-[#D3D8DC]' />
+                              <div className='border-t border-[#B9C0C7]' />
+                            </div>
+                            <div className='relative z-10 flex h-40 items-end gap-5 px-2'>
+                              {learningStats.field_accuracy.slice(0, 6).map((item) => {
+                                const normalized = Math.max(0, Math.min(100, item.accuracy_percent));
+                                const barColor = normalized < 60 ? '#D97706' : '#10996B';
+                                return (
+                                  <div className='flex min-w-0 flex-1 flex-col items-center justify-end' key={item.field_name}>
+                                    <div
+                                      className='w-[74%] rounded-[4px_4px_0_0] transition-all duration-150 hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_6px_14px_rgba(16,153,107,0.25)]'
+                                      style={{ height: `${Math.max(6, normalized * 1.35)}px`, backgroundColor: barColor }}
+                                    />
+                                    <p className='mt-2 text-center text-[11px] text-[#606A74]'>
+                                      {item.field_name.replace(/_/g, ' ')}
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className='mt-4 border border-[#98DABB] bg-[#D2E9DE] p-4'>
+                    <p className='text-base font-semibold text-[#1C6447]'>~ What AI Has Learned</p>
+                    <ul className='mt-2 space-y-1 text-sm text-[#236A4B]'>
+                      {learningStats.insights.map((insight, index) => (
+                        <li key={`${insight}-${index}`}>• {insight}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isTemplatePanelOpen ? (
+        <div className='fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4 md:p-6'>
+          <div className='kira-modal-open mx-auto my-2 w-full max-w-[1120px] border border-[#D1D5DB] bg-[#F7F7F5] shadow-[0_30px_90px_rgba(6,6,6,0.24)]'>
+            <div className='sticky top-0 z-20 flex items-center justify-between border-b border-[#D9DDDB] bg-[#F7F7F5] px-7 py-5'>
+              <h3 className='font-serif text-4xl font-semibold leading-none md:text-5xl'>Template Manager</h3>
+              <div className='flex items-center gap-2'>
+                <button
+                  type='button'
+                  className='kira-focus-ring border border-kira-warmgray/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
+                  onClick={startNewTemplateDraft}
+                >
+                  New
+                </button>
+                <button
+                  type='button'
+                  className='kira-focus-ring border border-kira-warmgray/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray disabled:opacity-60'
+                  disabled={!selectedTemplateId}
+                  onClick={() => void handleSaveTemplate('existing')}
+                >
+                  {isTemplateSaving ? 'Saving...' : 'Save Existing'}
+                </button>
+                <button
+                  type='button'
+                  className='kira-focus-ring bg-kira-black px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:opacity-60'
+                  disabled={isTemplateSaving}
+                  onClick={() => void handleSaveTemplate('new')}
+                >
+                  {isTemplateSaving ? 'Saving...' : 'Save As New'}
+                </button>
+                <button
+                  type='button'
+                  className='kira-focus-ring border border-kira-warmgray/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
+                  onClick={() => void handleDeleteTemplate()}
+                >
+                  Delete
+                </button>
+                <button
+                  type='button'
+                  aria-label='Close template panel'
+                  className='kira-focus-ring inline-flex h-9 w-9 items-center justify-center text-kira-midgray hover:text-kira-black'
+                  onClick={() => setIsTemplatePanelOpen(false)}
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+            </div>
+            <div className='max-h-[calc(100vh-8rem)] overflow-y-auto px-7 py-6'>
+              {templateNotice ? <p className='mb-4 text-sm text-kira-darkgray'>{templateNotice}</p> : null}
+              <div className='grid grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]'>
+                <aside className='border border-kira-warmgray/45 bg-kira-offwhite'>
+                  <div className='border-b border-kira-warmgray/35 px-3 py-2'>
+                    <p className='text-[11px] font-semibold uppercase tracking-[0.08em] text-kira-midgray'>Saved Templates</p>
+                  </div>
+                  <div className='max-h-[56vh] space-y-1 overflow-y-auto p-2'>
+                    {catalogTemplates.length === 0 ? (
+                      <p className='px-2 py-2 text-sm text-kira-midgray'>No templates yet.</p>
+                    ) : (
+                      catalogTemplates.map((template) => (
+                        <button
+                          key={template.id}
+                          type='button'
+                          className={cn(
+                            'kira-focus-ring flex w-full items-center justify-between border px-2 py-2 text-left text-sm',
+                            selectedTemplateId === template.id
+                              ? 'border-kira-black bg-white text-kira-black'
+                              : 'border-transparent text-kira-darkgray hover:border-kira-warmgray/45 hover:bg-white',
+                          )}
+                          onClick={() => setSelectedTemplateId(template.id)}
+                        >
+                          <span className='truncate pr-2'>{template.name}</span>
+                          {template.is_active ? <span className='text-[10px] uppercase tracking-[0.08em] text-[#1E7145]'>Active</span> : null}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </aside>
+
+                <div className='min-w-0 border border-kira-warmgray/45 bg-kira-offwhite p-4'>
+                  <p className='mb-3 text-xs uppercase tracking-[0.08em] text-kira-midgray'>
+                    {selectedTemplateId ? `Editing: ${activeTemplate?.name ?? 'Template'}` : 'Creating new template'}
+                  </p>
+                  <div className='grid grid-cols-1 gap-4 lg:grid-cols-3'>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Template Name</label>
+                      <input
+                        className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                        onChange={(event) => setTemplateName(event.target.value)}
+                        value={templateName}
+                      />
+                    </div>
+                    <div className='space-y-2 lg:col-span-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Description</label>
+                      <input
+                        className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                        onChange={(event) => setTemplateDescription(event.target.value)}
+                        value={templateDescription}
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Default Category</label>
+                      <select className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm' onChange={(event) => setTemplateDefaultCategory(event.target.value)} value={templateDefaultCategory}>
+                        {CATEGORY_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                      </select>
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Default Style Name</label>
+                      <select className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm' onChange={(event) => setTemplateDefaultStyleName(event.target.value)} value={templateDefaultStyleName}>
+                        {STYLE_NAME_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                      </select>
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Style Code Pattern</label>
+                      <input
+                        className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                        onChange={(event) => setTemplateStylePattern(event.target.value)}
+                        placeholder='HRD-{CATEGORY}-{YY}-{BRAND}'
+                        value={templateStylePattern}
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Default Color</label>
+                      <select className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm' onChange={(event) => setTemplateDefaultColor(event.target.value)} value={templateDefaultColor}>
+                        {COLOR_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                      </select>
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Default Fabric</label>
+                      <select className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm' onChange={(event) => setTemplateDefaultFabric(event.target.value)} value={templateDefaultFabric}>
+                        {FABRIC_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                      </select>
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Default Composition</label>
+                      <select className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm' onChange={(event) => setTemplateDefaultComposition(event.target.value)} value={templateDefaultComposition}>
+                        {COMPOSITION_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                      </select>
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Allowed Colors (comma separated)</label>
+                      <input
+                        className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                        onChange={(event) => setTemplateAllowedColors(event.target.value)}
+                        value={templateAllowedColors}
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Allowed Fabrics (comma separated)</label>
+                      <input
+                        className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                        onChange={(event) => setTemplateAllowedFabrics(event.target.value)}
+                        value={templateAllowedFabrics}
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Allowed Categories (comma separated)</label>
+                      <input
+                        className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                        onChange={(event) => setTemplateAllowedCategories(event.target.value)}
+                        value={templateAllowedCategories}
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Allowed Style Names (comma separated)</label>
+                      <input
+                        className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                        onChange={(event) => setTemplateAllowedStyleNames(event.target.value)}
+                        value={templateAllowedStyleNames}
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Allowed Compositions (comma separated)</label>
+                      <input
+                        className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                        onChange={(event) => setTemplateAllowedCompositions(event.target.value)}
+                        value={templateAllowedCompositions}
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <label className='text-[11px] uppercase tracking-[0.08em] text-kira-midgray'>Allowed Woven / Knits (comma separated)</label>
+                      <input
+                        className='kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                        onChange={(event) => setTemplateAllowedWovenKnits(event.target.value)}
+                        value={templateAllowedWovenKnits}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isBulkUploadOpen ? (
         <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4'>
@@ -2861,7 +4504,7 @@ export function CatalogView(): JSX.Element {
                     type='button'
                   >
                     <i className="ri-add-line text-sm leading-none"></i>
-                    SAVE ALL TO CATALOG
+                    REVIEW & SAVE
                   </button>
                 </div>
               </div>
@@ -2870,443 +4513,754 @@ export function CatalogView(): JSX.Element {
         </div>
       ) : null}
 
-      {isAddModalOpen ? (
-        <div className='fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4 md:p-6'>
-          <div className='kira-modal-open mx-auto my-2 w-full max-w-[1180px] border border-kira-warmgray/50 bg-kira-offwhite shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_30px_80px_rgba(6,6,6,0.24)]'>
-            <div className='sticky top-0 z-20 flex items-center justify-between border-b border-kira-warmgray/50 bg-kira-offwhite px-5 py-4'>
-              <div className="flex items-center gap-4">
-                <h2 className='font-serif text-3xl font-semibold'>{isEditMode ? 'Edit Item' : 'Add New Item'}</h2>
-                <label className="flex items-center gap-3 text-sm font-medium text-[#6D7772] cursor-pointer ml-4 select-none">
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={rememberLastValues}
-                      onChange={(e) => {
-                        setRememberLastValues(e.target.checked);
-                        localStorage.setItem('kira_remember_last_values', String(e.target.checked));
-                      }}
-                    />
-                    <div className="w-9 h-5 bg-[#C59B8D]/30 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#1E7145]"></div>
-                  </div>
-                  Remember last values
-                </label>
+      {isBulkReviewOpen ? (
+        <div className='fixed inset-0 z-[70] flex items-center justify-center bg-black/55 p-4'>
+          <div className='w-full max-w-[1220px] border border-kira-warmgray/55 bg-kira-offwhite shadow-2xl'>
+            <div className='flex items-center justify-between border-b border-kira-warmgray/45 px-6 py-4'>
+              <div>
+                <h3 className='text-xl font-semibold text-kira-black'>Batch Review</h3>
+                <p className='text-sm text-kira-midgray'>Verify AI suggestions before catalog save.</p>
               </div>
               <button
-                className='kira-focus-ring inline-flex h-9 w-9 items-center justify-center text-kira-midgray hover:text-kira-black'
-                onClick={closeAddModal}
                 type='button'
+                className='kira-focus-ring inline-flex h-8 w-8 items-center justify-center text-kira-midgray hover:text-kira-black'
+                onClick={() => setIsBulkReviewOpen(false)}
               >
                 <CloseIcon />
               </button>
             </div>
 
-            <form className='flex max-h-[calc(100vh-5rem)] flex-col' onSubmit={handleSaveNewItem}>
-              <div className='flex-1 overflow-y-auto px-5 py-5'>
-                <div className='grid grid-cols-1 gap-6 lg:grid-cols-[340px_minmax(0,1fr)]'>
-                <div className='space-y-3'>
+            <div className='border-b border-kira-warmgray/35 px-6 py-4'>
+              <div className='grid grid-cols-2 gap-3 sm:grid-cols-5'>
+                <div className='border border-kira-warmgray/40 bg-white px-3 py-2 text-xs text-kira-darkgray'>Analyzed: <span className='font-semibold text-kira-black'>{bulkReviewStats.analyzed}</span></div>
+                <div className='border border-kira-warmgray/40 bg-white px-3 py-2 text-xs text-kira-darkgray'>Ready: <span className='font-semibold text-[#1E7145]'>{bulkReviewStats.ready}</span></div>
+                <div className='border border-kira-warmgray/40 bg-white px-3 py-2 text-xs text-kira-darkgray'>Needs Review: <span className='font-semibold text-[#B45309]'>{bulkReviewStats.needsReview}</span></div>
+                <div className='border border-kira-warmgray/40 bg-white px-3 py-2 text-xs text-kira-darkgray'>Approved: <span className='font-semibold text-kira-black'>{bulkReviewStats.approved}</span></div>
+                <div className='border border-kira-warmgray/40 bg-white px-3 py-2 text-xs text-kira-darkgray'>Failed: <span className='font-semibold text-rose-700'>{bulkReviewStats.failed}</span></div>
+              </div>
+              <div className='mt-3 flex flex-wrap items-center gap-3'>
+                <input
+                  type='search'
+                  className='kira-focus-ring min-w-[220px] flex-1 border border-kira-warmgray/55 bg-white px-3 py-2 text-sm text-kira-black'
+                  placeholder='Search file/style/category...'
+                  value={bulkReviewQuery}
+                  onChange={(event) => setBulkReviewQuery(event.target.value)}
+                />
+                <select
+                  className='kira-focus-ring border border-kira-warmgray/55 bg-white px-3 py-2 text-sm text-kira-darkgray'
+                  value={bulkReviewFilter}
+                  onChange={(event) => setBulkReviewFilter(event.target.value as 'all' | 'ready' | 'needs_review' | 'approved' | 'failed')}
+                >
+                  <option value='all'>All</option>
+                  <option value='ready'>Ready</option>
+                  <option value='needs_review'>Needs Review</option>
+                  <option value='approved'>Approved</option>
+                  <option value='failed'>Failed</option>
+                </select>
+                <button
+                  type='button'
+                  className='kira-focus-ring border border-kira-warmgray/55 px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
+                  onClick={approveAllReadyUploads}
+                >
+                  Approve All Ready
+                </button>
+              </div>
+            </div>
+
+            <div className='max-h-[62vh] overflow-auto px-6 py-4'>
+              <table className='min-w-full border border-kira-warmgray/45 bg-white text-sm'>
+                <thead className='sticky top-0 z-10 bg-kira-offwhite text-[11px] uppercase tracking-[0.06em] text-kira-midgray'>
+                  <tr>
+                    <th className='px-2 py-2 text-left'>Image</th>
+                    <th className='px-2 py-2 text-left'>Style No</th>
+                    <th className='px-2 py-2 text-left'>Style Name</th>
+                    <th className='px-2 py-2 text-left'>Category</th>
+                    <th className='px-2 py-2 text-left'>Color</th>
+                    <th className='px-2 py-2 text-left'>Fabric</th>
+                    <th className='px-2 py-2 text-left'>Units</th>
+                    <th className='px-2 py-2 text-left'>OSP</th>
+                    <th className='px-2 py-2 text-left'>Confidence</th>
+                    <th className='px-2 py-2 text-left'>Approve</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkReviewRows.map((item) => (
+                    <tr key={item.id} className='border-t border-kira-warmgray/35'>
+                      <td className='px-2 py-2'>
+                        <div className='h-12 w-12 overflow-hidden border border-kira-warmgray/45 bg-kira-offwhite'>
+                          {item.previewUrl ? <img src={item.previewUrl} alt={item.name} className='h-full w-full object-cover' /> : null}
+                        </div>
+                      </td>
+                      <td className='px-2 py-2'>
+                        {item.analysis ? (
+                          <input
+                            className='kira-focus-ring w-36 border border-kira-warmgray/45 px-2 py-1 text-xs'
+                            value={item.analysis.styleNo}
+                            onChange={(event) => updateUploadAnalysisField(item.id, 'styleNo', event.target.value.toUpperCase())}
+                          />
+                        ) : <span className='text-xs text-kira-midgray'>{item.error ?? '--'}</span>}
+                      </td>
+                      <td className='px-2 py-2'>
+                        {item.analysis ? (
+                          <input
+                            className='kira-focus-ring w-40 border border-kira-warmgray/45 px-2 py-1 text-xs'
+                            value={item.analysis.styleName}
+                            onChange={(event) => updateUploadAnalysisField(item.id, 'styleName', event.target.value)}
+                          />
+                        ) : null}
+                      </td>
+                      <td className='px-2 py-2'>
+                        {item.analysis ? (
+                          <input
+                            className='kira-focus-ring w-28 border border-kira-warmgray/45 px-2 py-1 text-xs'
+                            value={item.analysis.category}
+                            onChange={(event) => updateUploadAnalysisField(item.id, 'category', event.target.value)}
+                            onBlur={(event) => checkAndPromptOutOfBounds(item.id, 'category', event.target.value, 'user_input', () => { })}
+                            list="list-category"
+                          />
+                        ) : null}
+                      </td>
+                      <td className='px-2 py-2'>
+                        {item.analysis ? (
+                          <input
+                            className='kira-focus-ring w-28 border border-kira-warmgray/45 px-2 py-1 text-xs'
+                            value={item.analysis.color}
+                            onChange={(event) => updateUploadAnalysisField(item.id, 'color', event.target.value)}
+                            onBlur={(event) => checkAndPromptOutOfBounds(item.id, 'color', event.target.value, 'user_input', () => { })}
+                            list="list-color"
+                          />
+                        ) : null}
+                      </td>
+                      <td className='px-2 py-2'>
+                        {item.analysis ? (
+                          <input
+                            className='kira-focus-ring w-36 border border-kira-warmgray/45 px-2 py-1 text-xs'
+                            value={item.analysis.fabric}
+                            onChange={(event) => updateUploadAnalysisField(item.id, 'fabric', event.target.value)}
+                            onBlur={(event) => checkAndPromptOutOfBounds(item.id, 'fabric', event.target.value, 'user_input', () => { })}
+                            list="list-fabric"
+                          />
+                        ) : null}
+                      </td>
+                      <td className='px-2 py-2'>
+                        {item.analysis ? (
+                          <input className='kira-focus-ring w-14 border border-kira-warmgray/45 px-2 py-1 text-xs' value={item.analysis.units} onChange={(event) => updateUploadAnalysisField(item.id, 'units', event.target.value.replace(/[^0-9]/g, ''))} />
+                        ) : null}
+                      </td>
+                      <td className='px-2 py-2'>
+                        {item.analysis ? (
+                          <input className='kira-focus-ring w-16 border border-kira-warmgray/45 px-2 py-1 text-xs' value={item.analysis.ospSar} onChange={(event) => updateUploadAnalysisField(item.id, 'ospSar', event.target.value.replace(/[^0-9.]/g, ''))} />
+                        ) : null}
+                      </td>
+                      <td className='px-2 py-2'>
+                        {item.analysis ? (
+                          <span className={cn('inline-flex rounded-sm border px-2 py-1 text-xs font-semibold',
+                            item.analysis.confidence >= 85 ? 'border-[#9EDAB7] bg-[#DDF4E7] text-[#1E7145]' :
+                              item.analysis.confidence >= 60 ? 'border-[#E6D7A7] bg-[#FAF2D8] text-[#7A641A]' : 'border-[#E4BABA] bg-[#FCE7E7] text-[#9F3A3A]'
+                          )}>
+                            {item.analysis.confidence}%
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className='px-2 py-2'>
+                        {item.analysis ? (
+                          <input type='checkbox' className='h-4 w-4 accent-kira-black' checked={Boolean(item.approved)} onChange={() => toggleUploadApproval(item.id)} />
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                  {bulkReviewRows.length === 0 ? (
+                    <tr>
+                      <td className='px-3 py-6 text-center text-sm text-kira-midgray' colSpan={10}>No items match current review filters.</td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+
+            <div className='flex justify-end gap-3 border-t border-kira-warmgray/35 px-6 py-4'>
+              <button
+                type='button'
+                className='kira-focus-ring border border-kira-warmgray/55 px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
+                onClick={() => setIsBulkReviewOpen(false)}
+              >
+                Close
+              </button>
+              <button
+                type='button'
+                className='kira-focus-ring border border-kira-warmgray/55 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray disabled:opacity-60'
+                disabled={isSavingReviewedItems}
+                onClick={() => void handleSaveReviewedItems(true)}
+              >
+                {isSavingReviewedItems ? 'Saving...' : 'Save Approved'}
+              </button>
+              <button
+                type='button'
+                className='kira-focus-ring bg-kira-black px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:opacity-60'
+                disabled={isSavingReviewedItems}
+                onClick={() => void handleSaveReviewedItems(false)}
+              >
+                {isSavingReviewedItems ? 'Saving...' : 'Save All'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isFindReplaceOpen ? (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4'>
+          <div className='w-full max-w-lg border border-kira-warmgray/55 bg-kira-offwhite p-6 shadow-2xl'>
+            <div className='flex items-center justify-between'>
+              <h3 className='text-lg font-semibold text-kira-black'>Batch Find & Replace</h3>
+              <button
+                type='button'
+                className='kira-focus-ring inline-flex h-8 w-8 items-center justify-center text-kira-midgray hover:text-kira-black'
+                onClick={() => setIsFindReplaceOpen(false)}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            <p className='mt-2 text-sm text-kira-midgray'>Apply text replacement across selected rows.</p>
+            <div className='mt-4 grid grid-cols-1 gap-3'>
+              <select
+                className='kira-focus-ring border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-darkgray'
+                onChange={(event) => setFindReplaceField(event.target.value as BatchFindReplaceField)}
+                value={findReplaceField}
+              >
+                {Object.entries(BATCH_FIND_REPLACE_FIELD_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <input
+                className='kira-focus-ring border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                onChange={(event) => setFindReplaceQuery(event.target.value)}
+                placeholder='Find text'
+                value={findReplaceQuery}
+              />
+              <input
+                className='kira-focus-ring border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                onChange={(event) => setFindReplaceReplacement(event.target.value)}
+                placeholder='Replace with'
+                value={findReplaceReplacement}
+              />
+            </div>
+            <div className='mt-5 flex justify-end gap-2'>
+              <button
+                type='button'
+                className='kira-focus-ring border border-kira-warmgray/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
+                onClick={() => setIsFindReplaceOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type='button'
+                className='kira-focus-ring bg-kira-black px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite'
+                onClick={() => void handleApplyFindReplace()}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isPriceAdjustOpen ? (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4'>
+          <div className='w-full max-w-lg border border-kira-warmgray/55 bg-kira-offwhite p-6 shadow-2xl'>
+            <div className='flex items-center justify-between'>
+              <h3 className='text-lg font-semibold text-kira-black'>Batch Price Adjustment</h3>
+              <button
+                type='button'
+                className='kira-focus-ring inline-flex h-8 w-8 items-center justify-center text-kira-midgray hover:text-kira-black'
+                onClick={() => setIsPriceAdjustOpen(false)}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            <p className='mt-2 text-sm text-kira-midgray'>Adjust selected prices in one step.</p>
+            <div className='mt-4 grid grid-cols-1 gap-3'>
+              <select
+                className='kira-focus-ring border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-darkgray'
+                onChange={(event) => setPriceAdjustMode(event.target.value as PriceAdjustMode)}
+                value={priceAdjustMode}
+              >
+                <option value='percent_up'>Increase by %</option>
+                <option value='percent_down'>Decrease by %</option>
+                <option value='add_fixed'>Add fixed amount</option>
+                <option value='set_exact'>Set exact price</option>
+              </select>
+              <input
+                className='kira-focus-ring border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black'
+                onChange={(event) => setPriceAdjustValue(event.target.value)}
+                placeholder='Value'
+                value={priceAdjustValue}
+              />
+            </div>
+            <div className='mt-5 flex justify-end gap-2'>
+              <button
+                type='button'
+                className='kira-focus-ring border border-kira-warmgray/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
+                onClick={() => setIsPriceAdjustOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type='button'
+                className='kira-focus-ring bg-kira-black px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite'
+                onClick={() => void handleApplyPriceAdjustment()}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isAddModalOpen ? (
+        <div className='fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4 md:p-6'>
+          <div className='kira-modal-open mx-auto my-2 w-full max-w-[1120px] border border-[#D1D5DB] bg-[#F7F7F5] shadow-[0_30px_90px_rgba(6,6,6,0.24)] transition-all duration-300'>
+            <div className='sticky top-0 z-20 flex items-center justify-between border-b border-[#D9DDDB] bg-[#F7F7F5] px-7 py-5'>
+              <div className="flex items-center gap-4">
+                <h2 className='font-serif text-4xl font-semibold leading-none md:text-5xl'>{isEditMode ? 'Edit Item' : 'Add New Item'}</h2>
+              </div>
+              <div className='flex items-center gap-5'>
+                <label className="flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-[#6D7772]">
                   <input
-                    accept='.png,.jpg,.jpeg,.webp'
-                    className='hidden'
-                    onChange={handleAddItemImageInput}
-                    ref={addItemImageInputRef}
-                    type='file'
+                    type="checkbox"
+                    className="h-4 w-4 border border-[#A1A7A4] accent-[#1E7145]"
+                    checked={rememberLastValues}
+                    onChange={(e) => {
+                      setRememberLastValues(e.target.checked);
+                      localStorage.setItem('kira_remember_last_values', String(e.target.checked));
+                    }}
                   />
+                  Remember Values
+                </label>
+                <button
+                  className='kira-focus-ring inline-flex h-9 w-9 items-center justify-center text-[#7B8086] hover:text-kira-black'
+                  onClick={closeAddModal}
+                  type='button'
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+            </div>
 
-                  {imagePreviewUrl ? (
-                    <>
-                      <div className="relative w-full aspect-square overflow-hidden border border-kira-warmgray/40 bg-kira-warmgray/10">
-                        <img
-                          src={getImageUrl(imagePreviewUrl) ?? ''}
-                          alt="Preview"
-                          className="h-full w-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setImagePreviewUrl(null);
-                            selectedImageFileRef.current = null;
-                            setItemImageName('');
-                            setAnalysisStage(null);
-                            setAiSuggestions(null);
-                            setIsAiSuggestionsVisible(false);
-                            setFeedbackCompletedFields({});
-                            setOverallConfidence(null);
-                            setFieldConfidence({});
-                            setFieldContext({});
-                            setLastAnalyzedImageHash(null);
-                            if (addItemImageInputRef.current) {
-                              addItemImageInputRef.current.value = '';
-                            }
-                          }}
-                          className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center bg-white/90 text-kira-black hover:bg-white"
-                        >
-                          <CloseIcon />
-                        </button>
-                      </div>
+            <form className='flex max-h-[calc(100vh-5rem)] flex-col' onSubmit={handleSaveNewItem}>
+              <div className='flex-1 overflow-y-auto px-7 py-7'>
+                <div className='grid grid-cols-1 gap-8 lg:grid-cols-[320px_minmax(0,1fr)]'>
+                  <div className='space-y-3'>
+                    <input
+                      accept='.png,.jpg,.jpeg,.webp'
+                      className='hidden'
+                      onChange={handleAddItemImageInput}
+                      ref={addItemImageInputRef}
+                      type='file'
+                    />
 
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleAnalyzeImage(); }}
-                          disabled={isAnalyzing}
-                          className={cn(
-                            "flex-1 flex items-center justify-center gap-2 rounded-none border border-kira-black bg-kira-black py-2.5 text-sm font-semibold uppercase text-kira-offwhite hover:bg-kira-darkgray",
-                            isAnalyzing && "opacity-70 cursor-not-allowed"
-                          )}
-                        >
-                          {isAnalyzing ? (
-                            <>
-                              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Analyzing...
-                            </>
-                          ) : (
-                            "Analyze with AI"
-                          )}
-                        </button>
-                        <button
-                          type="button"
+                    {imagePreviewUrl ? (
+                      <>
+                        <div
+                          className="relative w-full aspect-[3/4] cursor-pointer overflow-hidden border border-[#D3D7D4] bg-[#ECEFEE]"
                           onClick={() => addItemImageInputRef.current?.click()}
-                          className="flex h-10 w-10 items-center justify-center border border-kira-warmgray/60 bg-kira-offwhite text-kira-darkgray hover:bg-kira-warmgray/20"
                         >
-                          <UploadIcon />
-                        </button>
-                      </div>
+                          <img
+                            src={getImageUrl(imagePreviewUrl) ?? ''}
+                            alt="Preview"
+                            className="h-full w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImagePreviewUrl(null);
+                              selectedImageFileRef.current = null;
+                              setItemImageName('');
+                              setAnalysisStage(null);
+                              setAiSuggestions(null);
+                              setIsAiSuggestionsVisible(false);
+                              setFeedbackCompletedFields({});
+                              setOverallConfidence(null);
+                              setFieldConfidence({});
+                              setFieldContext({});
+                              setLastAnalyzedImageHash(null);
+                              if (addItemImageInputRef.current) {
+                                addItemImageInputRef.current.value = '';
+                              }
+                            }}
+                            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center border border-[#CFD3D1] bg-white/95 text-kira-black hover:bg-white"
+                          >
+                            <CloseIcon />
+                          </button>
+                        </div>
 
-                      {analysisStage ? <p className="text-xs text-kira-midgray">{analysisStage}</p> : null}
-                      {itemImageError ? <p className='text-sm text-rose-700'>{itemImageError}</p> : null}
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleAnalyzeImage(); }}
+                            disabled={isAnalyzing}
+                            className={cn(
+                              "flex-1 flex items-center justify-center gap-2 rounded-none border border-[#D0AE3B] bg-[#D0AE3B] py-3 text-sm font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#BA9A2E]",
+                              isAnalyzing && "opacity-70 cursor-not-allowed"
+                            )}
+                          >
+                            {isAnalyzing ? (
+                              <>
+                                <svg className="h-4 w-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-30" cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.2"></circle>
+                                  <path className="opacity-90" fill="currentColor" d="M12 3a9 9 0 0 1 9 9h-2.6a6.4 6.4 0 0 0-6.4-6.4V3Z"></path>
+                                </svg>
+                                AI ANALYZING...
+                              </>
+                            ) : (
+                              <>
+                                <svg aria-hidden='true' className='h-4 w-4' fill='none' viewBox='0 0 20 20'>
+                                  <circle cx='10' cy='10' r='4.6' stroke='currentColor' strokeWidth='1.7' />
+                                  <path d='M10 3V6M10 14V17M3 10H6M14 10H17' stroke='currentColor' strokeLinecap='round' strokeWidth='1.5' />
+                                </svg>
+                                ANALYZE WITH AI
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImagePreviewUrl(null);
+                              selectedImageFileRef.current = null;
+                              setItemImageName('');
+                              setAnalysisStage(null);
+                              setAiSuggestions(null);
+                              setIsAiSuggestionsVisible(false);
+                              setFeedbackCompletedFields({});
+                              setOverallConfidence(null);
+                              setFieldConfidence({});
+                              setFieldContext({});
+                              setLastAnalyzedImageHash(null);
+                              if (addItemImageInputRef.current) {
+                                addItemImageInputRef.current.value = '';
+                              }
+                            }}
+                            className="flex h-11 w-11 items-center justify-center border border-[#C6CBC9] bg-[#F2F3F2] text-[#4B5563] hover:bg-white"
+                            title='Clear image'
+                          >
+                            <svg aria-hidden='true' className='h-4 w-4' fill='none' viewBox='0 0 20 20'>
+                              <path d='M6 6L14 14M14 6L6 14' stroke='currentColor' strokeLinecap='round' strokeWidth='1.8' />
+                            </svg>
+                          </button>
+                        </div>
 
-                      {isAiSuggestionsVisible && aiSuggestions && (
-                        <div className="relative mt-4 max-h-[420px] overflow-y-auto border border-[#BEE7D3] bg-[#F1FBF6] px-5 py-4 text-kira-black">
-                          <div className="flex items-center justify-between mb-5">
-                            <div className="flex items-center gap-2 font-semibold text-[#1E7145]">
-                              <i className="ri-sparkling-fill text-lg"></i>
-                              <span className="text-[15px]">AI Suggestions</span>
+                        {isAnalyzing ? (
+                          <div className="mt-4 border border-[#A7D2F5] bg-[#E8F3FC] px-4 py-4">
+                            <div className="mb-2 flex items-center gap-2 text-[#1871B8]">
+                              <svg aria-hidden='true' className='h-4 w-4' fill='none' viewBox='0 0 20 20'>
+                                <path d='M10 2.8L11.9 6.6L16.1 7.4L13 10.4L13.7 14.6L10 12.6L6.3 14.6L7 10.4L3.9 7.4L8.1 6.6L10 2.8Z' stroke='currentColor' strokeWidth='1.3' />
+                              </svg>
+                              <span className="text-[28px] leading-none">AI Processing</span>
                             </div>
-                            <button
-                              type="button"
-                              onClick={handleAcceptAllAI}
-                              className="kira-focus-ring bg-[#219653] hover:bg-[#1A7A43] text-white px-3 py-1.5 rounded-sm text-xs font-semibold tracking-wider flex items-center gap-1.5 transition-colors"
-                            >
-                              <i className="ri-check-line text-sm"></i> Accept All
-                            </button>
+                            <p className='text-sm text-[#2D80C4]'>
+                              {analysisStage ?? 'Analyzing image features, detecting color, style, and fabric...'}
+                            </p>
                           </div>
+                        ) : null}
+                        {itemImageError ? <p className='text-sm text-rose-700'>{itemImageError}</p> : null}
 
-                          <div className="space-y-0.5 mb-5">
-                            <AiSuggestionRow
-                              fieldKey="color"
-                              label="Color"
-                              value={aiSuggestions.values.color}
-                              confidence={aiSuggestions.confidence.color}
-                              onFeedback={handleSuggestionFeedback}
-                              isSubmitting={isFeedbackSubmitting}
-                              isFeedbackLocked={Boolean(feedbackCompletedFields.color)}
-                            />
-                            <AiSuggestionRow
-                              fieldKey="category"
-                              label="Category"
-                              value={aiSuggestions.values.category}
-                              confidence={aiSuggestions.confidence.category}
-                              onFeedback={handleSuggestionFeedback}
-                              isSubmitting={isFeedbackSubmitting}
-                              isFeedbackLocked={Boolean(feedbackCompletedFields.category)}
-                            />
-                            <AiSuggestionRow
-                              fieldKey="styleName"
-                              label="Style Name"
-                              value={aiSuggestions.values.styleName}
-                              confidence={aiSuggestions.confidence.styleName}
-                              onFeedback={handleSuggestionFeedback}
-                              isSubmitting={isFeedbackSubmitting}
-                              isFeedbackLocked={Boolean(feedbackCompletedFields.styleName)}
-                            />
-                            <AiSuggestionRow
-                              fieldKey="fabric"
-                              label="Fabric"
-                              value={aiSuggestions.values.fabric}
-                              confidence={aiSuggestions.confidence.fabric}
-                              onFeedback={handleSuggestionFeedback}
-                              isSubmitting={isFeedbackSubmitting}
-                              isFeedbackLocked={Boolean(feedbackCompletedFields.fabric)}
-                            />
-                            <AiSuggestionRow
-                              fieldKey="composition"
-                              label="Composition"
-                              value={aiSuggestions.values.composition}
-                              confidence={aiSuggestions.confidence.composition}
-                              onFeedback={handleSuggestionFeedback}
-                              isSubmitting={isFeedbackSubmitting}
-                              isFeedbackLocked={Boolean(feedbackCompletedFields.composition)}
-                            />
-                            <AiSuggestionRow
-                              fieldKey="wovenKnits"
-                              label="Woven Knits"
-                              value={aiSuggestions.values.wovenKnits}
-                              confidence={aiSuggestions.confidence.wovenKnits}
-                              onFeedback={handleSuggestionFeedback}
-                              isSubmitting={isFeedbackSubmitting}
-                              isFeedbackLocked={Boolean(feedbackCompletedFields.wovenKnits)}
-                            />
-                          </div>
-
-                          <p className="mb-4 text-xs text-[#6D7772]">
-                            Manual overrides and feedback help AI learn your catalog standards.
-                          </p>
-
-                          {lowConfidenceFields.length > 0 ? (
-                            <div className="mb-4 border border-[#DCEADF] bg-white px-3 py-3">
-                              <div className="flex items-center justify-between">
-                                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#4A5D52]">
-                                  Similar Items Helper
-                                </p>
-                                <span className="text-[11px] text-[#6D7772]">
-                                  Low confidence: {lowConfidenceFields.map((field) => AI_FIELD_LABELS[field]).join(', ')}
-                                </span>
+                        {!isAnalyzing && isAiSuggestionsVisible && aiSuggestions && (
+                          <div className="relative mt-4 border border-[#8FD0AA] bg-[#DDEDE3] px-4 py-4 text-kira-black">
+                            <div className="mb-3 flex items-center justify-between">
+                              <div className="flex items-center gap-2 font-semibold text-[#1E7145]">
+                                <svg aria-hidden='true' className='h-4 w-4' fill='none' viewBox='0 0 16 16'>
+                                  <path d='M8 1.5L9.9 5.3L14 6.1L11 9L11.7 13.1L8 11.1L4.3 13.1L5 9L2 6.1L6.1 5.3L8 1.5Z' stroke='currentColor' strokeWidth='1.2' />
+                                </svg>
+                                <span className="text-[24px] leading-none">AI Suggestions</span>
                               </div>
-                              {similarItems.length === 0 ? (
-                                <p className="mt-2 text-xs text-[#6D7772]">No close matches found in current catalog.</p>
-                              ) : (
-                                <div className="mt-3 space-y-2">
-                                  {similarItems.map((item) => (
-                                    <div className="flex items-center justify-between border border-[#E5E7EB] px-2 py-2" key={item.id}>
-                                      <div className="text-xs text-kira-darkgray">
-                                        <p className="font-semibold">{item.styleNo}</p>
-                                        <p>{item.color} • {item.fabric} • {item.composition}</p>
-                                      </div>
-                                      <button
-                                        type="button"
-                                        className="kira-focus-ring border border-kira-warmgray/55 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-kira-darkgray hover:bg-kira-warmgray/20"
-                                        onClick={() => applySimilarItemDefaults(item)}
-                                      >
-                                        Inherit Values
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ) : null}
-
-                          <div className="mb-2 border border-[#E5E7EB] bg-white px-3 py-2">
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs text-[#6D7772]">
-                                Seasonal recommendation: {seasonalRecommendation.season} defaults
-                              </p>
                               <button
                                 type="button"
-                                className="kira-focus-ring text-[10px] font-semibold uppercase tracking-[0.06em] text-kira-black hover:text-kira-midgray"
-                                onClick={applySeasonalDefaults}
+                                onClick={() => void handleAcceptAllAI()}
+                                className="kira-focus-ring bg-[#219653] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1A7A43]"
                               >
-                                Apply
+                                Accept All
                               </button>
                             </div>
-                          </div>
 
-                          <div className="pt-4 border-t border-[#BEE7D3] flex items-center justify-between">
-                            <span className="text-[13px] text-[#6D7772]">Overall Confidence</span>
-                            <span className="font-bold text-[#1E7145] text-base">{overallConfidence}%</span>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div
-                      className={cn(
-                        'flex min-h-[300px] cursor-pointer flex-col items-center justify-center border-2 border-dashed p-4 text-center',
-                        isItemDropActive
-                          ? 'border-kira-brown bg-kira-brown/10'
-                          : 'border-kira-warmgray/60 bg-kira-offwhite',
-                      )}
-                      onClick={() => addItemImageInputRef.current?.click()}
-                      onDragEnter={(event) => {
-                        event.preventDefault();
-                        setIsItemDropActive(true);
-                      }}
-                      onDragLeave={(event) => {
-                        event.preventDefault();
-                        setIsItemDropActive(false);
-                      }}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        setIsItemDropActive(true);
-                      }}
-                      onDrop={handleAddItemDrop}
-                    >
-                      <UploadIcon />
-                      <p className='mt-4 text-xl font-semibold text-kira-black'>
-                        Click to upload <span className='font-normal text-kira-midgray'>or drag and drop</span>
-                      </p>
-                      <p className='mt-2 text-base text-kira-midgray'>PNG, JPG up to 10MB</p>
-                      {itemImageError ? <p className='mt-2 text-sm text-rose-700'>{itemImageError}</p> : null}
-                    </div>
-                  )}
-                </div>
+                            <div className="space-y-0.5">
+                              <AiSuggestionRow
+                                fieldKey="color"
+                                label="Color"
+                                value={aiSuggestions.values.color}
+                                confidence={aiSuggestions.confidence.color}
+                                onFeedback={handleSuggestionFeedback}
+                                isSubmitting={isFeedbackSubmitting}
+                                isFeedbackLocked={Boolean(feedbackCompletedFields.color)}
+                              />
+                              <AiSuggestionRow
+                                fieldKey="category"
+                                label="Category"
+                                value={aiSuggestions.values.category}
+                                confidence={aiSuggestions.confidence.category}
+                                onFeedback={handleSuggestionFeedback}
+                                isSubmitting={isFeedbackSubmitting}
+                                isFeedbackLocked={Boolean(feedbackCompletedFields.category)}
+                              />
+                              <AiSuggestionRow
+                                fieldKey="styleName"
+                                label="Style Name"
+                                value={aiSuggestions.values.styleName}
+                                confidence={aiSuggestions.confidence.styleName}
+                                onFeedback={handleSuggestionFeedback}
+                                isSubmitting={isFeedbackSubmitting}
+                                isFeedbackLocked={Boolean(feedbackCompletedFields.styleName)}
+                              />
+                              <AiSuggestionRow
+                                fieldKey="fabric"
+                                label="Fabric"
+                                value={aiSuggestions.values.fabric}
+                                confidence={aiSuggestions.confidence.fabric}
+                                onFeedback={handleSuggestionFeedback}
+                                isSubmitting={isFeedbackSubmitting}
+                                isFeedbackLocked={Boolean(feedbackCompletedFields.fabric)}
+                              />
+                              <AiSuggestionRow
+                                fieldKey="composition"
+                                label="Composition"
+                                value={aiSuggestions.values.composition}
+                                confidence={aiSuggestions.confidence.composition}
+                                onFeedback={handleSuggestionFeedback}
+                                isSubmitting={isFeedbackSubmitting}
+                                isFeedbackLocked={Boolean(feedbackCompletedFields.composition)}
+                              />
+                              <AiSuggestionRow
+                                fieldKey="wovenKnits"
+                                label="Woven Knits"
+                                value={aiSuggestions.values.wovenKnits}
+                                confidence={aiSuggestions.confidence.wovenKnits}
+                                onFeedback={handleSuggestionFeedback}
+                                isSubmitting={isFeedbackSubmitting}
+                                isFeedbackLocked={Boolean(feedbackCompletedFields.wovenKnits)}
+                              />
+                            </div>
 
-                <div className='grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2'>
-                  <div className='col-span-1 md:col-span-2 space-y-2 border-b border-kira-warmgray/30 pb-4'>
-                    <div className="flex items-center justify-between">
-                      <FieldLabel>Style No</FieldLabel>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            const res = await apiRequest<{ style_code: string }>('/catalog/generate-style-code', {
-                              method: 'POST',
-                              body: JSON.stringify({ brand: 'GEN', category: itemCategory }) // Pass basic context
-                            });
-                            setItemStyleNo(res.style_code);
-                            setCatalogNotice('Style No generated.');
-                          } catch (e: any) {
-                            setAddItemError(e.message || 'Failed to generate Style No.');
-                          }
+                            <div className="mt-3 border-t border-[#96CDB0] pt-3">
+                              <div className="flex items-center justify-between">
+                                <p className='text-[18px] text-[#2F6152]'>Overall Confidence</p>
+                                <span className="text-[30px] font-bold leading-none text-[#1E7145]">{overallConfidence ?? '--'}%</span>
+                              </div>
+                            </div>
+
+                            <details className="mt-3 border border-[#B5D7C3] bg-white px-3 py-2">
+                              <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-[0.08em] text-[#4A5D52]">
+                                Advanced Actions
+                              </summary>
+                              <div className='mt-2 space-y-2'>
+                                <button
+                                  type="button"
+                                  className="kira-focus-ring w-full border border-kira-warmgray/55 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-kira-darkgray hover:bg-kira-warmgray/20"
+                                  onClick={applySeasonalDefaults}
+                                >
+                                  Apply {seasonalRecommendation.season} defaults
+                                </button>
+                                {lowConfidenceFields.length > 0 && similarItems.length > 0 ? (
+                                  <div className="space-y-2">
+                                    {similarItems.map((item) => (
+                                      <div className="flex items-center justify-between border border-[#E5E7EB] px-2 py-2" key={item.id}>
+                                        <div className="text-xs text-kira-darkgray">
+                                          <p className="font-semibold">{item.styleNo}</p>
+                                          <p>{item.color} • {item.fabric} • {item.composition}</p>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          className="kira-focus-ring border border-kira-warmgray/55 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-kira-darkgray hover:bg-kira-warmgray/20"
+                                          onClick={() => applySimilarItemDefaults(item)}
+                                        >
+                                          Inherit
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </details>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div
+                        className={cn(
+                          'flex min-h-[300px] cursor-pointer flex-col items-center justify-center border-2 border-dashed p-4 text-center',
+                          isItemDropActive
+                            ? 'border-kira-brown bg-kira-brown/10'
+                            : 'border-kira-warmgray/60 bg-kira-offwhite',
+                        )}
+                        onClick={() => addItemImageInputRef.current?.click()}
+                        onDragEnter={(event) => {
+                          event.preventDefault();
+                          setIsItemDropActive(true);
                         }}
-                        className="text-xs font-semibold uppercase tracking-wider text-kira-black hover:text-kira-midgray flex items-center gap-1"
+                        onDragLeave={(event) => {
+                          event.preventDefault();
+                          setIsItemDropActive(false);
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          setIsItemDropActive(true);
+                        }}
+                        onDrop={handleAddItemDrop}
                       >
-                        <i className="ri-magic-line"></i> Auto-Generate
-                      </button>
+                        <UploadIcon />
+                        <p className='mt-4 text-xl font-semibold text-kira-black'>
+                          Click to upload <span className='font-normal text-kira-midgray'>or drag and drop</span>
+                        </p>
+                        <p className='mt-2 text-base text-kira-midgray'>PNG, JPG up to 10MB</p>
+                        {itemImageError ? <p className='mt-2 text-sm text-rose-700'>{itemImageError}</p> : null}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className='grid min-w-0 grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-2'>
+                    <div className='col-span-1 md:col-span-2 space-y-2 border-b border-kira-warmgray/30 pb-5'>
+                      <div className="flex items-center justify-between">
+                        <FieldLabel>Style No</FieldLabel>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const res = await apiRequest<{ style_code: string }>('/catalog/generate-style-code', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                  brand: 'GEN',
+                                  category: itemCategory,
+                                  pattern: activeTemplate?.style_code_pattern ?? undefined,
+                                })
+                              });
+                              setItemStyleNo(res.style_code);
+                              setCatalogNotice('Style No generated.');
+                            } catch (e: any) {
+                              setAddItemError(e.message || 'Failed to generate Style No.');
+                            }
+                          }}
+                          className="kira-focus-ring inline-flex items-center gap-1.5 bg-[#12141B] px-3 py-1.5 text-xs font-semibold text-white hover:bg-black"
+                        >
+                          <svg aria-hidden='true' className='h-3.5 w-3.5' fill='none' viewBox='0 0 16 16'>
+                            <path d='M8 2.2L9.5 5.3L12.8 6.1L10.4 8.4L11 11.7L8 10.1L5 11.7L5.6 8.4L3.2 6.1L6.5 5.3L8 2.2Z' stroke='currentColor' strokeWidth='1.2' />
+                          </svg>
+                          Auto
+                        </button>
+                      </div>
+                      <input
+                        className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-3xl font-medium text-kira-black outline-none placeholder:font-normal placeholder:text-kira-midgray'
+                        onChange={(event) => setItemStyleNo(event.target.value)}
+                        placeholder='e.g., HRDS25001'
+                        required
+                        value={itemStyleNo}
+                      />
                     </div>
-                    <input
-                      className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-2xl font-bold text-kira-black outline-none placeholder:font-normal placeholder:text-kira-midgray'
-                      onChange={(event) => setItemStyleNo(event.target.value)}
-                      placeholder='e.g., HRDS25001'
-                      required
-                      value={itemStyleNo}
-                    />
-                  </div>
-                  <div className='space-y-2'>
-                    <FieldLabel confidence={fieldConfidence.category} context={fieldContext.category}>Category</FieldLabel>
-                    <select
-                      className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
-                      onChange={(event) => setItemCategory(event.target.value)}
-                      value={itemCategory}
-                    >
-                      {CATEGORY_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    <div className='space-y-2'>
+                      <FieldLabel confidence={fieldConfidence.category} context={fieldContext.category}>Category</FieldLabel>
+                      <input
+                        className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
+                        onChange={(event) => setItemCategory(event.target.value)}
+                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'category', event.target.value, 'user_input', () => { })}
+                        value={itemCategory}
+                        list="list-category"
+                      />
+                    </div>
 
-                  <div className='space-y-2'>
-                    <FieldLabel confidence={fieldConfidence.styleName} context={fieldContext.styleName}>Style Name</FieldLabel>
-                    <select
-                      className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
-                      onChange={(event) => setItemStyleName(event.target.value)}
-                      value={itemStyleName}
-                    >
-                      {STYLE_NAME_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className='space-y-2'>
-                    <FieldLabel confidence={fieldConfidence.color} context={fieldContext.color}>Color</FieldLabel>
-                    <select
-                      className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
-                      onChange={(event) => setItemColor(event.target.value)}
-                      value={itemColor}
-                    >
-                      {COLOR_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    <div className='space-y-2'>
+                      <FieldLabel confidence={fieldConfidence.styleName} context={fieldContext.styleName}>Style Name</FieldLabel>
+                      <input
+                        className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
+                        onChange={(event) => setItemStyleName(event.target.value)}
+                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'styleName', event.target.value, 'user_input', () => { })}
+                        value={itemStyleName}
+                        list="list-styleName"
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <FieldLabel confidence={fieldConfidence.color} context={fieldContext.color}>Color</FieldLabel>
+                      <input
+                        className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
+                        onChange={(event) => setItemColor(event.target.value)}
+                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'color', event.target.value, 'user_input', () => { })}
+                        value={itemColor}
+                        list="list-color"
+                      />
+                    </div>
 
-                  <div className='space-y-2'>
-                    <FieldLabel confidence={fieldConfidence.fabric} context={fieldContext.fabric}>Fabric</FieldLabel>
-                    <select
-                      className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
-                      onChange={(event) => setItemFabric(event.target.value)}
-                      value={itemFabric}
-                    >
-                      {FABRIC_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className='space-y-2'>
-                    <FieldLabel confidence={fieldConfidence.composition} context={fieldContext.composition}>Composition</FieldLabel>
-                    <select
-                      className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
-                      onChange={(event) => setItemComposition(event.target.value)}
-                      value={itemComposition}
-                    >
-                      {COMPOSITION_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    <div className='space-y-2'>
+                      <FieldLabel confidence={fieldConfidence.fabric} context={fieldContext.fabric}>Fabric</FieldLabel>
+                      <input
+                        className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
+                        onChange={(event) => setItemFabric(event.target.value)}
+                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'fabric', event.target.value, 'user_input', () => { })}
+                        value={itemFabric}
+                        list="list-fabric"
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <FieldLabel confidence={fieldConfidence.composition} context={fieldContext.composition}>Composition</FieldLabel>
+                      <input
+                        className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
+                        onChange={(event) => setItemComposition(event.target.value)}
+                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'composition', event.target.value, 'user_input', () => { })}
+                        value={itemComposition}
+                        list="list-composition"
+                      />
+                    </div>
 
-                  <div className='space-y-2'>
-                    <FieldLabel confidence={fieldConfidence.wovenKnits} context={fieldContext.wovenKnits}>Woven / Knits</FieldLabel>
-                    <select
-                      className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
-                      onChange={(event) => setItemWovenKnits(event.target.value)}
-                      value={itemWovenKnits}
-                    >
-                      {WOVEN_KNITS_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className='space-y-2'>
-                    <FieldLabel>Total Units</FieldLabel>
-                    <select
-                      className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
-                      onChange={(event) => setItemTotalUnits(event.target.value)}
-                      value={itemTotalUnits}
-                    >
-                      {TOTAL_UNITS_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    <div className='space-y-2'>
+                      <FieldLabel confidence={fieldConfidence.wovenKnits} context={fieldContext.wovenKnits}>Woven / Knits</FieldLabel>
+                      <input
+                        className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
+                        onChange={(event) => setItemWovenKnits(event.target.value)}
+                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'wovenKnits', event.target.value, 'user_input', () => { })}
+                        value={itemWovenKnits}
+                        list="list-wovenKnits"
+                      />
+                    </div>
+                    <div className='space-y-2'>
+                      <FieldLabel>Total Units</FieldLabel>
+                      <select
+                        className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
+                        onChange={(event) => setItemTotalUnits(event.target.value)}
+                        value={itemTotalUnits}
+                      >
+                        {TOTAL_UNITS_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <div className='space-y-2'>
-                    <FieldLabel>PO Price</FieldLabel>
-                    <select
-                      className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
-                      onChange={(event) => setItemPoPrice(event.target.value)}
-                      value={itemPoPrice}
-                    >
-                      {PO_PRICE_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
+                    <div className='space-y-2'>
+                      <FieldLabel>PO Price</FieldLabel>
+                      <select
+                        className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
+                        onChange={(event) => setItemPoPrice(event.target.value)}
+                        value={itemPoPrice}
+                      >
+                        {PO_PRICE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className='space-y-2'>
+                      <FieldLabel>OSPS in SAR</FieldLabel>
+                      <select
+                        className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
+                        onChange={(event) => setItemOspSar(event.target.value)}
+                        value={itemOspSar}
+                      >
+                        {OSP_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className='space-y-2'>
-                    <FieldLabel>OSPS in SAR</FieldLabel>
-                    <select
-                      className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
-                      onChange={(event) => setItemOspSar(event.target.value)}
-                      value={itemOspSar}
-                    >
-                      {OSP_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
                 </div>
 
                 {addItemError ? (

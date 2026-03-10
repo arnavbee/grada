@@ -319,3 +319,80 @@ def test_ai_correction_logging_and_learning_stats() -> None:
     assert stats_body['corrections_received'] >= 1
     assert stats_body['time_saved_minutes'] >= 0
     assert any(item['field_name'] == 'color' for item in stats_body['field_accuracy'])
+
+
+def test_catalog_template_crud_and_style_pattern() -> None:
+    headers = _auth_headers()
+
+    create_template = client.post(
+        '/api/v1/catalog/templates',
+        headers=headers,
+        json={
+            'name': 'Winter 2026 Dresses',
+            'description': 'Default values for winter dress drops',
+            'defaults': {
+                'category': 'DRESSES',
+                'styleName': 'Midi Dress',
+                'composition': '100% Polyester',
+                'wovenKnits': 'Woven',
+                'poPrice': '600',
+                'ospSar': '95',
+            },
+            'allowed_categories': ['DRESSES'],
+            'allowed_style_names': ['Midi Dress', 'Maxi Dress'],
+            'allowed_colors': ['Black', 'Bottle Green'],
+            'allowed_fabrics': ['Poly Georgette', 'Polymoss'],
+            'allowed_compositions': ['100% Polyester'],
+            'allowed_woven_knits': ['Woven'],
+            'style_code_pattern': 'HRD-{CATEGORY}-{YY}-{BRAND}',
+            'is_active': True,
+        },
+    )
+    assert create_template.status_code == 201
+    template_body = create_template.json()
+    template_id = template_body['id']
+    assert template_body['name'] == 'Winter 2026 Dresses'
+    assert template_body['style_code_pattern'] == 'HRD-{CATEGORY}-{YY}-{BRAND}'
+    assert 'Black' in template_body['allowed_colors']
+    assert template_body['allowed_categories'] == ['DRESSES']
+    assert 'Midi Dress' in template_body['allowed_style_names']
+
+    list_templates = client.get('/api/v1/catalog/templates', headers=headers)
+    assert list_templates.status_code == 200
+    list_body = list_templates.json()
+    assert list_body['total'] >= 1
+    assert any(item['id'] == template_id for item in list_body['items'])
+
+    update_template = client.patch(
+        f'/api/v1/catalog/templates/{template_id}',
+        headers=headers,
+        json={
+            'name': 'Winter 2026 Dresses Updated',
+            'allowed_categories': ['DRESSES', 'CORD SETS'],
+            'allowed_style_names': ['Knee Length'],
+            'allowed_colors': ['Black', 'Navy'],
+            'allowed_compositions': ['100% Cotton'],
+            'is_active': False,
+        },
+    )
+    assert update_template.status_code == 200
+    updated_body = update_template.json()
+    assert updated_body['name'] == 'Winter 2026 Dresses Updated'
+    assert updated_body['allowed_categories'] == ['DRESSES', 'CORD SETS']
+    assert updated_body['allowed_style_names'] == ['Knee Length']
+    assert updated_body['allowed_colors'] == ['Black', 'Navy']
+    assert updated_body['allowed_compositions'] == ['100% Cotton']
+    assert updated_body['is_active'] is False
+
+    style_code_res = client.post(
+        '/api/v1/catalog/generate-style-code',
+        headers=headers,
+        json={'brand': 'GEN', 'category': 'DRESSES', 'pattern': 'HRD-{CATEGORY}-{YY}-{BRAND}'},
+    )
+    assert style_code_res.status_code == 200
+    style_code = style_code_res.json()['style_code']
+    assert style_code.startswith('HRD-DRESSES-')
+    assert style_code.endswith('-GEN')
+
+    delete_template = client.delete(f'/api/v1/catalog/templates/{template_id}', headers=headers)
+    assert delete_template.status_code == 204

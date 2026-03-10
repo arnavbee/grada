@@ -201,6 +201,7 @@ class AnalyzeImageResponse(BaseModel):
 class GenerateStyleCodeRequest(BaseModel):
     brand: str | None = None
     category: str | None = None
+    pattern: str | None = Field(default=None, max_length=128)
 
 
 class GenerateStyleCodeResponse(BaseModel):
@@ -261,3 +262,61 @@ class LearningStatsResponse(BaseModel):
     pending_retraining: int
     field_accuracy: list[LearningFieldAccuracy]
     insights: list[str]
+
+
+class CatalogTemplateBase(BaseModel):
+    name: str = Field(min_length=2, max_length=128)
+    description: str | None = Field(default=None, max_length=500)
+    defaults: dict[str, Any] | None = None
+    allowed_categories: list[str] = Field(default_factory=list)
+    allowed_style_names: list[str] = Field(default_factory=list)
+    allowed_colors: list[str] = Field(default_factory=list)
+    allowed_fabrics: list[str] = Field(default_factory=list)
+    allowed_compositions: list[str] = Field(default_factory=list)
+    allowed_woven_knits: list[str] = Field(default_factory=list)
+    style_code_pattern: str | None = Field(default=None, max_length=128)
+    is_active: bool = True
+
+
+class CatalogTemplateCreateRequest(CatalogTemplateBase):
+    pass
+
+
+class CatalogTemplateUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=128)
+    description: str | None = Field(default=None, max_length=500)
+    defaults: dict[str, Any] | None = None
+    allowed_categories: list[str] | None = None
+    allowed_style_names: list[str] | None = None
+    allowed_colors: list[str] | None = None
+    allowed_fabrics: list[str] | None = None
+    allowed_compositions: list[str] | None = None
+    allowed_woven_knits: list[str] | None = None
+    style_code_pattern: str | None = Field(default=None, max_length=128)
+    is_active: bool | None = None
+
+
+class CatalogTemplateResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    company_id: str
+    name: str
+    description: str | None
+    defaults: dict[str, Any]
+    allowed_categories: list[str]
+    allowed_style_names: list[str]
+    allowed_colors: list[str]
+    allowed_fabrics: list[str]
+    allowed_compositions: list[str]
+    allowed_woven_knits: list[str]
+    style_code_pattern: str | None
+    is_active: bool
+    created_by_user_id: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CatalogTemplateListResponse(BaseModel):
+    items: list[CatalogTemplateResponse]
+    total: int

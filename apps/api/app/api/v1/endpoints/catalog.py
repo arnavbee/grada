@@ -21,6 +21,7 @@ from app.api.deps import get_current_user, require_roles
 from app.core.audit import log_audit
 from app.db.session import get_db
 from app.models.ai_correction import AICorrection
+from app.models.catalog_template import CatalogTemplate
 from app.models.company_settings import CompanySettings
 from app.models.marketplace_export import MarketplaceExport
 from app.models.processing_job import ProcessingJob
@@ -30,6 +31,10 @@ from app.models.product_measurement import ProductMeasurement
 from app.models.user import User
 from app.schemas.catalog import (
     AICorrectionResponse,
+    CatalogTemplateCreateRequest,
+    CatalogTemplateListResponse,
+    CatalogTemplateResponse,
+    CatalogTemplateUpdateRequest,
     JobStatus,
     JobType,
     MarketplaceExportCreateRequest,
@@ -200,6 +205,73 @@ def _json_dumps(payload: dict[str, Any] | None) -> str:
     return json.dumps(payload or {}, separators=(',', ':'))
 
 
+def _json_list_loads(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    cleaned: list[str] = []
+    for item in parsed:
+        if not isinstance(item, str):
+            continue
+        token = item.strip()
+        if token:
+            cleaned.append(token)
+    return cleaned
+
+
+def _normalize_template_tokens(values: list[str] | None) -> list[str]:
+    if not values:
+        return []
+    cleaned = [value.strip() for value in values if isinstance(value, str) and value.strip()]
+    return list(dict.fromkeys(cleaned))
+
+
+def _template_defaults_without_meta(defaults: dict[str, Any]) -> dict[str, Any]:
+    cleaned = dict(defaults)
+    cleaned.pop('_allowed', None)
+    return cleaned
+
+
+def _template_allowed_from_defaults(defaults: dict[str, Any]) -> dict[str, list[str]]:
+    raw_allowed = defaults.get('_allowed')
+    if not isinstance(raw_allowed, dict):
+        return {
+            'categories': [],
+            'style_names': [],
+            'compositions': [],
+            'woven_knits': [],
+        }
+    return {
+        'categories': _normalize_template_tokens(raw_allowed.get('categories') if isinstance(raw_allowed.get('categories'), list) else []),
+        'style_names': _normalize_template_tokens(raw_allowed.get('style_names') if isinstance(raw_allowed.get('style_names'), list) else []),
+        'compositions': _normalize_template_tokens(raw_allowed.get('compositions') if isinstance(raw_allowed.get('compositions'), list) else []),
+        'woven_knits': _normalize_template_tokens(raw_allowed.get('woven_knits') if isinstance(raw_allowed.get('woven_knits'), list) else []),
+    }
+
+
+def _merge_template_defaults_with_allowed(
+    defaults: dict[str, Any] | None,
+    *,
+    allowed_categories: list[str],
+    allowed_style_names: list[str],
+    allowed_compositions: list[str],
+    allowed_woven_knits: list[str],
+) -> dict[str, Any]:
+    payload = _template_defaults_without_meta(defaults or {})
+    payload['_allowed'] = {
+        'categories': _normalize_template_tokens(allowed_categories),
+        'style_names': _normalize_template_tokens(allowed_style_names),
+        'compositions': _normalize_template_tokens(allowed_compositions),
+        'woven_knits': _normalize_template_tokens(allowed_woven_knits),
+    }
+    return payload
+
+
 def _normalize_marketplace(raw_marketplace: str) -> str:
     normalized = re.sub(r'\s+', ' ', raw_marketplace.strip().lower())
     marketplace_key = MARKETPLACE_ALIASES.get(normalized)
@@ -259,6 +331,30 @@ def _normalize_export_filters(raw_filters: dict[str, Any] | None) -> dict[str, A
             filters['product_ids'] = list(dict.fromkeys(product_ids))
 
     return filters
+
+
+def _render_pattern_sku(
+    db: Session,
+    company_id: str,
+    pattern: str,
+    payload: GenerateStyleCodeRequest,
+) -> str:
+    token_map = {
+        '{BRAND}': _sku_token(payload.brand, 'GEN'),
+        '{CATEGORY}': _sku_token(payload.category, 'CAT'),
+        '{COLOR}': 'NA',
+        '{SIZE}': 'OS',
+        '{YEAR}': str(datetime.now(timezone.utc).year),
+        '{YY}': str(datetime.now(timezone.utc).year)[-2:],
+    }
+    rendered = pattern.upper()
+    for key, value in token_map.items():
+        rendered = rendered.replace(key, value)
+    rendered = re.sub(r'[^A-Z0-9-]+', '-', rendered)
+    rendered = re.sub(r'-{2,}', '-', rendered).strip('-')
+    if not rendered:
+        rendered = 'SKU'
+    return _find_unique_sku(db, company_id, rendered)
 
 
 def _compute_image_hash(image_url: str) -> str:
@@ -748,6 +844,29 @@ def _to_export_response(record: MarketplaceExport) -> MarketplaceExportResponse:
     )
 
 
+def _to_catalog_template_response(record: CatalogTemplate) -> CatalogTemplateResponse:
+    defaults_payload = _json_loads(record.defaults_json)
+    allowed_meta = _template_allowed_from_defaults(defaults_payload)
+    return CatalogTemplateResponse(
+        id=record.id,
+        company_id=record.company_id,
+        name=record.name,
+        description=record.description,
+        defaults=_template_defaults_without_meta(defaults_payload),
+        allowed_categories=allowed_meta['categories'],
+        allowed_style_names=allowed_meta['style_names'],
+        allowed_colors=_json_list_loads(record.allowed_colors_json),
+        allowed_fabrics=_json_list_loads(record.allowed_fabrics_json),
+        allowed_compositions=allowed_meta['compositions'],
+        allowed_woven_knits=allowed_meta['woven_knits'],
+        style_code_pattern=record.style_code_pattern,
+        is_active=record.is_active,
+        created_by_user_id=record.created_by_user_id,
+        created_at=record.created_at,
+        updated_at=record.updated_at,
+    )
+
+
 def _to_job_response(record: ProcessingJob) -> ProcessingJobResponse:
     return ProcessingJobResponse(
         id=record.id,
@@ -816,6 +935,167 @@ def _get_company_product_or_404(db: Session, company_id: str, product_id: str) -
     if product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Product not found.')
     return product
+
+
+def _get_company_template_or_404(db: Session, company_id: str, template_id: str) -> CatalogTemplate:
+    template = (
+        db.query(CatalogTemplate)
+        .filter(CatalogTemplate.id == template_id, CatalogTemplate.company_id == company_id)
+        .first()
+    )
+    if template is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Template not found.')
+    return template
+
+
+@router.get('/templates', response_model=CatalogTemplateListResponse)
+def list_catalog_templates(
+    db: DbSession,
+    current_user: ReadUser,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> CatalogTemplateListResponse:
+    query = db.query(CatalogTemplate).filter(CatalogTemplate.company_id == current_user.company_id)
+    total = query.count()
+    rows = query.order_by(CatalogTemplate.updated_at.desc()).offset(offset).limit(limit).all()
+    return CatalogTemplateListResponse(items=[_to_catalog_template_response(row) for row in rows], total=total)
+
+
+@router.post('/templates', response_model=CatalogTemplateResponse, status_code=status.HTTP_201_CREATED)
+def create_catalog_template(
+    payload: CatalogTemplateCreateRequest,
+    db: DbSession,
+    current_user: WriteUser,
+) -> CatalogTemplateResponse:
+    existing = (
+        db.query(CatalogTemplate)
+        .filter(
+            CatalogTemplate.company_id == current_user.company_id,
+            func.lower(CatalogTemplate.name) == payload.name.strip().lower(),
+        )
+        .first()
+    )
+    if existing is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Template name already exists.')
+
+    record = CatalogTemplate(
+        id=str(uuid4()),
+        company_id=current_user.company_id,
+        name=payload.name.strip(),
+        description=payload.description.strip() if payload.description else None,
+        defaults_json=_json_dumps(
+            _merge_template_defaults_with_allowed(
+                payload.defaults,
+                allowed_categories=payload.allowed_categories,
+                allowed_style_names=payload.allowed_style_names,
+                allowed_compositions=payload.allowed_compositions,
+                allowed_woven_knits=payload.allowed_woven_knits,
+            )
+        ),
+        allowed_colors_json=json.dumps(_normalize_template_tokens(payload.allowed_colors)),
+        allowed_fabrics_json=json.dumps(_normalize_template_tokens(payload.allowed_fabrics)),
+        style_code_pattern=payload.style_code_pattern.strip() if payload.style_code_pattern else None,
+        is_active=payload.is_active,
+        created_by_user_id=current_user.id,
+    )
+    db.add(record)
+    log_audit(
+        db,
+        action='catalog.template.create',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={'template_id': record.id, 'name': record.name},
+    )
+    db.commit()
+    db.refresh(record)
+    return _to_catalog_template_response(record)
+
+
+@router.patch('/templates/{template_id}', response_model=CatalogTemplateResponse)
+def update_catalog_template(
+    template_id: str,
+    payload: CatalogTemplateUpdateRequest,
+    db: DbSession,
+    current_user: WriteUser,
+) -> CatalogTemplateResponse:
+    record = _get_company_template_or_404(db, current_user.company_id, template_id)
+    updates = payload.model_dump(exclude_unset=True)
+    current_defaults = _json_loads(record.defaults_json)
+    current_allowed = _template_allowed_from_defaults(current_defaults)
+
+    if 'name' in updates and updates['name'] is not None:
+        normalized_name = updates['name'].strip()
+        existing = (
+            db.query(CatalogTemplate)
+            .filter(
+                CatalogTemplate.company_id == current_user.company_id,
+                func.lower(CatalogTemplate.name) == normalized_name.lower(),
+                CatalogTemplate.id != template_id,
+            )
+            .first()
+        )
+        if existing is not None:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Template name already exists.')
+        record.name = normalized_name
+
+    if 'description' in updates:
+        description_value = updates['description']
+        record.description = description_value.strip() if isinstance(description_value, str) and description_value.strip() else None
+    if (
+        'defaults' in updates
+        or 'allowed_categories' in updates
+        or 'allowed_style_names' in updates
+        or 'allowed_compositions' in updates
+        or 'allowed_woven_knits' in updates
+    ):
+        defaults_payload = updates['defaults'] if 'defaults' in updates else _template_defaults_without_meta(current_defaults)
+        record.defaults_json = _json_dumps(
+            _merge_template_defaults_with_allowed(
+                defaults_payload,
+                allowed_categories=updates['allowed_categories'] if 'allowed_categories' in updates else current_allowed['categories'],
+                allowed_style_names=updates['allowed_style_names'] if 'allowed_style_names' in updates else current_allowed['style_names'],
+                allowed_compositions=updates['allowed_compositions'] if 'allowed_compositions' in updates else current_allowed['compositions'],
+                allowed_woven_knits=updates['allowed_woven_knits'] if 'allowed_woven_knits' in updates else current_allowed['woven_knits'],
+            )
+        )
+    if 'allowed_colors' in updates:
+        record.allowed_colors_json = json.dumps(_normalize_template_tokens(updates['allowed_colors']))
+    if 'allowed_fabrics' in updates:
+        record.allowed_fabrics_json = json.dumps(_normalize_template_tokens(updates['allowed_fabrics']))
+    if 'style_code_pattern' in updates:
+        style_pattern = updates['style_code_pattern']
+        record.style_code_pattern = style_pattern.strip() if isinstance(style_pattern, str) and style_pattern.strip() else None
+    if 'is_active' in updates and updates['is_active'] is not None:
+        record.is_active = bool(updates['is_active'])
+
+    log_audit(
+        db,
+        action='catalog.template.update',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={'template_id': record.id, 'name': record.name},
+    )
+    db.commit()
+    db.refresh(record)
+    return _to_catalog_template_response(record)
+
+
+@router.delete('/templates/{template_id}', status_code=status.HTTP_204_NO_CONTENT)
+def delete_catalog_template(
+    template_id: str,
+    db: DbSession,
+    current_user: WriteUser,
+) -> None:
+    record = _get_company_template_or_404(db, current_user.company_id, template_id)
+    log_audit(
+        db,
+        action='catalog.template.delete',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={'template_id': record.id, 'name': record.name},
+    )
+    db.delete(record)
+    db.commit()
 
 
 @router.get('/products', response_model=ProductListResponse)
@@ -1091,6 +1371,10 @@ def generate_style_code(
     db: DbSession,
     current_user: WriteUser,
 ) -> GenerateStyleCodeResponse:
+    if payload.pattern and payload.pattern.strip():
+        sku = _render_pattern_sku(db, current_user.company_id, payload.pattern.strip(), payload)
+        return GenerateStyleCodeResponse(style_code=sku)
+
     company_settings = (
         db.query(CompanySettings).filter(CompanySettings.company_id == current_user.company_id).first()
     )

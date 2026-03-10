@@ -1,11 +1,4 @@
-function normalizeBaseUrl(rawBase: string): string {
-  const trimmed = rawBase.replace(/\/+$/, "");
-  return trimmed.endsWith("/api/v1") ? trimmed : `${trimmed}/api/v1`;
-}
-
-const resolvedBase = normalizeBaseUrl(
-  process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000",
-);
+import { getResolvedApiBaseUrl } from '@/src/lib/api-url';
 
 function getAccessTokenFromCookie(): string | null {
   if (typeof document === "undefined") {
@@ -25,6 +18,7 @@ function getAccessTokenFromCookie(): string | null {
 }
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const resolvedBase = getResolvedApiBaseUrl();
   const headers = new Headers(init?.headers ?? {});
   const hasFormDataBody =
     typeof FormData !== "undefined" && typeof init?.body !== "undefined" && init.body instanceof FormData;
@@ -48,7 +42,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   } catch (err) {
     console.error("API Request Error:", err);
     throw new Error(
-      `Cannot reach API at ${resolvedBase}. Start the API server and verify NEXT_PUBLIC_API_URL.`,
+      `Cannot reach API at ${resolvedBase}. Verify NEXT_PUBLIC_API_URL and that the API server is running.`,
     );
   }
 

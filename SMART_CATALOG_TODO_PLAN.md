@@ -19,28 +19,28 @@ This plan **builds upon the existing catalog implementation**, which currently i
 
 ### 1.1: AI-Powered Image Analysis
 - [x] Add real-time AI processing indicator to image upload section.
-- [ ] Create `POST /api/catalog/analyze-image` backend endpoint integrating Claude Vision API.
+- [x] Create `POST /api/catalog/analyze-image` backend endpoint integrating AI vision analysis.
 - [x] Implement auto-fill trigger to populate form fields with AI suggestions upon image upload.
-- [ ] Build "AI Suggestions Panel" to show confidence scores and allow bulk acceptance.
+- [x] Build "AI Suggestions Panel" to show confidence scores and allow bulk acceptance.
 - [x] Store image hash for future ML learning loops.
 
 ### 1.2: Confidence Score Indicators
-- [ ] Add visual confidence badges (Green, Yellow, Red, Gray) to all form fields.
+- [x] Add visual confidence badges (Green, Yellow, Red, Gray) to AI-populated form fields.
 - [x] Build hover tooltip for confidence badges showing "Based on" and "Learned from" context.
 - [x] Add `confidence` and `source` fields to the frontend state management.
 
 ### 1.3: Smart Style Code Generator
-- [ ] Add "Auto-Generate" button to Style No field.
-- [ ] Create `POST /api/catalog/generate-style-code` API endpoint.
-- [ ] Implement pattern detection and generation (e.g., Brand + Category + Year + Serial).
-- [ ] Add duplicate checking against existing codes.
-- [ ] Support bulk pattern application for multi-item uploads.
+- [x] Add "Auto-Generate" button to Style No field.
+- [x] Create `POST /api/catalog/generate-style-code` API endpoint.
+- [ ] Implement pattern detection and generation (e.g., Brand + Category + Year + Serial). *(basic template-based generation is implemented; advanced pattern logic pending)*
+- [x] Add duplicate checking against existing codes.
+- [x] Support bulk pattern application for multi-item uploads.
 
 ### 1.4: Smart Defaults & Memory
-- [ ] Add "Remember Last Values" toggle at the top of the form.
-- [ ] Implement LocalStorage session memory to auto-populate fields based on recent entries.
+- [x] Add "Remember Last Values" toggle at the top of the form.
+- [x] Implement LocalStorage session memory to auto-populate fields based on recent entries.
 - [ ] Add quick-fill buttons for common/average numeric values (e.g., PO Price, OSPS).
-- [ ] Build "Batch Apply" UI for common fields when processing bulk uploads.
+- [x] Build "Batch Apply" UI for common fields when processing bulk uploads.
 
 ---
 
@@ -71,21 +71,21 @@ This plan **builds upon the existing catalog implementation**, which currently i
 **Priority: HIGH | Impact: HIGH**
 
 ### 3.1: Enhanced Bulk Upload
-- [ ] Replace basic bulk upload button with multi-image Drag & Drop UI.
-- [ ] Build "Common Settings" configurator allowing batch application of Brand, Composition, etc.
-- [ ] Create processing queue view showing real-time progress for each upload (Analyzing, In queue, Done).
-- [ ] Build a "Batch Review Interface" to filter, verify, edit, and approve items en masse before final save.
+- [x] Replace basic bulk upload button with multi-image Drag & Drop UI.
+- [x] Build "Common Settings" configurator allowing batch application of Brand, Composition, etc.
+- [x] Create processing queue view showing real-time progress for each upload (Analyzing, In queue, Done).
+- [x] Build a "Batch Review Interface" to filter, verify, edit, and approve items en masse before final save.
 
 ### 3.2: Batch Edit Operations
-- [ ] Add multi-select checkboxes to the main catalog table view.
-- [ ] Build "Batch Actions Dropdown" (Update Fabric, Duplicate, Export, Delete, etc.).
-- [ ] Implement Batch Edit Modal (Find and replace, replace all).
-- [ ] Create Price Adjustment Tool (percentage up/down, set exact, add fixed amount).
+- [x] Add multi-select checkboxes to the main catalog table view.
+- [x] Build "Batch Actions Dropdown" (Update Fabric, Duplicate, Export, Delete, etc.).
+- [x] Implement Batch Edit Modal (Find and replace, replace all).
+- [x] Create Price Adjustment Tool (percentage up/down, set exact, add fixed amount).
 
 ### 3.3: Templates & Collections
-- [ ] Create "Catalog Templates" database schema.
-- [ ] Build UI to create, edit, duplicate, and select templates (e.g., "Spring Collection 2026").
-- [ ] Enable defining default fields, restricted fabric/color pools, and expected style code patterns per template.
+- [x] Create "Catalog Templates" database schema.
+- [x] Build UI to create, edit, duplicate, and select templates (e.g., "Spring Collection 2026").
+- [x] Enable defining default fields, restricted fabric/color pools, and expected style code patterns per template.
 
 ---
 
@@ -129,11 +129,11 @@ This plan **builds upon the existing catalog implementation**, which currently i
 
 ### 6.1: Tech Pack OCR Integration
 - [ ] Add "Upload Tech Pack" PDF parsing capability to the item entry form.
-- [ ] Integrate OCR service (Tesseract / Google Document AI) & extract structured measurement data.
+- [x] Integrate OCR/measurement extraction pipeline in background jobs for tech-pack content.
 - [ ] Create `POST /api/catalog/tech-pack-ocr` endpoint.
 
 ### 6.2: Marketplace-Specific Optimization
-- [ ] Enable specific export formats (Styli, Myntra, Amazon, Ajio).
+- [ ] Enable specific export formats (Styli, Myntra, Amazon, Ajio). *(Myntra/Amazon/Ajio plus additional marketplaces are implemented; Styli-specific format pending)*
 - [ ] Use AI keyword injection to auto-expand basic style names into SEO-optimized marketplace titles.
 
 ### 6.3: Collaborative Features
