@@ -3082,6 +3082,16 @@ export function CatalogView(): JSX.Element {
     setCorrectionValueError(null);
 
     setCurrentFieldValue(correctionFieldKey, nextValue);
+    setAiSuggestions((previous) => {
+      if (!previous) return previous;
+      return {
+        ...previous,
+        values: {
+          ...previous.values,
+          [correctionFieldKey]: nextValue,
+        },
+      };
+    });
     await appendAllowedTemplateValue(correctionFieldKey, nextValue);
     await submitFeedback(correctionFieldKey, 'reject', correctionReasonCode, correctionNotes, nextValue);
     setIsCorrectionModalOpen(false);
@@ -3286,18 +3296,15 @@ export function CatalogView(): JSX.Element {
   async function handleAcceptAllAI(): Promise<void> {
     if (!aiSuggestions) return;
 
-    const nextCategory = aiSuggestions.values.category;
-    if (nextCategory && await ensureTemplateValueAllowed('category', nextCategory)) setItemCategory(nextCategory);
-    const nextColor = aiSuggestions.values.color;
-    if (nextColor && await ensureTemplateValueAllowed('color', nextColor)) setItemColor(nextColor);
-    const nextStyleName = aiSuggestions.values.styleName;
-    if (nextStyleName && await ensureTemplateValueAllowed('styleName', nextStyleName)) setItemStyleName(nextStyleName);
-    const nextFabric = aiSuggestions.values.fabric;
-    if (nextFabric && await ensureTemplateValueAllowed('fabric', nextFabric)) setItemFabric(nextFabric);
-    const nextComposition = aiSuggestions.values.composition;
-    if (nextComposition && await ensureTemplateValueAllowed('composition', nextComposition)) setItemComposition(nextComposition);
-    const nextWovenKnits = aiSuggestions.values.wovenKnits;
-    if (nextWovenKnits && await ensureTemplateValueAllowed('wovenKnits', nextWovenKnits)) setItemWovenKnits(nextWovenKnits);
+    const orderedFields: AiFieldKey[] = ['category', 'color', 'styleName', 'fabric', 'composition', 'wovenKnits'];
+    for (const fieldKey of orderedFields) {
+      if (feedbackCompletedFields[fieldKey]) continue;
+      const nextValue = aiSuggestions.values[fieldKey];
+      if (!nextValue) continue;
+      const isAllowed = await ensureTemplateValueAllowed(fieldKey, nextValue);
+      if (!isAllowed) continue;
+      setCurrentFieldValue(fieldKey, nextValue);
+    }
 
     // Set field confidence so the badges appear on the inputs
     setFieldConfidence(aiSuggestions.confidence);
