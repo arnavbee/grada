@@ -1469,6 +1469,28 @@ export function CatalogView(): JSX.Element {
     return true;
   }
 
+  async function promptAddOutOfBoundsSuggestedValues(
+    values: Partial<Record<TemplateConstrainedField, string>>,
+  ): Promise<void> {
+    if (!activeTemplate) return;
+
+    const entries = Object.entries(values) as Array<[TemplateConstrainedField, string | undefined]>;
+    for (const [field, rawValue] of entries) {
+      const candidate = rawValue?.trim();
+      if (!candidate) continue;
+      const allowedList = getAllowedTemplateValues(field);
+      if (allowedList.length === 0 || includesToken(allowedList, candidate)) continue;
+      if (typeof window === 'undefined') continue;
+
+      const includeValue = window.confirm(
+        `AI suggested "${candidate}" for ${TEMPLATE_FIELD_LABELS[field]}, which is outside allowed list. Add it to this template?`,
+      );
+      if (includeValue) {
+        await appendAllowedTemplateValue(field, candidate);
+      }
+    }
+  }
+
   const templateFabricOptions = useMemo(() => {
     const draftValues = parseCommaSeparatedTokens(templateAllowedFabrics);
     if (draftValues.length > 0) return draftValues;
@@ -3029,17 +3051,7 @@ export function CatalogView(): JSX.Element {
           throw new Error('Failed to upload image before analysis.');
         }
 
-        const uploadData = await uploadRes.json() as { url: string; filename: string };
-        const baseUrl = getResolvedApiOriginUrl();
-        const fullImageUrl = uploadData.url.startsWith('/static')
-          ? `${baseUrl}${uploadData.url}`
-          : uploadData.url;
-
-        // Keep local preview while AI runs; backend /static URLs can be inaccessible on web host.
-        // This prevents the image from disappearing to a broken "Preview" placeholder during analysis.
-        if (!imagePreviewUrl) {
-          setImagePreviewUrl(getImageUrl(fullImageUrl));
-        }
+        await uploadRes.json() as { url: string; filename: string };
         setAnalysisStage('Running AI vision analysis...');
         base64DataUrl = await fileToDataUrl(selectedFile);
       } else {
@@ -3081,11 +3093,13 @@ export function CatalogView(): JSX.Element {
       }
       const colorContext = parseAiContext(result.color);
       if (colorContext) newContext.color = colorContext;
-      if (result.color?.value) {
-        suggestions.color = result.color.value;
-        if (typeof result.color.confidence === 'number') {
-          newConfidence.color = result.color.confidence;
-          totalConf += result.color.confidence;
+      const colorField = result.color;
+      const colorValue = normalizeAiValue(colorField?.value);
+      if (colorValue) {
+        suggestions.color = colorValue;
+        if (typeof colorField?.confidence === 'number') {
+          newConfidence.color = colorField.confidence;
+          totalConf += colorField.confidence;
           confCount++;
         }
       }
@@ -3107,9 +3121,9 @@ export function CatalogView(): JSX.Element {
       if (fabricContext) newContext.fabric = fabricContext;
       const fabricField = result.fabric;
       if (fabricField?.value) {
-        const matchingFabric = FABRIC_OPTIONS.find(o => o.toLowerCase() === String(fabricField.value).toLowerCase());
-        if (matchingFabric) {
-          suggestions.fabric = matchingFabric;
+        const normalizedFabric = normalizeAiValue(String(fabricField.value));
+        if (normalizedFabric) {
+          suggestions.fabric = normalizedFabric;
           if (typeof fabricField.confidence === 'number') {
             newConfidence.fabric = fabricField.confidence;
             totalConf += fabricField.confidence;
@@ -3121,9 +3135,9 @@ export function CatalogView(): JSX.Element {
       if (compositionContext) newContext.composition = compositionContext;
       const compositionField = result.composition;
       if (compositionField?.value) {
-        const matchingComp = COMPOSITION_OPTIONS.find(o => o.toLowerCase() === String(compositionField.value).toLowerCase());
-        if (matchingComp) {
-          suggestions.composition = matchingComp;
+        const normalizedComposition = normalizeAiValue(String(compositionField.value));
+        if (normalizedComposition) {
+          suggestions.composition = normalizedComposition;
           if (typeof compositionField.confidence === 'number') {
             newConfidence.composition = compositionField.confidence;
             totalConf += compositionField.confidence;
@@ -3135,9 +3149,9 @@ export function CatalogView(): JSX.Element {
       if (wovenKnitsContext) newContext.wovenKnits = wovenKnitsContext;
       const wovenKnitsField = result.woven_knits;
       if (wovenKnitsField?.value) {
-        const matchingKnits = WOVEN_KNITS_OPTIONS.find(o => o.toLowerCase() === String(wovenKnitsField.value).toLowerCase());
-        if (matchingKnits) {
-          suggestions.wovenKnits = matchingKnits;
+        const normalizedWovenKnits = normalizeAiValue(String(wovenKnitsField.value));
+        if (normalizedWovenKnits) {
+          suggestions.wovenKnits = normalizedWovenKnits;
           if (typeof wovenKnitsField.confidence === 'number') {
             newConfidence.wovenKnits = wovenKnitsField.confidence;
             totalConf += wovenKnitsField.confidence;
@@ -3157,6 +3171,14 @@ export function CatalogView(): JSX.Element {
       setIsAiSuggestionsVisible(true);
       setFeedbackCompletedFields({});
       setLastAnalyzedImageHash(analyzedImageHash ?? null);
+      await promptAddOutOfBoundsSuggestedValues({
+        category: suggestions.category,
+        styleName: suggestions.styleName,
+        color: suggestions.color,
+        fabric: suggestions.fabric,
+        composition: suggestions.composition,
+        wovenKnits: suggestions.wovenKnits,
+      });
       if (confCount > 0) {
         setOverallConfidence(Math.round(totalConf / confCount));
       }
