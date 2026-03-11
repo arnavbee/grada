@@ -2922,11 +2922,7 @@ export function CatalogView(): JSX.Element {
     // Create preview URL
     const objectUrl = URL.createObjectURL(file);
     setImagePreviewUrl(objectUrl);
-
-    if (hasAccessToken()) {
-      setAnalysisStage('Queued for AI analysis...');
-      void handleAnalyzeImage('auto');
-    }
+    setAnalysisStage(null);
   }
 
   function currentFieldValue(fieldKey: AiFieldKey): string {
@@ -2999,7 +2995,7 @@ export function CatalogView(): JSX.Element {
     setCorrectionNotes('');
   }
 
-  async function handleAnalyzeImage(mode: 'manual' | 'auto' = 'manual'): Promise<void> {
+  async function handleAnalyzeImage(): Promise<void> {
     if (isAnalyzing) {
       return;
     }
@@ -3016,10 +3012,6 @@ export function CatalogView(): JSX.Element {
 
     try {
       if (!hasAccessToken()) {
-        if (mode === 'auto') {
-          setAnalysisStage(null);
-          return;
-        }
         throw new Error('You must be signed in to use AI analysis.');
       }
 
@@ -5019,6 +5011,12 @@ export function CatalogView(): JSX.Element {
                             </svg>
                           </button>
                         </div>
+
+                        {!isAnalyzing ? (
+                          <p className='text-xs text-kira-midgray'>
+                            AI analysis is manual. Click <span className='font-semibold text-kira-black'>ANALYZE WITH AI</span> after uploading.
+                          </p>
+                        ) : null}
 
                         {isAnalyzing ? (
                           <div className="mt-4 border border-[#A7D2F5] bg-[#E8F3FC] px-4 py-4">
