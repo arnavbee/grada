@@ -3,6 +3,7 @@ from app.models.audit_log import AuditLog
 from app.models.catalog_template import CatalogTemplate
 from app.models.company import Company
 from app.models.company_settings import CompanySettings
+from app.models.image_label import ImageLabel
 from app.models.marketplace_export import MarketplaceExport
 from app.models.processing_job import ProcessingJob
 from app.models.product import Product
@@ -16,6 +17,7 @@ __all__ = [
     'CatalogTemplate',
     'Company',
     'CompanySettings',
+    'ImageLabel',
     'MarketplaceExport',
     'ProcessingJob',
     'Product',

@@ -258,6 +258,18 @@ interface AnalyzeImageRequestPayload {
   };
 }
 
+interface ImageLabelRecord {
+  id: string;
+  company_id: string;
+  image_url: string;
+  ai_category?: string | null;
+  ai_style?: string | null;
+  human_category?: string | null;
+  human_style?: string | null;
+  corrected: boolean;
+  created_at: string;
+}
+
 interface LogCorrectionRequest {
   product_id?: string;
   image_hash?: string;
@@ -973,6 +985,10 @@ export function CatalogView(): JSX.Element {
   const [lastAnalyzedImageHash, setLastAnalyzedImageHash] = useState<string | null>(null);
   const [isFeedbackSubmitting, setIsFeedbackSubmitting] = useState(false);
   const [feedbackCompletedFields, setFeedbackCompletedFields] = useState<Partial<Record<AiFieldKey, true>>>({});
+  const [activeImageLabelId, setActiveImageLabelId] = useState<string | null>(null);
+  const [aiLabelCategory, setAiLabelCategory] = useState('');
+  const [aiLabelStyle, setAiLabelStyle] = useState('');
+  const [imageLabelCorrected, setImageLabelCorrected] = useState(false);
   const [learningStats, setLearningStats] = useState<LearningStatsResponse | null>(null);
   const [isLearningStatsLoading, setIsLearningStatsLoading] = useState(false);
   const [learningStatsError, setLearningStatsError] = useState<string | null>(null);
@@ -2910,6 +2926,7 @@ export function CatalogView(): JSX.Element {
 
   function openAddModal(): void {
     setEditingRowId(null);
+    resetImageLabelTracking();
     setItemStyleNo('');
     setItemImageName('');
     setAddItemError(null);
@@ -2996,6 +3013,7 @@ export function CatalogView(): JSX.Element {
   function closeAddModal(): void {
     setIsAddModalOpen(false);
     setEditingRowId(null);
+    resetImageLabelTracking();
     setPendingAnalyzeProductId(null);
     setAddItemError(null);
     setItemImageError(null);
@@ -3010,6 +3028,7 @@ export function CatalogView(): JSX.Element {
 
   function handleAddItemImage(file: File | null): void {
     setItemImageError(null);
+    resetImageLabelTracking();
     if (!file) return;
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       setItemImageError('Only PNG, JPG, and WEBP files are allowed.');
@@ -3066,6 +3085,79 @@ export function CatalogView(): JSX.Element {
       return;
     }
     setItemWovenKnits(value);
+  }
+
+  function resetImageLabelTracking(): void {
+    setActiveImageLabelId(null);
+    setAiLabelCategory('');
+    setAiLabelStyle('');
+    setImageLabelCorrected(false);
+  }
+
+  function valuesDiffer(left: string, right: string): boolean {
+    return left.trim().toLowerCase() !== right.trim().toLowerCase();
+  }
+
+  async function createImageLabelRecord(
+    imageUrl: string,
+    aiCategoryRaw: string | undefined,
+    aiStyleRaw: string | undefined,
+  ): Promise<void> {
+    if (!hasAccessToken()) return;
+    const aiCategory = aiCategoryRaw?.trim() ?? '';
+    const aiStyle = aiStyleRaw?.trim() ?? '';
+    if (!aiCategory && !aiStyle) return;
+
+    try {
+      const sourceUrl = imageUrl.trim();
+      const created = await apiRequest<ImageLabelRecord>('/catalog/image-labels', {
+        method: 'POST',
+        body: JSON.stringify({
+          image_url: sourceUrl || `image-hash:${lastAnalyzedImageHash ?? Date.now()}`,
+          ai_category: aiCategory || undefined,
+          ai_style: aiStyle || undefined,
+          human_category: aiCategory || undefined,
+          human_style: aiStyle || undefined,
+          corrected: false,
+        }),
+      });
+      setActiveImageLabelId(created.id);
+      setAiLabelCategory(created.ai_category?.trim() || aiCategory);
+      setAiLabelStyle(created.ai_style?.trim() || aiStyle);
+      setImageLabelCorrected(Boolean(created.corrected));
+    } catch (error) {
+      console.warn('Unable to create image label record:', error);
+    }
+  }
+
+  async function syncImageLabelRecord(overrides?: { humanCategory?: string; humanStyle?: string; forceCorrected?: boolean }): Promise<void> {
+    if (!activeImageLabelId || !hasAccessToken()) return;
+    const nextHumanCategory = (overrides?.humanCategory ?? itemCategory).trim();
+    const nextHumanStyle = (overrides?.humanStyle ?? itemStyleName).trim();
+    const baselineCategory = aiLabelCategory.trim();
+    const baselineStyle = aiLabelStyle.trim();
+    const corrected =
+      Boolean(overrides?.forceCorrected)
+      || imageLabelCorrected
+      ||
+      (baselineCategory.length > 0 && nextHumanCategory.length > 0 && valuesDiffer(baselineCategory, nextHumanCategory))
+      || (baselineStyle.length > 0 && nextHumanStyle.length > 0 && valuesDiffer(baselineStyle, nextHumanStyle));
+
+    try {
+      await apiRequest<ImageLabelRecord>(`/catalog/image-labels/${activeImageLabelId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          human_category: nextHumanCategory || baselineCategory || undefined,
+          human_style: nextHumanStyle || baselineStyle || undefined,
+          corrected,
+        }),
+      });
+      if (corrected) {
+        setImageLabelCorrected(true);
+      }
+    } catch (error) {
+      console.warn('Unable to sync image label record:', error);
+    }
   }
 
   async function submitFeedback(
@@ -3151,6 +3243,13 @@ export function CatalogView(): JSX.Element {
       };
     });
     await appendAllowedTemplateValue(correctionFieldKey, nextValue);
+    const nextHumanCategory = correctionFieldKey === 'category' ? nextValue : itemCategory;
+    const nextHumanStyle = correctionFieldKey === 'styleName' ? nextValue : itemStyleName;
+    await syncImageLabelRecord({
+      humanCategory: nextHumanCategory,
+      humanStyle: nextHumanStyle,
+      forceCorrected: true,
+    });
     await submitFeedback(correctionFieldKey, 'reject', correctionReasonCode, correctionNotes, nextValue);
     setIsCorrectionModalOpen(false);
     setCorrectionFieldKey(null);
@@ -3173,6 +3272,7 @@ export function CatalogView(): JSX.Element {
     setIsAnalyzing(true);
     setAddItemError(null);
     setItemImageError(null);
+    resetImageLabelTracking();
 
     try {
       if (!hasAccessToken()) {
@@ -3180,6 +3280,7 @@ export function CatalogView(): JSX.Element {
       }
 
       let base64DataUrl: string;
+      let imageSourceForLabel = existingImageSource ?? '';
       if (selectedFile) {
         // 1a. New file selected: upload and analyze that file.
         setAnalysisStage('Uploading image...');
@@ -3209,7 +3310,11 @@ export function CatalogView(): JSX.Element {
           throw new Error('Failed to upload image before analysis.');
         }
 
-        await uploadRes.json() as { url: string; filename: string };
+        const uploadData = await uploadRes.json() as { url: string; filename: string };
+        const baseUrl = getResolvedApiOriginUrl();
+        imageSourceForLabel = uploadData.url.startsWith('/static')
+          ? `${baseUrl}${uploadData.url}`
+          : uploadData.url;
         setAnalysisStage('Running AI vision analysis...');
         base64DataUrl = await fileToDataUrl(selectedFile);
       } else {
@@ -3337,6 +3442,7 @@ export function CatalogView(): JSX.Element {
         composition: suggestions.composition,
         wovenKnits: suggestions.wovenKnits,
       });
+      await createImageLabelRecord(imageSourceForLabel, suggestions.category, suggestions.styleName);
       if (confCount > 0) {
         setOverallConfidence(Math.round(totalConf / confCount));
       }
@@ -3354,6 +3460,8 @@ export function CatalogView(): JSX.Element {
   async function handleAcceptAllAI(): Promise<void> {
     if (!aiSuggestions) return;
 
+    let nextCategoryForLabel = itemCategory;
+    let nextStyleForLabel = itemStyleName;
     const orderedFields: AiFieldKey[] = ['category', 'color', 'styleName', 'fabric', 'composition', 'wovenKnits'];
     for (const fieldKey of orderedFields) {
       const nextValue = aiSuggestions.values[fieldKey];
@@ -3361,7 +3469,13 @@ export function CatalogView(): JSX.Element {
       const isAllowed = await ensureTemplateValueAllowed(fieldKey, nextValue);
       if (!isAllowed) continue;
       setCurrentFieldValue(fieldKey, nextValue);
+      if (fieldKey === 'category') {
+        nextCategoryForLabel = nextValue;
+      } else if (fieldKey === 'styleName') {
+        nextStyleForLabel = nextValue;
+      }
     }
+    await syncImageLabelRecord({ humanCategory: nextCategoryForLabel, humanStyle: nextStyleForLabel });
 
     // Set field confidence so the badges appear on the inputs
     setFieldConfidence(aiSuggestions.confidence);
@@ -3432,6 +3546,7 @@ export function CatalogView(): JSX.Element {
         return;
       }
     }
+    await syncImageLabelRecord({ humanCategory: itemCategory, humanStyle: itemStyleName });
 
     if (rememberLastValues) {
       localStorage.setItem('kira_last_item_values', JSON.stringify({
@@ -5096,6 +5211,7 @@ export function CatalogView(): JSX.Element {
                           <button
                             type="button"
                             onClick={() => {
+                              resetImageLabelTracking();
                               setImagePreviewUrl(null);
                               selectedImageFileRef.current = null;
                               setItemImageName('');
@@ -5148,6 +5264,7 @@ export function CatalogView(): JSX.Element {
                           <button
                             type="button"
                             onClick={() => {
+                              resetImageLabelTracking();
                               setImagePreviewUrl(null);
                               selectedImageFileRef.current = null;
                               setItemImageName('');

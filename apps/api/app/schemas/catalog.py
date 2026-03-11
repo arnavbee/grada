@@ -248,6 +248,40 @@ class AICorrectionResponse(BaseModel):
     processed_at: datetime | None
 
 
+class ImageLabelCreateRequest(BaseModel):
+    image_url: str = Field(min_length=1, max_length=4096)
+    ai_category: str | None = Field(default=None, max_length=128)
+    ai_style: str | None = Field(default=None, max_length=255)
+    human_category: str | None = Field(default=None, max_length=128)
+    human_style: str | None = Field(default=None, max_length=255)
+    corrected: bool = False
+
+
+class ImageLabelUpdateRequest(BaseModel):
+    human_category: str | None = Field(default=None, max_length=128)
+    human_style: str | None = Field(default=None, max_length=255)
+    corrected: bool | None = None
+
+
+class ImageLabelResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    company_id: str
+    image_url: str
+    ai_category: str | None
+    ai_style: str | None
+    human_category: str | None
+    human_style: str | None
+    corrected: bool
+    created_at: datetime
+
+
+class ImageLabelListResponse(BaseModel):
+    items: list[ImageLabelResponse]
+    total: int
+
+
 class LearningFieldAccuracy(BaseModel):
     field_name: str
     accepted_count: int

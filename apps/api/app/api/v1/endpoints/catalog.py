@@ -23,6 +23,7 @@ from app.db.session import get_db
 from app.models.ai_correction import AICorrection
 from app.models.catalog_template import CatalogTemplate
 from app.models.company_settings import CompanySettings
+from app.models.image_label import ImageLabel
 from app.models.marketplace_export import MarketplaceExport
 from app.models.processing_job import ProcessingJob
 from app.models.product import Product
@@ -31,12 +32,23 @@ from app.models.product_measurement import ProductMeasurement
 from app.models.user import User
 from app.schemas.catalog import (
     AICorrectionResponse,
+    AnalyzeImageRequest,
+    AnalyzeImageResponse,
     CatalogTemplateCreateRequest,
     CatalogTemplateListResponse,
     CatalogTemplateResponse,
     CatalogTemplateUpdateRequest,
+    GenerateStyleCodeRequest,
+    GenerateStyleCodeResponse,
+    ImageLabelCreateRequest,
+    ImageLabelListResponse,
+    ImageLabelResponse,
+    ImageLabelUpdateRequest,
     JobStatus,
     JobType,
+    LearningFieldAccuracy,
+    LearningStatsResponse,
+    LogCorrectionRequest,
     MarketplaceExportCreateRequest,
     MarketplaceExportListResponse,
     MarketplaceExportResponse,
@@ -44,9 +56,6 @@ from app.schemas.catalog import (
     ProcessingJobListResponse,
     ProcessingJobResponse,
     ProductCreateRequest,
-    LearningFieldAccuracy,
-    LearningStatsResponse,
-    LogCorrectionRequest,
     ProductImageCreateRequest,
     ProductImageResponse,
     ProductListResponse,
@@ -55,10 +64,6 @@ from app.schemas.catalog import (
     ProductResponse,
     ProductStatus,
     ProductUpdateRequest,
-    AnalyzeImageRequest,
-    AnalyzeImageResponse,
-    GenerateStyleCodeRequest,
-    GenerateStyleCodeResponse,
 )
 from app.services.ai import process_ai_correction_retraining, process_image_analysis_job, process_techpack_ocr_job
 
@@ -974,6 +979,42 @@ def _to_ai_correction_response(record: AICorrection) -> AICorrectionResponse:
     )
 
 
+def _normalize_optional_label_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _label_value_changed(ai_value: str | None, human_value: str | None) -> bool:
+    if not ai_value or not human_value:
+        return False
+    return ai_value.strip().lower() != human_value.strip().lower()
+
+
+def _compute_label_corrected(
+    ai_category: str | None,
+    ai_style: str | None,
+    human_category: str | None,
+    human_style: str | None,
+) -> bool:
+    return _label_value_changed(ai_category, human_category) or _label_value_changed(ai_style, human_style)
+
+
+def _to_image_label_response(record: ImageLabel) -> ImageLabelResponse:
+    return ImageLabelResponse(
+        id=record.id,
+        company_id=record.company_id,
+        image_url=record.image_url,
+        ai_category=record.ai_category,
+        ai_style=record.ai_style,
+        human_category=record.human_category,
+        human_style=record.human_style,
+        corrected=record.corrected,
+        created_at=record.created_at,
+    )
+
+
 def _build_learning_insights(items_processed: int, field_accuracy: list[LearningFieldAccuracy]) -> list[str]:
     insights: list[str] = []
     if items_processed > 0:
@@ -1504,6 +1545,100 @@ def log_correction(
     # Queue lightweight retraining preparation in the background.
     background_tasks.add_task(process_ai_correction_retraining, correction.id)
     return _to_ai_correction_response(correction)
+
+
+@router.post('/image-labels', response_model=ImageLabelResponse, status_code=status.HTTP_201_CREATED)
+def create_image_label(
+    payload: ImageLabelCreateRequest,
+    db: DbSession,
+    current_user: WriteUser,
+) -> ImageLabelResponse:
+    ai_category = _normalize_optional_label_text(payload.ai_category)
+    ai_style = _normalize_optional_label_text(payload.ai_style)
+    human_category = _normalize_optional_label_text(payload.human_category) or ai_category
+    human_style = _normalize_optional_label_text(payload.human_style) or ai_style
+    corrected = bool(payload.corrected or _compute_label_corrected(ai_category, ai_style, human_category, human_style))
+
+    record = ImageLabel(
+        id=str(uuid4()),
+        company_id=current_user.company_id,
+        image_url=payload.image_url.strip(),
+        ai_category=ai_category,
+        ai_style=ai_style,
+        human_category=human_category,
+        human_style=human_style,
+        corrected=corrected,
+    )
+    db.add(record)
+    log_audit(
+        db,
+        action='catalog.image_label.create',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={'image_label_id': record.id, 'corrected': corrected},
+    )
+    db.commit()
+    db.refresh(record)
+    return _to_image_label_response(record)
+
+
+@router.patch('/image-labels/{label_id}', response_model=ImageLabelResponse)
+def update_image_label(
+    label_id: str,
+    payload: ImageLabelUpdateRequest,
+    db: DbSession,
+    current_user: WriteUser,
+) -> ImageLabelResponse:
+    record = (
+        db.query(ImageLabel)
+        .filter(ImageLabel.id == label_id, ImageLabel.company_id == current_user.company_id)
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Image label not found.')
+
+    updates = payload.model_dump(exclude_unset=True)
+    if 'human_category' in updates:
+        record.human_category = _normalize_optional_label_text(updates['human_category'])
+    if 'human_style' in updates:
+        record.human_style = _normalize_optional_label_text(updates['human_style'])
+
+    if 'corrected' in updates and updates['corrected'] is not None:
+        record.corrected = bool(updates['corrected'])
+    else:
+        record.corrected = _compute_label_corrected(
+            record.ai_category,
+            record.ai_style,
+            record.human_category,
+            record.human_style,
+        )
+
+    log_audit(
+        db,
+        action='catalog.image_label.update',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={'image_label_id': record.id, 'corrected': record.corrected},
+    )
+    db.commit()
+    db.refresh(record)
+    return _to_image_label_response(record)
+
+
+@router.get('/image-labels', response_model=ImageLabelListResponse)
+def list_image_labels(
+    db: DbSession,
+    current_user: ReadUser,
+    corrected: bool | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=1000),
+) -> ImageLabelListResponse:
+    query = db.query(ImageLabel).filter(ImageLabel.company_id == current_user.company_id)
+    if corrected is not None:
+        query = query.filter(ImageLabel.corrected == corrected)
+
+    total = query.count()
+    records = query.order_by(ImageLabel.created_at.desc()).limit(limit).all()
+    return ImageLabelListResponse(items=[_to_image_label_response(record) for record in records], total=total)
 
 
 @router.get('/learning-stats', response_model=LearningStatsResponse)

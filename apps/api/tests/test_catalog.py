@@ -321,6 +321,49 @@ def test_ai_correction_logging_and_learning_stats() -> None:
     assert any(item['field_name'] == 'color' for item in stats_body['field_accuracy'])
 
 
+def test_image_label_create_update_and_list() -> None:
+    headers = _auth_headers()
+
+    created = client.post(
+        '/api/v1/catalog/image-labels',
+        headers=headers,
+        json={
+            'image_url': 'https://cdn.example.com/image-1.jpg',
+            'ai_category': 'DRESSES',
+            'ai_style': 'Maxi Dress',
+        },
+    )
+    assert created.status_code == 201
+    created_body = created.json()
+    assert created_body['image_url'] == 'https://cdn.example.com/image-1.jpg'
+    assert created_body['ai_category'] == 'DRESSES'
+    assert created_body['ai_style'] == 'Maxi Dress'
+    assert created_body['human_category'] == 'DRESSES'
+    assert created_body['human_style'] == 'Maxi Dress'
+    assert created_body['corrected'] is False
+    label_id = created_body['id']
+
+    updated = client.patch(
+        f'/api/v1/catalog/image-labels/{label_id}',
+        headers=headers,
+        json={
+            'human_category': 'CORD SETS',
+            'human_style': 'Knot Cord Set',
+        },
+    )
+    assert updated.status_code == 200
+    updated_body = updated.json()
+    assert updated_body['human_category'] == 'CORD SETS'
+    assert updated_body['human_style'] == 'Knot Cord Set'
+    assert updated_body['corrected'] is True
+
+    listed = client.get('/api/v1/catalog/image-labels?corrected=true', headers=headers)
+    assert listed.status_code == 200
+    list_body = listed.json()
+    assert list_body['total'] >= 1
+    assert any(item['id'] == label_id for item in list_body['items'])
+
+
 def test_catalog_template_crud_and_style_pattern() -> None:
     headers = _auth_headers()
 
