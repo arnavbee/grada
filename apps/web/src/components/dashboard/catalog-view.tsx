@@ -524,14 +524,10 @@ function includesToken(list: string[], value: string): boolean {
   return list.some((item) => item.toLowerCase() === value.toLowerCase());
 }
 
-function openDatalistPicker(input: HTMLInputElement): void {
-  const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
-  if (typeof pickerInput.showPicker !== 'function') return;
-  try {
-    pickerInput.showPicker();
-  } catch {
-    // Ignore browsers that block programmatic picker opening.
-  }
+function withCurrentOption(options: string[], currentValue: string): string[] {
+  const normalized = currentValue.trim();
+  if (!normalized || includesToken(options, normalized)) return options;
+  return [normalized, ...options];
 }
 
 function buildAiAttributesFromRow(
@@ -1479,6 +1475,31 @@ export function CatalogView(): JSX.Element {
     if (!activeTemplate || activeTemplate.allowed_fabrics.length === 0) return [...FABRIC_OPTIONS];
     return activeTemplate.allowed_fabrics;
   }, [activeTemplate, templateAllowedFabrics]);
+
+  const addItemCategoryOptions = useMemo(
+    () => withCurrentOption(templateCategoryOptions, itemCategory),
+    [templateCategoryOptions, itemCategory],
+  );
+  const addItemStyleNameOptions = useMemo(
+    () => withCurrentOption(templateStyleNameOptions, itemStyleName),
+    [templateStyleNameOptions, itemStyleName],
+  );
+  const addItemColorOptions = useMemo(
+    () => withCurrentOption(templateColorOptions, itemColor),
+    [templateColorOptions, itemColor],
+  );
+  const addItemFabricOptions = useMemo(
+    () => withCurrentOption(templateFabricOptions, itemFabric),
+    [templateFabricOptions, itemFabric],
+  );
+  const addItemCompositionOptions = useMemo(
+    () => withCurrentOption(templateCompositionOptions, itemComposition),
+    [templateCompositionOptions, itemComposition],
+  );
+  const addItemWovenKnitsOptions = useMemo(
+    () => withCurrentOption(templateWovenKnitsOptions, itemWovenKnits),
+    [templateWovenKnitsOptions, itemWovenKnits],
+  );
 
   const colorOptions = useMemo(() => {
     const colors = Array.from(new Set(catalogRows.map((row) => row.color))).sort();
@@ -5178,78 +5199,90 @@ export function CatalogView(): JSX.Element {
                     </div>
                     <div className='space-y-2'>
                       <FieldLabel confidence={fieldConfidence.category} context={fieldContext.category}>Category</FieldLabel>
-                      <input
+                      <select
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemCategory(event.target.value)}
-                        onClick={(event) => openDatalistPicker(event.currentTarget)}
-                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
-                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'category', event.target.value, 'user_input', () => { })}
                         value={itemCategory}
-                        list="list-category"
-                      />
+                      >
+                        {addItemCategoryOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className='space-y-2'>
                       <FieldLabel confidence={fieldConfidence.styleName} context={fieldContext.styleName}>Style Name</FieldLabel>
-                      <input
+                      <select
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemStyleName(event.target.value)}
-                        onClick={(event) => openDatalistPicker(event.currentTarget)}
-                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
-                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'styleName', event.target.value, 'user_input', () => { })}
                         value={itemStyleName}
-                        list="list-styleName"
-                      />
+                      >
+                        {addItemStyleNameOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className='space-y-2'>
                       <FieldLabel confidence={fieldConfidence.color} context={fieldContext.color}>Color</FieldLabel>
-                      <input
+                      <select
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemColor(event.target.value)}
-                        onClick={(event) => openDatalistPicker(event.currentTarget)}
-                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
-                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'color', event.target.value, 'user_input', () => { })}
                         value={itemColor}
-                        list="list-color"
-                      />
+                      >
+                        {addItemColorOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className='space-y-2'>
                       <FieldLabel confidence={fieldConfidence.fabric} context={fieldContext.fabric}>Fabric</FieldLabel>
-                      <input
+                      <select
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemFabric(event.target.value)}
-                        onClick={(event) => openDatalistPicker(event.currentTarget)}
-                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
-                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'fabric', event.target.value, 'user_input', () => { })}
                         value={itemFabric}
-                        list="list-fabric"
-                      />
+                      >
+                        {addItemFabricOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className='space-y-2'>
                       <FieldLabel confidence={fieldConfidence.composition} context={fieldContext.composition}>Composition</FieldLabel>
-                      <input
+                      <select
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemComposition(event.target.value)}
-                        onClick={(event) => openDatalistPicker(event.currentTarget)}
-                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
-                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'composition', event.target.value, 'user_input', () => { })}
                         value={itemComposition}
-                        list="list-composition"
-                      />
+                      >
+                        {addItemCompositionOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className='space-y-2'>
                       <FieldLabel confidence={fieldConfidence.wovenKnits} context={fieldContext.wovenKnits}>Woven / Knits</FieldLabel>
-                      <input
+                      <select
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemWovenKnits(event.target.value)}
-                        onClick={(event) => openDatalistPicker(event.currentTarget)}
-                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
-                        onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'wovenKnits', event.target.value, 'user_input', () => { })}
                         value={itemWovenKnits}
-                        list="list-wovenKnits"
-                      />
+                      >
+                        {addItemWovenKnitsOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className='space-y-2'>
                       <FieldLabel>Total Units</FieldLabel>
