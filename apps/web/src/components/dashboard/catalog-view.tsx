@@ -3035,8 +3035,11 @@ export function CatalogView(): JSX.Element {
           ? `${baseUrl}${uploadData.url}`
           : uploadData.url;
 
-        // Update the preview URL so the user sees the canonical uploaded image.
-        setImagePreviewUrl(getImageUrl(fullImageUrl));
+        // Keep local preview while AI runs; backend /static URLs can be inaccessible on web host.
+        // This prevents the image from disappearing to a broken "Preview" placeholder during analysis.
+        if (!imagePreviewUrl) {
+          setImagePreviewUrl(getImageUrl(fullImageUrl));
+        }
         setAnalysisStage('Running AI vision analysis...');
         base64DataUrl = await fileToDataUrl(selectedFile);
       } else {
