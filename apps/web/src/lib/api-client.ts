@@ -1,6 +1,9 @@
 import { getResolvedApiBaseUrl } from '@/src/lib/api-url';
+import { setAuthCookies, type AuthTokens } from '@/src/lib/auth-cookie';
 
-function getAccessTokenFromCookie(): string | null {
+let refreshTokenRequestInFlight: Promise<string | null> | null = null;
+
+function getCookieValue(name: string): string | null {
   if (typeof document === "undefined") {
     return null;
   }
@@ -8,7 +11,7 @@ function getAccessTokenFromCookie(): string | null {
   const cookie = document.cookie
     .split(";")
     .map((entry) => entry.trim())
-    .find((entry) => entry.startsWith("kira_access_token="));
+    .find((entry) => entry.startsWith(`${name}=`));
 
   if (!cookie) {
     return null;
@@ -17,23 +20,79 @@ function getAccessTokenFromCookie(): string | null {
   return decodeURIComponent(cookie.split("=")[1] ?? "");
 }
 
+function getAccessTokenFromCookie(): string | null {
+  return getCookieValue("kira_access_token");
+}
+
+function getRefreshTokenFromCookie(): string | null {
+  return getCookieValue("kira_refresh_token");
+}
+
+async function refreshAccessToken(baseUrl: string): Promise<string | null> {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const refreshToken = getRefreshTokenFromCookie();
+  if (!refreshToken) {
+    return null;
+  }
+
+  if (!refreshTokenRequestInFlight) {
+    refreshTokenRequestInFlight = (async () => {
+      try {
+        const response = await fetch(`${baseUrl}/auth/refresh-token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          return null;
+        }
+        const tokens = (await response.json()) as AuthTokens;
+        setAuthCookies(tokens, true);
+        return tokens.access_token;
+      } catch {
+        return null;
+      } finally {
+        refreshTokenRequestInFlight = null;
+      }
+    })();
+  }
+
+  return refreshTokenRequestInFlight;
+}
+
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const resolvedBase = getResolvedApiBaseUrl();
-  const headers = new Headers(init?.headers ?? {});
   const hasFormDataBody =
     typeof FormData !== "undefined" && typeof init?.body !== "undefined" && init.body instanceof FormData;
 
-  if (!headers.has("Content-Type") && !hasFormDataBody) {
-    headers.set("Content-Type", "application/json");
-  }
+  const applyHeaders = async (): Promise<Headers> => {
+    const headers = new Headers(init?.headers ?? {});
+    if (!headers.has("Content-Type") && !hasFormDataBody) {
+      headers.set("Content-Type", "application/json");
+    }
 
-  const accessToken = getAccessTokenFromCookie();
-  if (accessToken && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${accessToken}`);
-  }
+    if (!headers.has("Authorization")) {
+      let accessToken = getAccessTokenFromCookie();
+      if (!accessToken) {
+        accessToken = await refreshAccessToken(resolvedBase);
+      }
+      if (accessToken) {
+        headers.set("Authorization", `Bearer ${accessToken}`);
+      }
+    }
+
+    return headers;
+  };
 
   let response: Response;
   try {
+    const headers = await applyHeaders();
     response = await fetch(`${resolvedBase}${path}`, {
       ...init,
       headers,
@@ -44,6 +103,22 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
     throw new Error(
       `Cannot reach API at ${resolvedBase}. Verify NEXT_PUBLIC_API_URL and that the API server is running.`,
     );
+  }
+
+  if (response.status === 401) {
+    const refreshedAccessToken = await refreshAccessToken(resolvedBase);
+    if (refreshedAccessToken) {
+      const retryHeaders = new Headers(init?.headers ?? {});
+      if (!retryHeaders.has("Content-Type") && !hasFormDataBody) {
+        retryHeaders.set("Content-Type", "application/json");
+      }
+      retryHeaders.set("Authorization", `Bearer ${refreshedAccessToken}`);
+      response = await fetch(`${resolvedBase}${path}`, {
+        ...init,
+        headers: retryHeaders,
+        cache: "no-store",
+      });
+    }
   }
 
   if (!response.ok) {

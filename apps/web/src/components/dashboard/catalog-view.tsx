@@ -424,7 +424,15 @@ function hasAccessToken(): boolean {
   if (typeof document === 'undefined') {
     return false;
   }
-  return document.cookie.includes('kira_access_token=');
+
+  const cookieEntries = document.cookie
+    .split(';')
+    .map((entry) => entry.trim());
+
+  return (
+    cookieEntries.some((entry) => entry.startsWith('kira_access_token='))
+    || cookieEntries.some((entry) => entry.startsWith('kira_refresh_token='))
+  );
 }
 
 function getImageUrl(imageUrl: string | null | undefined): string | null {
