@@ -42,6 +42,7 @@ async function proxyRequest(
   const headers = new Headers(request.headers);
   headers.delete('host');
   headers.delete('connection');
+  headers.delete('accept-encoding');
 
   let body: ArrayBuffer | undefined;
   if (method !== 'GET' && method !== 'HEAD') {
@@ -57,9 +58,15 @@ async function proxyRequest(
       cache: 'no-store',
     });
 
+    const responseHeaders = new Headers(upstreamResponse.headers);
+    responseHeaders.delete('content-encoding');
+    responseHeaders.delete('content-length');
+    responseHeaders.delete('transfer-encoding');
+    responseHeaders.delete('connection');
+
     return new NextResponse(upstreamResponse.body, {
       status: upstreamResponse.status,
-      headers: upstreamResponse.headers,
+      headers: responseHeaders,
     });
   } catch {
     return NextResponse.json(
