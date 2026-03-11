@@ -1370,31 +1370,81 @@ export function CatalogView(): JSX.Element {
   }, [activeTemplate, templateAllowedWovenKnits]);
 
   const getAllowedTemplateValues = useCallback((field: TemplateConstrainedField): string[] => {
-    if (!activeTemplate) return [];
-    if (field === 'category') return activeTemplate.allowed_categories;
-    if (field === 'styleName') return activeTemplate.allowed_style_names;
-    if (field === 'color') return activeTemplate.allowed_colors;
-    if (field === 'fabric') return activeTemplate.allowed_fabrics;
-    if (field === 'composition') return activeTemplate.allowed_compositions;
-    return activeTemplate.allowed_woven_knits;
-  }, [activeTemplate]);
+    if (field === 'category') {
+      const draftValues = parseCommaSeparatedTokens(templateAllowedCategories);
+      if (draftValues.length > 0) return draftValues;
+      return activeTemplate?.allowed_categories ?? [];
+    }
+    if (field === 'styleName') {
+      const draftValues = parseCommaSeparatedTokens(templateAllowedStyleNames);
+      if (draftValues.length > 0) return draftValues;
+      return activeTemplate?.allowed_style_names ?? [];
+    }
+    if (field === 'color') {
+      const draftValues = parseCommaSeparatedTokens(templateAllowedColors);
+      if (draftValues.length > 0) return draftValues;
+      return activeTemplate?.allowed_colors ?? [];
+    }
+    if (field === 'fabric') {
+      const draftValues = parseCommaSeparatedTokens(templateAllowedFabrics);
+      if (draftValues.length > 0) return draftValues;
+      return activeTemplate?.allowed_fabrics ?? [];
+    }
+    if (field === 'composition') {
+      const draftValues = parseCommaSeparatedTokens(templateAllowedCompositions);
+      if (draftValues.length > 0) return draftValues;
+      return activeTemplate?.allowed_compositions ?? [];
+    }
+
+    const draftValues = parseCommaSeparatedTokens(templateAllowedWovenKnits);
+    if (draftValues.length > 0) return draftValues;
+    return activeTemplate?.allowed_woven_knits ?? [];
+  }, [
+    activeTemplate,
+    templateAllowedCategories,
+    templateAllowedStyleNames,
+    templateAllowedColors,
+    templateAllowedFabrics,
+    templateAllowedCompositions,
+    templateAllowedWovenKnits,
+  ]);
 
   async function appendAllowedTemplateValue(field: TemplateConstrainedField, value: string): Promise<void> {
-    if (!activeTemplate) return;
     const normalized = value.trim();
     if (!normalized) return;
 
     const mergeToken = (list: string[]) => (includesToken(list, normalized) ? list : [...list, normalized]);
-    const nextAllowedCategories = field === 'category' ? mergeToken(activeTemplate.allowed_categories) : activeTemplate.allowed_categories;
-    const nextAllowedStyleNames = field === 'styleName' ? mergeToken(activeTemplate.allowed_style_names) : activeTemplate.allowed_style_names;
-    const nextAllowedColors = field === 'color' ? mergeToken(activeTemplate.allowed_colors) : activeTemplate.allowed_colors;
-    const nextAllowedFabrics = field === 'fabric' ? mergeToken(activeTemplate.allowed_fabrics) : activeTemplate.allowed_fabrics;
-    const nextAllowedCompositions = field === 'composition' ? mergeToken(activeTemplate.allowed_compositions) : activeTemplate.allowed_compositions;
-    const nextAllowedWovenKnits = field === 'wovenKnits' ? mergeToken(activeTemplate.allowed_woven_knits) : activeTemplate.allowed_woven_knits;
+    const targetTemplateId = selectedTemplateId || activeTemplate?.id;
+    if (!targetTemplateId) {
+      if (field === 'category') {
+        setTemplateAllowedCategories((previous) => mergeToken(parseCommaSeparatedTokens(previous)).join(', '));
+      } else if (field === 'styleName') {
+        setTemplateAllowedStyleNames((previous) => mergeToken(parseCommaSeparatedTokens(previous)).join(', '));
+      } else if (field === 'color') {
+        setTemplateAllowedColors((previous) => mergeToken(parseCommaSeparatedTokens(previous)).join(', '));
+      } else if (field === 'fabric') {
+        setTemplateAllowedFabrics((previous) => mergeToken(parseCommaSeparatedTokens(previous)).join(', '));
+      } else if (field === 'composition') {
+        setTemplateAllowedCompositions((previous) => mergeToken(parseCommaSeparatedTokens(previous)).join(', '));
+      } else {
+        setTemplateAllowedWovenKnits((previous) => mergeToken(parseCommaSeparatedTokens(previous)).join(', '));
+      }
+      return;
+    }
+
+    const currentTemplate = catalogTemplates.find((template) => template.id === targetTemplateId) ?? activeTemplate;
+    if (!currentTemplate) return;
+
+    const nextAllowedCategories = field === 'category' ? mergeToken(currentTemplate.allowed_categories) : currentTemplate.allowed_categories;
+    const nextAllowedStyleNames = field === 'styleName' ? mergeToken(currentTemplate.allowed_style_names) : currentTemplate.allowed_style_names;
+    const nextAllowedColors = field === 'color' ? mergeToken(currentTemplate.allowed_colors) : currentTemplate.allowed_colors;
+    const nextAllowedFabrics = field === 'fabric' ? mergeToken(currentTemplate.allowed_fabrics) : currentTemplate.allowed_fabrics;
+    const nextAllowedCompositions = field === 'composition' ? mergeToken(currentTemplate.allowed_compositions) : currentTemplate.allowed_compositions;
+    const nextAllowedWovenKnits = field === 'wovenKnits' ? mergeToken(currentTemplate.allowed_woven_knits) : currentTemplate.allowed_woven_knits;
 
     setCatalogTemplates((items) =>
       items.map((template) =>
-        template.id === activeTemplate.id
+        template.id === targetTemplateId
           ? {
             ...template,
             allowed_categories: nextAllowedCategories,
@@ -1415,12 +1465,12 @@ export function CatalogView(): JSX.Element {
     setTemplateAllowedCompositions(nextAllowedCompositions.join(', '));
     setTemplateAllowedWovenKnits(nextAllowedWovenKnits.join(', '));
 
-    if (!hasAccessToken() || !selectedTemplateId || selectedTemplateId.startsWith('local-')) {
+    if (!hasAccessToken() || targetTemplateId.startsWith('local-')) {
       return;
     }
 
     try {
-      const saved = await apiRequest<CatalogTemplateRecord>(`/catalog/templates/${selectedTemplateId}`, {
+      const saved = await apiRequest<CatalogTemplateRecord>(`/catalog/templates/${targetTemplateId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           allowed_categories: nextAllowedCategories,
