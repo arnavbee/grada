@@ -996,10 +996,15 @@ export function CatalogView(): JSX.Element {
   const queueRunningRef = useRef(false);
   const selectedUploadProductIdRef = useRef('');
   const persistedProductsRef = useRef<CatalogRow[]>([]);
+  const catalogTemplatesRef = useRef<CatalogTemplateRecord[]>([]);
   const addItemImageInputRef = useRef<HTMLInputElement | null>(null);
   const selectedImageFileRef = useRef<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  useEffect(() => {
+    catalogTemplatesRef.current = catalogTemplates;
+  }, [catalogTemplates]);
 
   useEffect(() => {
     let mounted = true;
@@ -1482,7 +1487,7 @@ export function CatalogView(): JSX.Element {
       return;
     }
 
-    const currentTemplate = catalogTemplates.find((template) => template.id === targetTemplateId) ?? activeTemplate;
+    const currentTemplate = catalogTemplatesRef.current.find((template) => template.id === targetTemplateId) ?? activeTemplate;
     if (!currentTemplate) return;
 
     const nextAllowedCategories = field === 'category' ? mergeToken(currentTemplate.allowed_categories) : currentTemplate.allowed_categories;
@@ -1491,22 +1496,21 @@ export function CatalogView(): JSX.Element {
     const nextAllowedFabrics = field === 'fabric' ? mergeToken(currentTemplate.allowed_fabrics) : currentTemplate.allowed_fabrics;
     const nextAllowedCompositions = field === 'composition' ? mergeToken(currentTemplate.allowed_compositions) : currentTemplate.allowed_compositions;
     const nextAllowedWovenKnits = field === 'wovenKnits' ? mergeToken(currentTemplate.allowed_woven_knits) : currentTemplate.allowed_woven_knits;
-
-    setCatalogTemplates((items) =>
-      items.map((template) =>
-        template.id === targetTemplateId
-          ? {
-            ...template,
-            allowed_categories: nextAllowedCategories,
-            allowed_style_names: nextAllowedStyleNames,
-            allowed_colors: nextAllowedColors,
-            allowed_fabrics: nextAllowedFabrics,
-            allowed_compositions: nextAllowedCompositions,
-            allowed_woven_knits: nextAllowedWovenKnits,
-          }
-          : template,
-      ),
+    const nextTemplates = catalogTemplatesRef.current.map((template) =>
+      template.id === targetTemplateId
+        ? {
+          ...template,
+          allowed_categories: nextAllowedCategories,
+          allowed_style_names: nextAllowedStyleNames,
+          allowed_colors: nextAllowedColors,
+          allowed_fabrics: nextAllowedFabrics,
+          allowed_compositions: nextAllowedCompositions,
+          allowed_woven_knits: nextAllowedWovenKnits,
+        }
+        : template,
     );
+    catalogTemplatesRef.current = nextTemplates;
+    setCatalogTemplates(nextTemplates);
 
     setTemplateAllowedCategories(nextAllowedCategories.join(', '));
     setTemplateAllowedStyleNames(nextAllowedStyleNames.join(', '));
@@ -1531,7 +1535,11 @@ export function CatalogView(): JSX.Element {
           allowed_woven_knits: nextAllowedWovenKnits,
         }),
       });
-      setCatalogTemplates((items) => items.map((item) => (item.id === saved.id ? saved : item)));
+      setCatalogTemplates((items) => {
+        const nextItems = items.map((item) => (item.id === saved.id ? saved : item));
+        catalogTemplatesRef.current = nextItems;
+        return nextItems;
+      });
     } catch {
       setTemplateNotice('Could not persist updated allowed list. Changes remain local.');
     }
