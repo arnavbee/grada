@@ -1450,23 +1450,17 @@ export function CatalogView(): JSX.Element {
       return true;
     }
 
-    const useValue = window.confirm(
-      `"${candidate}" is outside allowed ${TEMPLATE_FIELD_LABELS[field]} list. Use it anyway?`,
-    );
-    if (!useValue) {
-      approvalCache?.set(cacheKey, false);
-      return false;
-    }
-
     const includeValue = window.confirm(
-      `Add "${candidate}" to allowed ${TEMPLATE_FIELD_LABELS[field]} list for this template?`,
+      `"${candidate}" is outside allowed ${TEMPLATE_FIELD_LABELS[field]} list. Include it in allowed ${TEMPLATE_FIELD_LABELS[field]} list?`,
     );
     if (includeValue) {
       await appendAllowedTemplateValue(field, candidate);
+      approvalCache?.set(cacheKey, true);
+      return true;
     }
 
-    approvalCache?.set(cacheKey, true);
-    return true;
+    approvalCache?.set(cacheKey, false);
+    return false;
   }
 
   async function promptAddOutOfBoundsSuggestedValues(
