@@ -524,6 +524,16 @@ function includesToken(list: string[], value: string): boolean {
   return list.some((item) => item.toLowerCase() === value.toLowerCase());
 }
 
+function openDatalistPicker(input: HTMLInputElement): void {
+  const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
+  if (typeof pickerInput.showPicker !== 'function') return;
+  try {
+    pickerInput.showPicker();
+  } catch {
+    // Ignore browsers that block programmatic picker opening.
+  }
+}
+
 function buildAiAttributesFromRow(
   row: CatalogRow,
   overrides: Partial<Pick<CatalogRow, 'fabric' | 'composition' | 'wovenKnits' | 'units' | 'poPrice' | 'price'>> = {},
@@ -5171,6 +5181,8 @@ export function CatalogView(): JSX.Element {
                       <input
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemCategory(event.target.value)}
+                        onClick={(event) => openDatalistPicker(event.currentTarget)}
+                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
                         onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'category', event.target.value, 'user_input', () => { })}
                         value={itemCategory}
                         list="list-category"
@@ -5182,6 +5194,8 @@ export function CatalogView(): JSX.Element {
                       <input
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemStyleName(event.target.value)}
+                        onClick={(event) => openDatalistPicker(event.currentTarget)}
+                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
                         onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'styleName', event.target.value, 'user_input', () => { })}
                         value={itemStyleName}
                         list="list-styleName"
@@ -5192,6 +5206,8 @@ export function CatalogView(): JSX.Element {
                       <input
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemColor(event.target.value)}
+                        onClick={(event) => openDatalistPicker(event.currentTarget)}
+                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
                         onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'color', event.target.value, 'user_input', () => { })}
                         value={itemColor}
                         list="list-color"
@@ -5203,6 +5219,8 @@ export function CatalogView(): JSX.Element {
                       <input
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemFabric(event.target.value)}
+                        onClick={(event) => openDatalistPicker(event.currentTarget)}
+                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
                         onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'fabric', event.target.value, 'user_input', () => { })}
                         value={itemFabric}
                         list="list-fabric"
@@ -5213,6 +5231,8 @@ export function CatalogView(): JSX.Element {
                       <input
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemComposition(event.target.value)}
+                        onClick={(event) => openDatalistPicker(event.currentTarget)}
+                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
                         onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'composition', event.target.value, 'user_input', () => { })}
                         value={itemComposition}
                         list="list-composition"
@@ -5224,6 +5244,8 @@ export function CatalogView(): JSX.Element {
                       <input
                         className='kira-focus-ring w-full border-0 border-b border-kira-warmgray/70 bg-transparent px-0 pb-2 pt-1 text-xl text-kira-black outline-none'
                         onChange={(event) => setItemWovenKnits(event.target.value)}
+                        onClick={(event) => openDatalistPicker(event.currentTarget)}
+                        onFocus={(event) => openDatalistPicker(event.currentTarget)}
                         onBlur={(event) => checkAndPromptOutOfBounds('new-item', 'wovenKnits', event.target.value, 'user_input', () => { })}
                         value={itemWovenKnits}
                         list="list-wovenKnits"
