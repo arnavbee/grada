@@ -74,6 +74,16 @@ EXPORT_DIR = Path('static/exports')
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 MAX_EXPORT_VALIDATION_ERRORS = 20
 AI_ANALYSIS_FIELDS = ('category', 'style_name', 'color', 'fabric', 'composition', 'woven_knits')
+ANALYZE_ALLOWED_FIELD_MAP = {
+    'category': 'allowed_categories',
+    'style_name': 'allowed_style_names',
+    'color': 'allowed_colors',
+    'fabric': 'allowed_fabrics',
+    'composition': 'allowed_compositions',
+    'woven_knits': 'allowed_woven_knits',
+}
+MAX_AI_ALLOWED_OPTIONS_PER_FIELD = 40
+MAX_AI_CORRECTION_HINTS = 36
 API_ROOT_DIR = Path(__file__).resolve().parents[4]
 API_STATIC_DIR = API_ROOT_DIR / 'static'
 
@@ -465,6 +475,59 @@ def _normalize_analysis_result(raw_result: Any, image_hash: str) -> AnalyzeImage
     normalized: dict[str, Any] = {field: _normalize_analysis_field(payload.get(field)) for field in AI_ANALYSIS_FIELDS}
     normalized['image_hash'] = image_hash
     return AnalyzeImageResponse(**normalized)
+
+
+def _normalize_analyze_allowed_options(raw_allowed: dict[str, Any] | None) -> dict[str, list[str]]:
+    if not isinstance(raw_allowed, dict):
+        return {}
+
+    normalized: dict[str, list[str]] = {}
+    for field_name, payload_key in ANALYZE_ALLOWED_FIELD_MAP.items():
+        raw_values = raw_allowed.get(payload_key)
+        if not isinstance(raw_values, list):
+            continue
+        string_values = [value for value in raw_values if isinstance(value, str)]
+        cleaned = _normalize_template_tokens(string_values)[:MAX_AI_ALLOWED_OPTIONS_PER_FIELD]
+        if cleaned:
+            normalized[field_name] = cleaned
+    return normalized
+
+
+def _build_recent_correction_hints(db: Session, company_id: str) -> list[dict[str, str]]:
+    rows = (
+        db.query(AICorrection)
+        .filter(
+            AICorrection.company_id == company_id,
+            AICorrection.feedback_type == 'reject',
+            AICorrection.corrected_value.isnot(None),
+            AICorrection.field_name.in_(AI_ANALYSIS_FIELDS),
+        )
+        .order_by(AICorrection.created_at.desc())
+        .limit(MAX_AI_CORRECTION_HINTS * 3)
+        .all()
+    )
+
+    hints: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for row in rows:
+        field_name = (row.field_name or '').strip().lower()
+        if field_name not in AI_ANALYSIS_FIELDS:
+            continue
+        corrected = (row.corrected_value or '').strip()
+        if not corrected:
+            continue
+        suggested = (row.suggested_value or '').strip()
+        dedupe_key = (field_name, suggested.lower(), corrected.lower())
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        hint = {'field': field_name, 'corrected_value': corrected}
+        if suggested:
+            hint['suggested_value'] = suggested
+        hints.append(hint)
+        if len(hints) >= MAX_AI_CORRECTION_HINTS:
+            break
+    return hints
 
 
 def _pick_mrp(ai_attributes: dict[str, Any]) -> str:
@@ -1348,6 +1411,7 @@ def add_product_measurement(
 @router.post('/analyze-image', response_model=AnalyzeImageResponse)
 def analyze_image_direct(
     payload: AnalyzeImageRequest,
+    db: DbSession,
     current_user: WriteUser,
 ) -> AnalyzeImageResponse:
     # Import locally or at module level (already imported ai_service at module if we check ai.py, but actually catalog imports process_image_analysis_job not ai_service)
@@ -1355,8 +1419,14 @@ def analyze_image_direct(
 
     analysis_image_url = _coerce_local_image_url_to_data_url(payload.image_url)
     image_hash = _compute_image_hash(analysis_image_url)
+    allowed_options = _normalize_analyze_allowed_options(payload.template_allowed)
+    correction_hints = _build_recent_correction_hints(db, current_user.company_id)
     # Synchronously call the AI service and normalize output for UI reliability.
-    result = ai_service.analyze_image(analysis_image_url)
+    result = ai_service.analyze_image(
+        analysis_image_url,
+        allowed_options=allowed_options if allowed_options else None,
+        correction_hints=correction_hints if correction_hints else None,
+    )
     if isinstance(result, dict) and isinstance(result.get('error'), str):
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

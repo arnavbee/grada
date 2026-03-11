@@ -37,6 +37,15 @@ MEASUREMENT_RANGES_CM: dict[str, tuple[float, float]] = {
     'sleeve': (10.0, 90.0),
 }
 REQUIRED_TECHPACK_KEYS = ('chest', 'waist', 'length')
+ANALYSIS_FIELDS = ('category', 'style_name', 'color', 'fabric', 'composition', 'woven_knits')
+ANALYSIS_FIELD_LABELS = {
+    'category': 'Category',
+    'style_name': 'Style Name',
+    'color': 'Color',
+    'fabric': 'Fabric',
+    'composition': 'Composition',
+    'woven_knits': 'Woven/Knits',
+}
 
 class AIService:
     def __init__(self):
@@ -49,34 +58,109 @@ class AIService:
             base_url=base_url
         )
 
-    def analyze_image(self, image_url: str) -> dict[str, Any]:
+    @staticmethod
+    def _compact_prompt_value(value: str, *, max_length: int = 80) -> str:
+        compact = re.sub(r'\s+', ' ', value).strip()
+        if len(compact) > max_length:
+            compact = f'{compact[: max_length - 3]}...'
+        return compact.replace('"', '\\"')
+
+    def _build_allowed_options_block(self, allowed_options: dict[str, list[str]] | None) -> str:
+        if not isinstance(allowed_options, dict):
+            return 'No runtime allowed-options were provided.'
+
+        lines: list[str] = []
+        for field_name in ANALYSIS_FIELDS:
+            raw_values = allowed_options.get(field_name)
+            if not isinstance(raw_values, list):
+                continue
+            cleaned_values = [
+                self._compact_prompt_value(value)
+                for value in raw_values
+                if isinstance(value, str) and value.strip()
+            ][:40]
+            if not cleaned_values:
+                continue
+            rendered = ', '.join(f'"{value}"' for value in cleaned_values)
+            lines.append(f'- {ANALYSIS_FIELD_LABELS[field_name]}: {rendered}')
+        if not lines:
+            return 'No runtime allowed-options were provided.'
+        return '\n'.join(lines)
+
+    def _build_correction_hints_block(self, correction_hints: list[dict[str, str]] | None) -> str:
+        if not isinstance(correction_hints, list) or len(correction_hints) == 0:
+            return 'No recent correction hints were provided.'
+
+        lines: list[str] = []
+        for hint in correction_hints[:36]:
+            if not isinstance(hint, dict):
+                continue
+            field_name = str(hint.get('field') or '').strip().lower()
+            if field_name not in ANALYSIS_FIELDS:
+                continue
+            corrected = str(hint.get('corrected_value') or '').strip()
+            if not corrected:
+                continue
+            suggested = str(hint.get('suggested_value') or '').strip()
+            corrected_value = self._compact_prompt_value(corrected)
+            if suggested:
+                suggested_value = self._compact_prompt_value(suggested)
+                lines.append(
+                    f'- {ANALYSIS_FIELD_LABELS[field_name]}: prefer "{corrected_value}" over "{suggested_value}" when image evidence is close.'
+                )
+            else:
+                lines.append(f'- {ANALYSIS_FIELD_LABELS[field_name]}: favor "{corrected_value}" when plausible.')
+        if not lines:
+            return 'No recent correction hints were provided.'
+        return '\n'.join(lines)
+
+    def analyze_image(
+        self,
+        image_url: str,
+        *,
+        allowed_options: dict[str, list[str]] | None = None,
+        correction_hints: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
         """
         Analyze a product image to extract structured data using GPT-4o.
         Returns a dictionary with keys: category, style_name, color, fabric, composition, woven_knits
         and optionally a confidence_score for each.
         """
-        prompt = """
-        Analyze this fashion product image and extract the following structured data in JSON format:
-        - category: The specific category ('DRESSES' or 'CORD SETS').
-        - style_name: The style name (e.g., 'Maxi Dress', 'Midi Dress', 'Knee Length', 'Knot Cord Set').
-        - color: The dominant color (e.g., 'Beige', 'Black', 'Blue', 'Bottle Green', 'Brown', 'Green', 'Grey', 'Lilac', 'Maroon', 'Mustard', 'Navy', 'Pink', 'Purple', 'Silver', 'White', 'Wine').
-        - fabric: The fabric type (e.g., 'Cotton Poplin', 'Pleated Knitted Fabric', 'Poly Georgette', 'Poly Weightless Ggt', 'Polymoss', 'polycrepe').
-        - composition: The composition ('100% Cotton' or '100% Polyester').
-        - woven_knits: Whether it is 'Knits' or 'Woven'.
-        
-        For each field, provide a prediction and a confidence score between 0 and 100.
-        Format the JSON strictly as:
-        {
-            "category": {"value": "...", "confidence": 95},
-            "style_name": {"value": "...", "confidence": 80},
-            "color": {"value": "...", "confidence": 90},
-            "fabric": {"value": "...", "confidence": 60},
-            "composition": {"value": "...", "confidence": 75},
-            "woven_knits": {"value": "...", "confidence": 85}
-        }
-        
-        Return ONLY valid JSON.
-        """
+        allowed_options_block = self._build_allowed_options_block(allowed_options)
+        correction_hints_block = self._build_correction_hints_block(correction_hints)
+        prompt = f"""
+Analyze this fashion product image and extract structured data in JSON format.
+
+Fields:
+- category: specific category (usually "DRESSES" or "CORD SETS")
+- style_name: style name (for example "Maxi Dress", "Midi Dress", "Knee Length", "Knot Cord Set")
+- color: dominant color
+- fabric: fabric type
+- composition: fabric composition
+- woven_knits: "Knits" or "Woven"
+
+Runtime allowed options (prefer these exact spellings whenever visually plausible):
+{allowed_options_block}
+
+Recent correction hints from this company (use as soft priors, but do not ignore visual evidence):
+{correction_hints_block}
+
+Rules:
+1) If allowed options are provided for a field, choose from them whenever possible.
+2) Only output a value outside allowed options when image evidence strongly contradicts available options.
+3) For each field include confidence (0-100).
+4) Return only valid JSON.
+
+Format strictly as:
+{{
+  "category": {{"value": "...", "confidence": 95}},
+  "style_name": {{"value": "...", "confidence": 80}},
+  "color": {{"value": "...", "confidence": 90}},
+  "fabric": {{"value": "...", "confidence": 60}},
+  "composition": {{"value": "...", "confidence": 75}},
+  "woven_knits": {{"value": "...", "confidence": 85}}
+}}
+"""
 
         try:
             response = self.client.chat.completions.create(

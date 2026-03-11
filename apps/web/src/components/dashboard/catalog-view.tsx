@@ -246,6 +246,18 @@ interface AnalyzeImageApiResult {
   image_hash?: string;
 }
 
+interface AnalyzeImageRequestPayload {
+  image_url: string;
+  template_allowed?: {
+    allowed_categories: string[];
+    allowed_style_names: string[];
+    allowed_colors: string[];
+    allowed_fabrics: string[];
+    allowed_compositions: string[];
+    allowed_woven_knits: string[];
+  };
+}
+
 interface LogCorrectionRequest {
   product_id?: string;
   image_hash?: string;
@@ -1409,6 +1421,44 @@ export function CatalogView(): JSX.Element {
     templateAllowedWovenKnits,
   ]);
 
+  const buildAnalyzeImageRequestPayload = useCallback((imageUrl: string): AnalyzeImageRequestPayload => {
+    const normalizeValues = (values: string[]): string[] =>
+      values
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .filter((value, index, list) => list.findIndex((candidate) => candidate.toLowerCase() === value.toLowerCase()) === index)
+        .slice(0, 40);
+
+    const allowedCategories = normalizeValues(getAllowedTemplateValues('category'));
+    const allowedStyleNames = normalizeValues(getAllowedTemplateValues('styleName'));
+    const allowedColors = normalizeValues(getAllowedTemplateValues('color'));
+    const allowedFabrics = normalizeValues(getAllowedTemplateValues('fabric'));
+    const allowedCompositions = normalizeValues(getAllowedTemplateValues('composition'));
+    const allowedWovenKnits = normalizeValues(getAllowedTemplateValues('wovenKnits'));
+    const hasAnyAllowedValues = (
+      allowedCategories.length
+      + allowedStyleNames.length
+      + allowedColors.length
+      + allowedFabrics.length
+      + allowedCompositions.length
+      + allowedWovenKnits.length
+    ) > 0;
+
+    return {
+      image_url: imageUrl,
+      template_allowed: hasAnyAllowedValues
+        ? {
+          allowed_categories: allowedCategories,
+          allowed_style_names: allowedStyleNames,
+          allowed_colors: allowedColors,
+          allowed_fabrics: allowedFabrics,
+          allowed_compositions: allowedCompositions,
+          allowed_woven_knits: allowedWovenKnits,
+        }
+        : undefined,
+    };
+  }, [getAllowedTemplateValues]);
+
   async function appendAllowedTemplateValue(field: TemplateConstrainedField, value: string): Promise<void> {
     const normalized = value.trim();
     if (!normalized) return;
@@ -1810,7 +1860,7 @@ export function CatalogView(): JSX.Element {
           const base64DataUrl = await fileToDataUrl(item.file);
           const analysisRes = await apiRequest<AnalyzeImageApiResult>('/catalog/analyze-image', {
             method: 'POST',
-            body: JSON.stringify({ image_url: base64DataUrl }),
+            body: JSON.stringify(buildAnalyzeImageRequestPayload(base64DataUrl)),
           });
 
           const resolvedCategory = normalizeCategory(normalizeAiValue(analysisRes.category?.value));
@@ -3169,7 +3219,7 @@ export function CatalogView(): JSX.Element {
       // 3. Call synchronous analyze-image endpoint
       const result = await apiRequest<AnalyzeImageApiResult>('/catalog/analyze-image', {
         method: 'POST',
-        body: JSON.stringify({ image_url: base64DataUrl })
+        body: JSON.stringify(buildAnalyzeImageRequestPayload(base64DataUrl))
       });
 
       // 3. Populate form fields and confidence

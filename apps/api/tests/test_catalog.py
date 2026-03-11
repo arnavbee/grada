@@ -243,7 +243,7 @@ def test_generic_export_has_catalog_shape() -> None:
 def test_analyze_image_returns_hash_and_source_context(monkeypatch) -> None:
     headers = _auth_headers()
 
-    def _fake_analyze_image(_: str) -> dict[str, object]:
+    def _fake_analyze_image(_image_url: str, **_kwargs: object) -> dict[str, object]:
         return {
             'category': {'value': 'DRESSES', 'confidence': 97},
             'style_name': {'value': 'Maxi Dress', 'confidence': 88, 'source': 'vision_model'},

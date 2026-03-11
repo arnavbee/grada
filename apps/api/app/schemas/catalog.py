@@ -178,6 +178,7 @@ class ProcessingJobListResponse(BaseModel):
 
 class AnalyzeImageRequest(BaseModel):
     image_url: str = Field(min_length=1)
+    template_allowed: dict[str, list[str]] | None = None
 
 
 class AnalyzeImageFieldResponse(BaseModel):
