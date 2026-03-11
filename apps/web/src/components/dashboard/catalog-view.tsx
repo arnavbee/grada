@@ -1319,29 +1319,39 @@ export function CatalogView(): JSX.Element {
     }, [activeTemplate, getTemplateAllowedList]);
 
   const templateColorOptions = useMemo(() => {
+    const draftValues = parseCommaSeparatedTokens(templateAllowedColors);
+    if (draftValues.length > 0) return draftValues;
     if (!activeTemplate || activeTemplate.allowed_colors.length === 0) return [...COLOR_OPTIONS];
     return activeTemplate.allowed_colors;
-  }, [activeTemplate]);
+  }, [activeTemplate, templateAllowedColors]);
 
   const templateCategoryOptions = useMemo(() => {
+    const draftValues = parseCommaSeparatedTokens(templateAllowedCategories);
+    if (draftValues.length > 0) return draftValues;
     if (!activeTemplate || activeTemplate.allowed_categories.length === 0) return [...CATEGORY_OPTIONS];
     return activeTemplate.allowed_categories;
-  }, [activeTemplate]);
+  }, [activeTemplate, templateAllowedCategories]);
 
   const templateStyleNameOptions = useMemo(() => {
+    const draftValues = parseCommaSeparatedTokens(templateAllowedStyleNames);
+    if (draftValues.length > 0) return draftValues;
     if (!activeTemplate || activeTemplate.allowed_style_names.length === 0) return [...STYLE_NAME_OPTIONS];
     return activeTemplate.allowed_style_names;
-  }, [activeTemplate]);
+  }, [activeTemplate, templateAllowedStyleNames]);
 
   const templateCompositionOptions = useMemo(() => {
+    const draftValues = parseCommaSeparatedTokens(templateAllowedCompositions);
+    if (draftValues.length > 0) return draftValues;
     if (!activeTemplate || activeTemplate.allowed_compositions.length === 0) return [...COMPOSITION_OPTIONS];
     return activeTemplate.allowed_compositions;
-  }, [activeTemplate]);
+  }, [activeTemplate, templateAllowedCompositions]);
 
   const templateWovenKnitsOptions = useMemo(() => {
+    const draftValues = parseCommaSeparatedTokens(templateAllowedWovenKnits);
+    if (draftValues.length > 0) return draftValues;
     if (!activeTemplate || activeTemplate.allowed_woven_knits.length === 0) return [...WOVEN_KNITS_OPTIONS];
     return activeTemplate.allowed_woven_knits;
-  }, [activeTemplate]);
+  }, [activeTemplate, templateAllowedWovenKnits]);
 
   const getAllowedTemplateValues = useCallback((field: TemplateConstrainedField): string[] => {
     if (!activeTemplate) return [];
@@ -1454,9 +1464,11 @@ export function CatalogView(): JSX.Element {
   }
 
   const templateFabricOptions = useMemo(() => {
+    const draftValues = parseCommaSeparatedTokens(templateAllowedFabrics);
+    if (draftValues.length > 0) return draftValues;
     if (!activeTemplate || activeTemplate.allowed_fabrics.length === 0) return [...FABRIC_OPTIONS];
     return activeTemplate.allowed_fabrics;
-  }, [activeTemplate]);
+  }, [activeTemplate, templateAllowedFabrics]);
 
   const colorOptions = useMemo(() => {
     const colors = Array.from(new Set(catalogRows.map((row) => row.color))).sort();
