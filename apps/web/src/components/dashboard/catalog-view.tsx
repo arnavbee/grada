@@ -3298,7 +3298,6 @@ export function CatalogView(): JSX.Element {
 
     const orderedFields: AiFieldKey[] = ['category', 'color', 'styleName', 'fabric', 'composition', 'wovenKnits'];
     for (const fieldKey of orderedFields) {
-      if (feedbackCompletedFields[fieldKey]) continue;
       const nextValue = aiSuggestions.values[fieldKey];
       if (!nextValue) continue;
       const isAllowed = await ensureTemplateValueAllowed(fieldKey, nextValue);
