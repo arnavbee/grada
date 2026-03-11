@@ -968,6 +968,8 @@ export function CatalogView(): JSX.Element {
   const [correctionFieldKey, setCorrectionFieldKey] = useState<AiFieldKey | null>(null);
   const [correctionReasonCode, setCorrectionReasonCode] = useState<string>(CORRECTION_REASON_OPTIONS[0].value);
   const [correctionNotes, setCorrectionNotes] = useState('');
+  const [correctionValue, setCorrectionValue] = useState('');
+  const [correctionValueError, setCorrectionValueError] = useState<string | null>(null);
 
   // Initialize from LocalStorage
   useEffect(() => {
@@ -2934,10 +2936,41 @@ export function CatalogView(): JSX.Element {
     return itemWovenKnits;
   }
 
-  async function submitFeedback(fieldKey: AiFieldKey, feedbackType: FeedbackType, reasonCode?: string, notes?: string): Promise<void> {
+  function setCurrentFieldValue(fieldKey: AiFieldKey, value: string): void {
+    if (fieldKey === 'category') {
+      setItemCategory(value);
+      return;
+    }
+    if (fieldKey === 'styleName') {
+      setItemStyleName(value);
+      return;
+    }
+    if (fieldKey === 'color') {
+      setItemColor(value);
+      return;
+    }
+    if (fieldKey === 'fabric') {
+      setItemFabric(value);
+      return;
+    }
+    if (fieldKey === 'composition') {
+      setItemComposition(value);
+      return;
+    }
+    setItemWovenKnits(value);
+  }
+
+  async function submitFeedback(
+    fieldKey: AiFieldKey,
+    feedbackType: FeedbackType,
+    reasonCode?: string,
+    notes?: string,
+    correctedValueOverride?: string,
+  ): Promise<void> {
     if (!aiSuggestions) return;
     const suggestedValue = aiSuggestions.values[fieldKey];
     if (!suggestedValue) return;
+    const correctedValue = correctedValueOverride?.trim() || currentFieldValue(fieldKey);
 
     const payload: LogCorrectionRequest = {
       product_id: pendingAnalyzeProductId ?? editingRowId ?? undefined,
@@ -2945,7 +2978,7 @@ export function CatalogView(): JSX.Element {
       field_name: AI_FIELD_API_KEYS[fieldKey],
       feedback_type: feedbackType,
       suggested_value: suggestedValue,
-      corrected_value: currentFieldValue(fieldKey),
+      corrected_value: correctedValue,
       reason_code: reasonCode,
       notes: notes && notes.trim().length > 0 ? notes.trim() : undefined,
       source: aiSuggestions.context[fieldKey]?.source,
@@ -2980,6 +3013,8 @@ export function CatalogView(): JSX.Element {
       setCorrectionFieldKey(fieldKey);
       setCorrectionReasonCode(CORRECTION_REASON_OPTIONS[0].value);
       setCorrectionNotes('');
+      setCorrectionValue(currentFieldValue(fieldKey) || aiSuggestions?.values[fieldKey] || '');
+      setCorrectionValueError(null);
       setIsCorrectionModalOpen(true);
       return;
     }
@@ -2989,10 +3024,21 @@ export function CatalogView(): JSX.Element {
   async function handleSubmitCorrectionModal(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (!correctionFieldKey) return;
-    await submitFeedback(correctionFieldKey, 'reject', correctionReasonCode, correctionNotes);
+    const nextValue = correctionValue.trim();
+    if (!nextValue) {
+      setCorrectionValueError('Enter a corrected value.');
+      return;
+    }
+    setCorrectionValueError(null);
+
+    setCurrentFieldValue(correctionFieldKey, nextValue);
+    await appendAllowedTemplateValue(correctionFieldKey, nextValue);
+    await submitFeedback(correctionFieldKey, 'reject', correctionReasonCode, correctionNotes, nextValue);
     setIsCorrectionModalOpen(false);
     setCorrectionFieldKey(null);
     setCorrectionNotes('');
+    setCorrectionValue('');
+    setCorrectionValueError(null);
   }
 
   async function handleAnalyzeImage(): Promise<void> {
@@ -5395,7 +5441,12 @@ export function CatalogView(): JSX.Element {
               <button
                 type='button'
                 className='kira-focus-ring inline-flex h-8 w-8 items-center justify-center text-kira-midgray hover:text-kira-black'
-                onClick={() => setIsCorrectionModalOpen(false)}
+                onClick={() => {
+                  setIsCorrectionModalOpen(false);
+                  setCorrectionFieldKey(null);
+                  setCorrectionValue('');
+                  setCorrectionValueError(null);
+                }}
               >
                 <CloseIcon />
               </button>
@@ -5417,6 +5468,29 @@ export function CatalogView(): JSX.Element {
               </div>
               <div>
                 <label className='text-xs font-semibold uppercase tracking-[0.08em] text-kira-midgray'>
+                  Corrected Value
+                </label>
+                <input
+                  className='kira-focus-ring mt-1 w-full border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-sm text-kira-black'
+                  placeholder={`Enter corrected ${AI_FIELD_LABELS[correctionFieldKey]}`}
+                  value={correctionValue}
+                  onChange={(event) => {
+                    setCorrectionValue(event.target.value);
+                    if (correctionValueError) {
+                      setCorrectionValueError(null);
+                    }
+                  }}
+                />
+                {correctionValueError ? (
+                  <p className='mt-1 text-xs text-rose-700'>{correctionValueError}</p>
+                ) : (
+                  <p className='mt-1 text-xs text-kira-midgray'>
+                    This value will replace the field and be added to allowed {AI_FIELD_LABELS[correctionFieldKey]} list.
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className='text-xs font-semibold uppercase tracking-[0.08em] text-kira-midgray'>
                   Details (helps AI learn)
                 </label>
                 <textarea
@@ -5430,7 +5504,12 @@ export function CatalogView(): JSX.Element {
                 <button
                   type='button'
                   className='kira-focus-ring border border-kira-warmgray/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray'
-                  onClick={() => setIsCorrectionModalOpen(false)}
+                  onClick={() => {
+                    setIsCorrectionModalOpen(false);
+                    setCorrectionFieldKey(null);
+                    setCorrectionValue('');
+                    setCorrectionValueError(null);
+                  }}
                 >
                   Cancel
                 </button>
