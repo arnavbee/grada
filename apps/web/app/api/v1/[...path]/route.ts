@@ -1,0 +1,102 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+const LOCAL_API_BASE = 'http://127.0.0.1:8000/api/v1';
+const PROXY_ERROR_MESSAGE = 'API proxy target is not configured.';
+
+function normalizeApiBase(rawBase: string): string {
+  const trimmed = rawBase.trim().replace(/\/+$/, '');
+  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+}
+
+function getApiBaseUrl(): string | null {
+  const configuredBase = process.env.API_PROXY_TARGET?.trim() || process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (configuredBase) {
+    return normalizeApiBase(configuredBase);
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
+
+  return normalizeApiBase(LOCAL_API_BASE);
+}
+
+async function proxyRequest(
+  request: NextRequest,
+  { params }: { params: { path: string[] } },
+): Promise<NextResponse> {
+  const apiBase = getApiBaseUrl();
+  if (!apiBase) {
+    return NextResponse.json(
+      {
+        detail: `${PROXY_ERROR_MESSAGE} Set API_PROXY_TARGET or NEXT_PUBLIC_API_URL.`,
+      },
+      { status: 500 },
+    );
+  }
+
+  const upstreamUrl = new URL(`${apiBase}/${params.path.join('/')}`);
+  upstreamUrl.search = request.nextUrl.search;
+
+  const method = request.method.toUpperCase();
+  const headers = new Headers(request.headers);
+  headers.delete('host');
+  headers.delete('connection');
+
+  let body: ArrayBuffer | undefined;
+  if (method !== 'GET' && method !== 'HEAD') {
+    body = await request.arrayBuffer();
+  }
+
+  try {
+    const upstreamResponse = await fetch(upstreamUrl.toString(), {
+      method,
+      headers,
+      body,
+      redirect: 'manual',
+      cache: 'no-store',
+    });
+
+    return new NextResponse(upstreamResponse.body, {
+      status: upstreamResponse.status,
+      headers: upstreamResponse.headers,
+    });
+  } catch {
+    return NextResponse.json(
+      {
+        detail: `Unable to reach API target: ${apiBase}.`,
+      },
+      { status: 502 },
+    );
+  }
+}
+
+export const dynamic = 'force-dynamic';
+
+export function GET(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+  return proxyRequest(request, context);
+}
+
+export function POST(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+  return proxyRequest(request, context);
+}
+
+export function PUT(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+  return proxyRequest(request, context);
+}
+
+export function PATCH(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+  return proxyRequest(request, context);
+}
+
+export function DELETE(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+  return proxyRequest(request, context);
+}
+
+export function OPTIONS(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+  return proxyRequest(request, context);
+}
+
+export function HEAD(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+  return proxyRequest(request, context);
+}

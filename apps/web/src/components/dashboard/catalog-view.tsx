@@ -3953,7 +3953,7 @@ export function CatalogView(): JSX.Element {
             <div className='kira-modal-open w-full max-w-md border border-kira-warmgray/50 bg-[#FAFAFA] p-6 shadow-2xl'>
               <h3 className='mb-3 font-serif text-2xl font-semibold text-kira-black'>Unrecognized Value</h3>
               <p className='mb-4 text-sm text-kira-darkgray'>
-                The value <span className='font-semibold text-kira-black'>"{outOfBoundsPrompt.value}"</span> is not in the allowed list for <span className='font-semibold text-kira-black'>{TEMPLATE_FIELD_LABELS[outOfBoundsPrompt.field]}</span> based on the current template.
+                The value <span className='font-semibold text-kira-black'>&quot;{outOfBoundsPrompt.value}&quot;</span> is not in the allowed list for <span className='font-semibold text-kira-black'>{TEMPLATE_FIELD_LABELS[outOfBoundsPrompt.field]}</span> based on the current template.
               </p>
               {activeTemplate && activeTemplate.id !== 'local-default-template' ? (
                 <label className='mb-6 flex cursor-pointer items-start gap-2'>
@@ -3963,7 +3963,7 @@ export function CatalogView(): JSX.Element {
                     className="mt-1 h-4 w-4 rounded border-gray-300 text-kira-brown focus:ring-kira-brown"
                   />
                   <span className='text-sm text-kira-darkgray leading-tight'>
-                    Add <span className='font-semibold'>"{outOfBoundsPrompt.value}"</span> to the allowed {TEMPLATE_FIELD_LABELS[outOfBoundsPrompt.field]} list permanently for this template.
+                    Add <span className='font-semibold'>&quot;{outOfBoundsPrompt.value}&quot;</span> to the allowed {TEMPLATE_FIELD_LABELS[outOfBoundsPrompt.field]} list permanently for this template.
                   </span>
                 </label>
               ) : null}
