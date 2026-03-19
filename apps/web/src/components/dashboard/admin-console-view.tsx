@@ -223,10 +223,13 @@ export function AdminConsoleView(): JSX.Element {
       return;
     }
 
-    setReviewDrafts((previous) => ({
-      ...previous,
-      [userId]: { ...previous[userId], isSaving: true },
-    }));
+    setReviewDrafts((previous) => {
+      const nextDraft = previous[userId] ?? draft;
+      return {
+        ...previous,
+        [userId]: { ...nextDraft, isSaving: true },
+      };
+    });
 
     try {
       const payload: AdminUserReviewPayload = {
@@ -240,10 +243,13 @@ export function AdminConsoleView(): JSX.Element {
       await loadInsights();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Unable to save review.');
-      setReviewDrafts((previous) => ({
-        ...previous,
-        [userId]: { ...previous[userId], isSaving: false },
-      }));
+      setReviewDrafts((previous) => {
+        const nextDraft = previous[userId] ?? draft;
+        return {
+          ...previous,
+          [userId]: { ...nextDraft, isSaving: false },
+        };
+      });
     }
   }
 
