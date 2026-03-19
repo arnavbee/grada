@@ -101,7 +101,7 @@ const fashionMotifSecondary = [
 
 export default function LandingPage(): JSX.Element {
   return (
-    <main className="relative w-full max-w-none space-y-6 p-4 md:space-y-8 md:p-8">
+    <main className="relative w-full max-w-none space-y-6 p-4 pt-20 md:space-y-8 md:p-8 md:pt-24">
       <GridBackground />
       <section className="surface-card animate-enter relative overflow-hidden p-6 md:p-10">
         <div className="kira-float-slow absolute -right-24 top-0 h-72 w-72 rounded-full bg-kira-brown/10 blur-3xl" />
@@ -143,8 +143,11 @@ export default function LandingPage(): JSX.Element {
           </div>
 
           <Card
-            className="animate-enter kira-soft-glow !border-kira-darkgray/20 !bg-kira-black !text-kira-offwhite p-6 md:col-span-4 md:p-6"
-            style={{ animationDelay: "120ms" }}
+            className="animate-enter kira-soft-glow !border-kira-darkgray/20 !text-kira-offwhite p-6 md:col-span-4 md:p-6"
+            style={{
+              animationDelay: "120ms",
+              background: "linear-gradient(180deg, rgba(25, 31, 28, 0.98) 0%, rgba(13, 18, 16, 0.98) 100%)",
+            }}
           >
             <p className="text-xs uppercase tracking-[0.1em] text-kira-warmgray">Snapshot</p>
             <div className="mt-4 space-y-4">

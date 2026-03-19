@@ -19,21 +19,43 @@ export function ThemeToggle(): JSX.Element {
     setMounted(true);
   }, []);
 
-  function handleToggle(): void {
-    const nextTheme: ThemeMode = theme === 'dark' ? 'light' : 'dark';
+  function handleThemeChange(nextTheme: ThemeMode): void {
     setTheme(nextTheme);
     applyTheme(nextTheme);
   }
 
   return (
-    <button
-      aria-label={mounted ? `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode` : 'Toggle theme'}
-      className='theme-toggle kira-focus-ring fixed right-4 top-4 z-[120] inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold shadow-panel md:right-6 md:top-6'
-      onClick={handleToggle}
-      type='button'
+    <div
+      aria-label={mounted ? `Current theme: ${theme}` : 'Theme switcher'}
+      className='theme-toggle fixed right-4 top-4 z-[140] flex items-center gap-2 rounded-full px-2 py-2 shadow-2xl md:right-6 md:top-6 md:gap-3'
+      role='group'
     >
-      <span className='text-base leading-none'>{theme === 'dark' ? '☀' : '◐'}</span>
-      <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
-    </button>
+      <span className='hidden pl-2 text-[11px] font-semibold uppercase tracking-[0.18em] md:inline'>
+        Theme
+      </span>
+      <div
+        className='flex items-center gap-1 rounded-full p-1'
+        style={{ background: 'var(--kira-toggle-track)' }}
+      >
+        <button
+          aria-pressed={theme === 'light'}
+          className='theme-toggle-option kira-focus-ring'
+          data-active={theme === 'light'}
+          onClick={() => handleThemeChange('light')}
+          type='button'
+        >
+          <span>Light</span>
+        </button>
+        <button
+          aria-pressed={theme === 'dark'}
+          className='theme-toggle-option kira-focus-ring'
+          data-active={theme === 'dark'}
+          onClick={() => handleThemeChange('dark')}
+          type='button'
+        >
+          <span>Dark</span>
+        </button>
+      </div>
+    </div>
   );
 }
