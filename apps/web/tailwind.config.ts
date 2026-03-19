@@ -8,21 +8,21 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: "#9b7b5a",
+        brand: "#a06f42",
         kira: {
-          black: "#060606",
-          darkgray: "#4F4F50",
-          warmgray: "#C7B7B6",
-          midgray: "#7A7C88",
-          offwhite: "#FBFBFB",
-          brown: "#90715B",
+          black: "#1B241F",
+          darkgray: "#59675F",
+          warmgray: "#D6CCBF",
+          midgray: "#7C8780",
+          offwhite: "#F7F3EC",
+          brown: "#A06F42",
         },
       },
       fontFamily: {
         sans: ["Inter", "Helvetica Neue", "Helvetica", "Arial", "sans-serif"],
       },
       boxShadow: {
-        panel: "0 8px 30px rgba(6, 6, 6, 0.06)",
+        panel: "0 18px 50px rgba(27, 36, 31, 0.08)",
       },
       keyframes: {
         enter: {
