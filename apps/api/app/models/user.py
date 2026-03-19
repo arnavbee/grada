@@ -14,9 +14,15 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(24), default='admin', nullable=False)
     company_id: Mapped[str] = mapped_column(String(36), ForeignKey('companies.id', ondelete='CASCADE'), index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    signup_source: Mapped[str] = mapped_column(String(64), default='self_serve', nullable=False)
+    verification_status: Mapped[str] = mapped_column(String(32), default='unreviewed', nullable=False)
+    verification_notes: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    verified_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    verified_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     reset_password_token: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     reset_password_expires_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     last_login: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -1,4 +1,5 @@
 import secrets
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -8,6 +9,7 @@ from app.api.deps import require_roles
 from app.core.audit import log_audit
 from app.core.config import get_settings
 from app.core.security import hash_password, validate_password_policy
+from app.core.super_admin import is_super_admin_email
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import MessageResponse
@@ -47,6 +49,9 @@ def create_user(
         role=payload.role,
         company_id=current_user.company_id,
         is_active=True,
+        signup_source='admin_invite',
+        verification_status='internal' if is_super_admin_email(payload.email.lower()) else 'unreviewed',
+        verified_at=datetime.now(timezone.utc) if is_super_admin_email(payload.email.lower()) else None,
     )
     db.add(invited_user)
 

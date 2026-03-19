@@ -35,6 +35,7 @@ interface DashboardShellProps {
 
 interface AuthMeResponse {
   company_name?: string | null;
+  is_super_admin?: boolean;
 }
 
 export function DashboardShell({
@@ -45,17 +46,23 @@ export function DashboardShell({
 }: DashboardShellProps): JSX.Element {
   const pathname = usePathname();
   const [companyName, setCompanyName] = useState('grada');
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
     apiRequest<AuthMeResponse>('/auth/me')
       .then((profile) => {
+        if (!mounted) {
+          return;
+        }
         const resolvedCompanyName = profile.company_name?.trim();
-        if (!mounted || !resolvedCompanyName) {
+        if (!resolvedCompanyName) {
+          setIsSuperAdmin(Boolean(profile.is_super_admin));
           return;
         }
         setCompanyName(resolvedCompanyName);
+        setIsSuperAdmin(Boolean(profile.is_super_admin));
       })
       .catch(() => {
         // Keep graceful fallback when auth profile is unavailable.
@@ -65,6 +72,8 @@ export function DashboardShell({
       mounted = false;
     };
   }, []);
+
+  const navItems = isSuperAdmin ? [...navigation, { label: 'Admin', href: '/dashboard/admin' }] : navigation;
 
   return (
     <div className='min-h-screen'>
@@ -76,7 +85,7 @@ export function DashboardShell({
           </div>
           <nav className='p-2'>
             <ul className='space-y-1'>
-              {navigation.map((item, index) => {
+              {navItems.map((item, index) => {
                 const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                 return (
                   <li key={item.href}>

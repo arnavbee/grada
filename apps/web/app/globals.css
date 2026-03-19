@@ -11,10 +11,7 @@
 }
 
 body {
-  @apply bg-kira-offwhite font-sans text-kira-black antialiased;
-  background-image:
-    radial-gradient(circle at 8% 10%, rgba(199, 183, 182, 0.28) 0, transparent 32%),
-    radial-gradient(circle at 92% 14%, rgba(144, 113, 91, 0.12) 0, transparent 30%);
+  @apply bg-[#000000] font-sans text-[#ffffff] antialiased;
   min-height: 100vh;
 }
 
@@ -40,11 +37,11 @@ small {
 }
 
 .surface-card {
-  @apply rounded-2xl border border-kira-warmgray/35 bg-kira-offwhite/95 shadow-panel backdrop-blur-sm;
+  @apply rounded-2xl border border-white/10 bg-white/5 shadow-panel backdrop-blur-sm;
 }
 
 .table-zebra tbody tr:nth-child(even) {
-  background: rgba(199, 183, 182, 0.16);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .kira-focus-ring:focus-visible {

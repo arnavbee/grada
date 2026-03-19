@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, Request, status
@@ -6,6 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.security import TokenError, decode_access_token
+from app.core.super_admin import is_super_admin_user
 from app.db.session import get_db
 from app.models.user import User
 
@@ -40,6 +42,16 @@ def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='User not found or inactive.')
 
+    now = datetime.now(timezone.utc)
+    last_seen = user.last_seen_at
+    if last_seen is None or (
+        (last_seen.replace(tzinfo=timezone.utc) if last_seen.tzinfo is None else last_seen.astimezone(timezone.utc))
+        <= now - timedelta(minutes=5)
+    ):
+        user.last_seen_at = now
+        db.commit()
+        db.refresh(user)
+
     return user
 
 
@@ -50,6 +62,12 @@ def require_roles(*allowed_roles: str) -> Callable[[User], User]:
         return current_user
 
     return dependency
+
+
+def require_super_admin(current_user: Annotated[User, Depends(get_current_user)]) -> User:
+    if not is_super_admin_user(current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Super admin access required.')
+    return current_user
 
 
 def optional_user_from_state(request: Request, db: DbSession) -> User | None:

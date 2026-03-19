@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     session_timeout_hours: int = 24
 
     frontend_origins: str = 'http://localhost:3000,http://127.0.0.1:3000'
+    super_admin_emails: str = ''
 
     # Optional S3-compatible object storage (Cloudflare R2, S3, MinIO, etc.)
     R2_ENDPOINT: str | None = None

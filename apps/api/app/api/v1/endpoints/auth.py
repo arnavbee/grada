@@ -17,6 +17,7 @@ from app.core.security import (
     validate_password_policy,
     verify_password,
 )
+from app.core.super_admin import is_super_admin_email, is_super_admin_user
 from app.db.session import get_db
 from app.models.company import Company
 from app.models.company_settings import CompanySettings
@@ -41,6 +42,7 @@ def _build_user_response(db: Session, user: User) -> UserResponse:
     company_name = db.query(Company.name).filter(Company.id == user.company_id).scalar()
     user_payload = UserResponse.model_validate(user).model_dump()
     user_payload['company_name'] = company_name
+    user_payload['is_super_admin'] = is_super_admin_user(user)
     return UserResponse(**user_payload)
 
 
@@ -66,6 +68,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthTok
     except TokenError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
+    now = datetime.now(timezone.utc)
     company = Company(id=str(uuid4()), name=payload.company_name)
     db.add(company)
 
@@ -79,6 +82,10 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthTok
         full_name=payload.full_name,
         role='admin',
         company_id=company.id,
+        signup_source='self_serve',
+        verification_status='internal' if is_super_admin_email(payload.email.lower()) else 'unreviewed',
+        verified_at=now if is_super_admin_email(payload.email.lower()) else None,
+        last_seen_at=now,
     )
     db.add(user)
     db.flush()
@@ -103,7 +110,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthTokens:
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='User account is deactivated.')
 
-    user.last_login = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    user.last_login = now
+    user.last_seen_at = now
     log_audit(
         db,
         action='auth.login',
@@ -135,6 +144,7 @@ def refresh_token(payload: RefreshTokenRequest, db: Session = Depends(get_db)) -
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='User not found or inactive.')
 
+    user.last_seen_at = datetime.now(timezone.utc)
     log_audit(db, action='auth.refresh', user_id=user.id, company_id=user.company_id)
     db.commit()
     return _token_response(db, user)

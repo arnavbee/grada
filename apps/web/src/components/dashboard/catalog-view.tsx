@@ -325,89 +325,6 @@ interface CatalogTemplateListResponse {
   total: number;
 }
 
-const sampleCatalogRows: CatalogRow[] = [
-  {
-    id: 'sample-1',
-    styleNo: 'HRDS25001',
-    name: 'Maxi Dress',
-    category: 'DRESSES',
-    color: 'Blue',
-    fabric: 'Poly Georgette',
-    composition: '100% Polyester',
-    wovenKnits: 'Woven',
-    units: '24',
-    poPrice: '600',
-    price: 'SAR 95',
-    status: 'ready',
-    persisted: false,
-    imageName: 'Maxi Dress',
-  },
-  {
-    id: 'sample-2',
-    styleNo: 'HRDS25002',
-    name: 'Midi Dress',
-    category: 'DRESSES',
-    color: 'Maroon',
-    fabric: 'Poly Georgette',
-    composition: '100% Polyester',
-    wovenKnits: 'Woven',
-    units: '24',
-    poPrice: '600',
-    price: 'SAR 95',
-    status: 'needs_review',
-    persisted: false,
-    imageName: 'Midi Dress',
-  },
-  {
-    id: 'sample-3',
-    styleNo: 'HRDS25003',
-    name: 'Midi Dress',
-    category: 'DRESSES',
-    color: 'Wine',
-    fabric: 'Poly Georgette',
-    composition: '100% Polyester',
-    wovenKnits: 'Woven',
-    units: '24',
-    poPrice: '600',
-    price: 'SAR 95',
-    status: 'processing',
-    persisted: false,
-    imageName: 'Midi Dress',
-  },
-  {
-    id: 'sample-4',
-    styleNo: 'HRDS25004',
-    name: 'Midi Dress',
-    category: 'DRESSES',
-    color: 'Wine',
-    fabric: 'Poly Weightless Ggt',
-    composition: '100% Polyester',
-    wovenKnits: 'Woven',
-    units: '24',
-    poPrice: '600',
-    price: 'SAR 95',
-    status: 'draft',
-    persisted: false,
-    imageName: 'Midi Dress',
-  },
-  {
-    id: 'sample-5',
-    styleNo: 'HRDS25005',
-    name: 'Maxi Dress',
-    category: 'DRESSES',
-    color: 'Lilac',
-    fabric: 'Poly Georgette',
-    composition: '100% Polyester',
-    wovenKnits: 'Woven',
-    units: '24',
-    poPrice: '600',
-    price: 'SAR 95',
-    status: 'ready',
-    persisted: false,
-    imageName: 'Maxi Dress',
-  },
-];
-
 const defaultCatalogTemplateDraft: {
   name: string;
   description: string;
@@ -517,14 +434,33 @@ function formatBytes(bytes: number): string {
 }
 
 function colorDot(color: string): string {
-  const token = color.toLowerCase();
-  if (token === 'blue') return '#1D4ED8';
-  if (token === 'maroon') return '#7F1D1D';
-  if (token === 'wine') return '#6B2136';
-  if (token === 'lilac') return '#C4A2D3';
+  const token = color.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+  if (token === 'beige') return '#D6C1A3';
   if (token === 'black') return '#18181B';
-  if (token === 'white') return '#D4D4D8';
+  if (token === 'blue') return '#1D4ED8';
+  if (token === 'bottle green') return '#166534';
+  if (token === 'brown') return '#8B5E3C';
+  if (token === 'green') return '#16A34A';
+  if (token === 'grey') return '#6B7280';
+  if (token === 'lilac') return '#C4A2D3';
+  if (token === 'maroon') return '#7F1D1D';
+  if (token === 'mustard') return '#D4A017';
+  if (token === 'navy') return '#1E3A8A';
+  if (token === 'pink') return '#EC4899';
+  if (token === 'purple') return '#7C3AED';
+  if (token === 'silver') return '#B8C2CC';
+  if (token === 'white') return '#F8FAFC';
+  if (token === 'wine') return '#6B2136';
   return '#7A7C88';
+}
+
+function colorDotBorder(color: string): string {
+  const token = color.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (token === 'white' || token === 'silver' || token === 'beige') {
+    return '#9CA3AF';
+  }
+  return 'transparent';
 }
 
 function escapeRegExp(value: string): string {
@@ -1027,8 +963,8 @@ export function CatalogView(): JSX.Element {
 
     async function loadCatalog(): Promise<void> {
       if (!hasAccessToken()) {
-        setCatalogNotice('Sign in to load live catalog records. Showing sample data.');
-        setCatalogRows(sampleCatalogRows);
+        setCatalogNotice('Sign in to load live catalog records.');
+        setCatalogRows([]);
         if (mounted) setIsCatalogLoading(false);
         return;
       }
@@ -1040,8 +976,8 @@ export function CatalogView(): JSX.Element {
         if (!mounted) return;
 
         if (response.items.length === 0) {
-          setCatalogNotice('No catalog records yet. Showing sample data.');
-          setCatalogRows(sampleCatalogRows);
+          setCatalogNotice('No catalog records yet.');
+          setCatalogRows([]);
           return;
         }
 
@@ -1092,8 +1028,8 @@ export function CatalogView(): JSX.Element {
       } catch (error) {
         if (!mounted) return;
         const message = error instanceof Error ? error.message : 'Catalog could not be loaded.';
-        setCatalogNotice(`${message} Showing sample data.`);
-        setCatalogRows(sampleCatalogRows);
+        setCatalogNotice(message);
+        setCatalogRows([]);
       } finally {
         if (mounted) setIsCatalogLoading(false);
       }
@@ -4230,7 +4166,10 @@ export function CatalogView(): JSX.Element {
                     </td>
                     <td className='px-4 py-4 text-kira-black'>
                       <span className='inline-flex items-center gap-2'>
-                        <span className='h-3 w-3 rounded-full' style={{ backgroundColor: colorDot(row.color) }} />
+                        <span
+                          className='h-3 w-3 rounded-full border'
+                          style={{ backgroundColor: colorDot(row.color), borderColor: colorDotBorder(row.color) }}
+                        />
                         {row.color}
                       </span>
                     </td>
@@ -4277,7 +4216,11 @@ export function CatalogView(): JSX.Element {
                 {filteredCatalogRows.length === 0 ? (
                   <tr>
                     <td className='px-4 py-8 text-center text-sm text-kira-midgray' colSpan={10}>
-                      {isCatalogLoading ? 'Loading catalog rows...' : 'No catalog rows match current filters.'}
+                      {isCatalogLoading
+                        ? 'Loading catalog rows...'
+                        : catalogRows.length === 0
+                          ? 'No catalog records yet.'
+                          : 'No catalog rows match current filters.'}
                     </td>
                   </tr>
                 ) : null}

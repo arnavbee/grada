@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
+import { GridBackground } from "@/src/components/GridBackground";
+import { FooterBrand } from "@/src/components/FooterBrand";
 
 const modules = [
   {
@@ -99,17 +101,20 @@ const fashionMotifSecondary = [
 
 export default function LandingPage(): JSX.Element {
   return (
-    <main className="mx-auto max-w-[1440px] space-y-6 p-4 md:space-y-8 md:p-8">
+    <main className="relative mx-auto max-w-[1440px] space-y-6 p-4 md:space-y-8 md:p-8">
+      <GridBackground />
       <section className="surface-card animate-enter relative overflow-hidden p-6 md:p-10">
         <div className="kira-float-slow absolute -right-24 top-0 h-72 w-72 rounded-full bg-kira-brown/10 blur-3xl" />
         <div className="kira-float-fast absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-kira-warmgray/15 blur-3xl" />
         <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
-          <div className="md:col-span-8">
-            <h1 className="max-w-3xl text-5xl font-bold leading-tight md:text-7xl">Grada</h1>
-            <p className="mt-3 max-w-3xl text-3xl leading-tight md:text-5xl">
+          <div className="md:col-span-8 relative z-10">
+            <h1 className="max-w-3xl text-[4.5rem] font-bold leading-none tracking-tighter md:text-[7.5rem] lg:text-[9rem] animate-letter-spacing">
+              Grada<span className="inline-block md:ml-1 mb-1 md:mb-3 h-3 w-3 md:h-6 md:w-6 bg-[#9b7b5a] animate-pulse-dot" style={{ animationDelay: "400ms" }} />
+            </h1>
+            <p className="mt-6 max-w-3xl text-3xl leading-tight md:text-5xl animate-fade-in-up" style={{ animationDelay: "800ms" }}>
               Stop losing margin to wholesale operations chaos.
             </p>
-            <p className="mt-4 max-w-2xl text-kira-darkgray md:text-lg">
+            <p className="mt-6 max-w-2xl text-kira-warmgray md:text-lg animate-fade-in-up" style={{ animationDelay: "1000ms" }}>
               Empowering Every Step of Wholesale. grada is a focused operating layer for fashion teams handling
               inventory, marketplace orders, documents, and reporting.
             </p>
@@ -128,13 +133,13 @@ export default function LandingPage(): JSX.Element {
                 </Button>
               </Link>
               <Link
-                className="kira-focus-ring rounded-md px-3 py-2 text-sm text-kira-darkgray hover:bg-kira-warmgray/20"
+                className="kira-focus-ring rounded-md px-3 py-2 text-sm text-kira-warmgray hover:bg-white/10"
                 href="/design-system"
               >
                 View Design System
               </Link>
             </div>
-            <p className="mt-4 text-sm text-kira-midgray">Start today, stay efficient forever.</p>
+            <p className="mt-6 text-sm text-kira-midgray animate-fade-in-up" style={{ animationDelay: "1200ms" }}>Start today, stay efficient forever.</p>
           </div>
 
           <Card
@@ -320,7 +325,9 @@ export default function LandingPage(): JSX.Element {
         </div>
       </Card>
 
-      <footer className="surface-card animate-enter p-5 md:p-7" style={{ animationDelay: "640ms" }}>
+      <FooterBrand />
+
+      <footer className="surface-card animate-enter relative z-10 p-5 md:p-7" style={{ animationDelay: "640ms" }}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">grada</p>
