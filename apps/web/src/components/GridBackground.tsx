@@ -35,15 +35,19 @@ export function GridBackground() {
                 {Array.from({ length: totalSquares }).map((_, i) => (
                     <div
                         key={i}
-                        className="border-[0.5px] border-[#7B7468]/25 transition-colors duration-1000"
+                        className="border-[0.5px] transition-colors duration-1000"
                         style={{
-                            backgroundColor: highlightedSquares.includes(i) ? "#a06f42" : "transparent"
+                            borderColor: "var(--kira-grid-line)",
+                            backgroundColor: highlightedSquares.includes(i) ? "var(--kira-grid-highlight)" : "transparent"
                         }}
                     />
                 ))}
             </div>
             {/* Optional: Add a subtle overlay gradient to blend the edges if desired */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#f5f1e8_100%)] z-10" />
+            <div
+                className="absolute inset-0 z-10"
+                style={{ background: "radial-gradient(circle at center, transparent 0%, var(--kira-grid-fade) 100%)" }}
+            />
         </div>
     );
 }
