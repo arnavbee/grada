@@ -101,7 +101,7 @@ const fashionMotifSecondary = [
 
 export default function LandingPage(): JSX.Element {
   return (
-    <main className="relative mx-auto max-w-[1440px] space-y-6 p-4 md:space-y-8 md:p-8">
+    <main className="relative w-full max-w-none space-y-6 p-4 md:space-y-8 md:p-8">
       <GridBackground />
       <section className="surface-card animate-enter relative overflow-hidden p-6 md:p-10">
         <div className="kira-float-slow absolute -right-24 top-0 h-72 w-72 rounded-full bg-kira-brown/10 blur-3xl" />

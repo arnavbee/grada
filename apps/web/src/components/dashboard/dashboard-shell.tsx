@@ -77,7 +77,12 @@ export function DashboardShell({
 
   return (
     <div className='min-h-screen'>
-      <div className='mx-auto grid max-w-[1440px] grid-cols-1 gap-4 p-4 md:grid-cols-12 md:gap-6 md:p-6'>
+      <div
+        className={cn(
+          'mx-auto grid grid-cols-1 gap-4 p-4 md:grid-cols-12 md:gap-6 md:p-6',
+          'max-w-none',
+        )}
+      >
         <aside className='surface-card animate-enter md:col-span-3 lg:col-span-2'>
           <div className='border-b border-kira-warmgray/35 px-4 py-5'>
             <p className='text-lg font-black leading-tight text-kira-black md:text-xl'>{companyName}</p>
