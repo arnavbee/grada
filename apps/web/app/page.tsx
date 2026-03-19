@@ -177,7 +177,7 @@ export default function LandingPage(): JSX.Element {
       </section>
 
       <section
-        className="animate-enter overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-kira-offwhite/95 p-5 md:p-6"
+        className="kira-surface-elevated animate-enter overflow-hidden rounded-2xl border border-kira-warmgray/35 p-5 md:p-6"
         style={{ animationDelay: "200ms" }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -188,11 +188,11 @@ export default function LandingPage(): JSX.Element {
           <p className="text-sm text-kira-midgray">Season-ready operational context with visual motifs</p>
         </div>
         <div className="mt-4 space-y-3">
-          <div className="overflow-hidden rounded-xl border border-kira-warmgray/35 bg-kira-offwhite">
+          <div className="kira-surface-soft overflow-hidden rounded-xl border border-kira-warmgray/35">
             <div className="kira-marquee flex min-w-max items-center gap-3 px-3 py-2">
               {[...fashionMotifPrimary, ...fashionMotifPrimary].map((tag, index) => (
                 <span
-                  className="inline-flex items-center gap-2 rounded-full border border-kira-warmgray/45 bg-kira-offwhite px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray"
+                  className="kira-surface-chip inline-flex items-center gap-2 rounded-full border border-kira-warmgray/45 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray"
                   key={`${tag}-${index}`}
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-kira-brown/80" />
@@ -201,11 +201,11 @@ export default function LandingPage(): JSX.Element {
               ))}
             </div>
           </div>
-          <div className="overflow-hidden rounded-xl border border-kira-warmgray/35 bg-kira-offwhite/80">
+          <div className="kira-surface-soft overflow-hidden rounded-xl border border-kira-warmgray/35">
             <div className="kira-marquee-reverse flex min-w-max items-center gap-3 px-3 py-2">
               {[...fashionMotifSecondary, ...fashionMotifSecondary].map((tag, index) => (
                 <span
-                  className="inline-flex items-center gap-2 rounded-full border border-kira-warmgray/45 bg-kira-offwhite px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray"
+                  className="kira-surface-chip inline-flex items-center gap-2 rounded-full border border-kira-warmgray/45 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray"
                   key={`${tag}-${index}`}
                 >
                   <span className="h-1.5 w-1.5 rounded-full bg-kira-midgray/80" />
@@ -268,7 +268,7 @@ export default function LandingPage(): JSX.Element {
           <div className="mt-5 space-y-2">
             {contactChannels.map((channel) => (
               <a
-                className="kira-focus-ring flex items-center justify-between rounded-none border border-kira-warmgray/50 bg-kira-offwhite px-4 py-3 text-kira-black hover:bg-kira-warmgray/20"
+                className="kira-surface-elevated kira-focus-ring flex items-center justify-between rounded-none border border-kira-warmgray/50 px-4 py-3 text-kira-black hover:bg-kira-warmgray/20"
                 href={channel.href}
                 key={channel.label}
                 rel="noreferrer"
@@ -296,7 +296,7 @@ export default function LandingPage(): JSX.Element {
         ))}
       </section>
 
-      <section className="animate-enter overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-kira-offwhite/95" style={{ animationDelay: "520ms" }}>
+      <section className="kira-surface-elevated animate-enter overflow-hidden rounded-2xl border border-kira-warmgray/35" style={{ animationDelay: "520ms" }}>
         <div className="kira-marquee flex min-w-max items-center gap-6 py-3">
           {[...tickerItems, ...tickerItems].map((item, index) => (
             <span className="inline-flex items-center gap-4 text-sm uppercase tracking-[0.08em] text-kira-midgray" key={`${item}-${index}`}>

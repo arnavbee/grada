@@ -17,11 +17,11 @@ export function AuthShell({ title, subtitle, children }: AuthShellProps): JSX.El
         <h1 className="mt-2">{title}</h1>
         <p className="mt-2 text-kira-darkgray">{subtitle}</p>
         <div className="mt-8 space-y-3">
-          <div className="rounded-lg border border-kira-warmgray/40 bg-kira-offwhite p-3">
+          <div className="kira-surface-elevated rounded-lg border border-kira-warmgray/40 p-3">
             <p className="text-sm font-semibold">Security-first</p>
             <small className="text-kira-midgray">Session timeout, role access, and audit-aware workflows.</small>
           </div>
-          <div className="rounded-lg border border-kira-warmgray/40 bg-kira-offwhite p-3">
+          <div className="kira-surface-elevated rounded-lg border border-kira-warmgray/40 p-3">
             <p className="text-sm font-semibold">Built for operations teams</p>
             <small className="text-kira-midgray">Fast forms, dense data readability, and keyboard-friendly controls.</small>
           </div>

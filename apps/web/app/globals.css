@@ -23,6 +23,9 @@
   --kira-accent: #a06f42;
   --kira-surface-top: rgba(255, 255, 255, 0.96);
   --kira-surface-bottom: rgba(248, 243, 235, 0.98);
+  --kira-surface-elevated-bg: rgba(250, 247, 241, 0.94);
+  --kira-surface-soft-bg: rgba(255, 252, 247, 0.86);
+  --kira-surface-chip-bg: rgba(255, 255, 255, 0.82);
   --kira-table-stripe: rgba(118, 108, 90, 0.05);
   --kira-grid-line: rgba(123, 116, 104, 0.22);
   --kira-grid-highlight: #a06f42;
@@ -53,6 +56,9 @@ html[data-theme='dark'] {
   --kira-border: rgba(226, 216, 203, 0.12);
   --kira-surface-top: rgba(28, 35, 31, 0.92);
   --kira-surface-bottom: rgba(18, 24, 21, 0.97);
+  --kira-surface-elevated-bg: rgba(24, 31, 27, 0.94);
+  --kira-surface-soft-bg: rgba(18, 24, 21, 0.88);
+  --kira-surface-chip-bg: rgba(31, 39, 35, 0.95);
   --kira-table-stripe: rgba(226, 216, 203, 0.035);
   --kira-grid-line: rgba(226, 216, 203, 0.08);
   --kira-grid-highlight: #d1a46f;
@@ -106,6 +112,18 @@ small {
     linear-gradient(180deg, var(--kira-surface-top) 0%, var(--kira-surface-bottom) 100%);
   box-shadow: var(--kira-shadow-lg);
   transition: background 220ms ease, border-color 220ms ease, box-shadow 220ms ease, color 220ms ease;
+}
+
+.kira-surface-elevated {
+  background-color: var(--kira-surface-elevated-bg);
+}
+
+.kira-surface-soft {
+  background-color: var(--kira-surface-soft-bg);
+}
+
+.kira-surface-chip {
+  background-color: var(--kira-surface-chip-bg);
 }
 
 .table-zebra tbody tr:nth-child(even) {
@@ -273,6 +291,10 @@ small {
   font-size: 16px;
   font-weight: 700;
   line-height: 1;
+}
+
+html[data-theme='dark'] [class*='bg-kira-offwhite'] {
+  background-color: var(--kira-surface-elevated-bg) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

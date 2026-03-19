@@ -38,7 +38,7 @@ export function DataTable({ columns, rows }: DataTableProps): JSX.Element {
           ))}
         </tbody>
       </table>
-      <div className="flex items-center justify-between bg-kira-offwhite px-4 py-3 text-xs text-kira-darkgray">
+      <div className="kira-surface-elevated flex items-center justify-between px-4 py-3 text-xs text-kira-darkgray">
         <span>Showing 1-5 of 125</span>
         <div className="flex items-center gap-2">
           <button className="kira-focus-ring rounded border border-kira-warmgray px-2 py-1 hover:bg-kira-warmgray/20" type="button">
