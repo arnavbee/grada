@@ -8,14 +8,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: "#a06f42",
+        brand: "rgb(var(--kira-brown-rgb) / <alpha-value>)",
         kira: {
-          black: "#1B241F",
-          darkgray: "#59675F",
-          warmgray: "#D6CCBF",
-          midgray: "#7C8780",
-          offwhite: "#F7F3EC",
-          brown: "#A06F42",
+          black: "rgb(var(--kira-ink-rgb) / <alpha-value>)",
+          darkgray: "rgb(var(--kira-muted-rgb) / <alpha-value>)",
+          warmgray: "rgb(var(--kira-warmgray-rgb) / <alpha-value>)",
+          midgray: "rgb(var(--kira-midgray-rgb) / <alpha-value>)",
+          offwhite: "rgb(var(--kira-offwhite-rgb) / <alpha-value>)",
+          brown: "rgb(var(--kira-brown-rgb) / <alpha-value>)",
         },
       },
       fontFamily: {
