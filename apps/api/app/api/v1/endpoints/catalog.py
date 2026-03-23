@@ -824,23 +824,50 @@ def _find_unique_sku(db: Session, company_id: str, base_sku: str, current_produc
         candidate = f'{base_sku}-{suffix:02d}'
 
 
+def _get_brand_initials(brand: str | None, fallback: str = 'GN') -> str:
+    if not brand: return fallback
+    words = [w for w in re.split(r'[^A-Za-z0-9]+', brand) if w]
+    if len(words) == 1:
+        return words[0][:3].upper()
+    elif len(words) >= 2:
+        return ''.join(w[0] for w in words).upper()
+    return fallback
+
+def _get_category_abbr(category: str | None, fallback: str = 'XX') -> str:
+    if not category:
+        return fallback
+    clean = re.sub(r'[^A-Za-z0-9]+', '', category).upper()
+    if 'DRESS' in clean: return 'DS'
+    if 'CORD' in clean or 'SET' in clean: return 'CS'
+    if 'TOP' in clean: return 'TP'
+    if len(clean) >= 2: return clean[:2]
+    return clean or fallback
+
+def _find_formatted_unique_sku(db: Session, company_id: str, base_sku: str, current_product_id: str | None = None) -> str:
+    suffix = 1
+    while True:
+        candidate = f'{base_sku}{suffix:03d}'
+        query = db.query(Product).filter(Product.company_id == company_id, Product.sku == candidate)
+        if current_product_id:
+            query = query.filter(Product.id != current_product_id)
+        if query.first() is None:
+            return candidate
+        suffix += 1
+
 def _generate_sku(db: Session, company_id: str, company_settings: CompanySettings | None, payload: ProductCreateRequest) -> str:
-    template = (
-        company_settings.sku_format
-        if company_settings and company_settings.sku_format
-        else '{BRAND}-{CATEGORY}-{COLOR}-{SIZE}'
-    )
-    base = template
-    replacements = {
-        '{BRAND}': _sku_token(payload.brand, 'GEN'),
-        '{CATEGORY}': _sku_token(payload.category, 'CAT'),
-        '{COLOR}': _sku_token(payload.color, 'CLR'),
-        '{SIZE}': _sku_token(payload.size, 'STD'),
-    }
-    for key, value in replacements.items():
-        base = base.replace(key, value)
-    base = re.sub(r'-{2,}', '-', base).strip('-').upper() or 'SKU'
-    return _find_unique_sku(db, company_id, base)
+    from app.models.company import Company
+    company = db.query(Company).filter(Company.id == company_id).first()
+    company_name = company.name if company else "Generic"
+    
+    brand_val = payload.brand
+    if not brand_val or brand_val.strip().lower() == 'generic':
+        brand_val = company_name
+
+    brand_initials = _get_brand_initials(brand_val)
+    category_abbr = _get_category_abbr(payload.category)
+    year = str(datetime.now(timezone.utc).year)[-2:]
+    base = f"{brand_initials}{category_abbr}{year}"
+    return _find_formatted_unique_sku(db, company_id, base)
 
 
 def _to_product_response(product: Product) -> ProductResponse:

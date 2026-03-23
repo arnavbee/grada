@@ -10,6 +10,7 @@ from app.models.product import Product
 from app.models.product_image import ProductImage
 from app.models.product_measurement import ProductMeasurement
 from app.models.user import User
+from app.models.po_request import PORequest, PORequestItem
 
 __all__ = [
     'AICorrection',
@@ -24,4 +25,6 @@ __all__ = [
     'ProductImage',
     'ProductMeasurement',
     'User',
+    'PORequest',
+    'PORequestItem',
 ]

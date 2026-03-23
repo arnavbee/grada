@@ -16,6 +16,7 @@ from app.models.ai_correction import AICorrection
 from app.models.processing_job import ProcessingJob
 from app.models.product_image import ProductImage
 from app.models.product_measurement import ProductMeasurement
+from app.models.po_request import PORequest, PORequestItem
 
 settings = get_settings()
 
@@ -192,6 +193,55 @@ Format strictly as:
         except Exception as e:
             print(f"AI Analysis Error: {e}")
             return {"error": str(e)}
+
+    def extract_po_attributes(self, image_url: str, category: str) -> dict[str, Any]:
+        """
+        Extract detailed Styli GARMENT attributes for a PO based on product category.
+        """
+        prompt = f"""
+Analyze this fashion product image and extract detailed attributes for a {category} garment.
+Return a valid JSON object with these exact keys based on the category.
+
+If category is near Top/Shirt:
+Keys: tops_fit, top_style, top_neck, top_length, top_print, sleeve_length
+If category is near Dress:
+Keys: dress_shape, neck_women_dress, dress_print, sleeve_length_women_dress, sleeve_styling_dress, dress_length
+If category is near Ethnic:
+Keys: ethnic_print, ethnic_length, ethnic_sleeve, ethnic_pattern, ethnic_fit, ethnic_type, ethnic_neckline, ethnic_leg_style, ethnic_sleeve_type
+If category is near Denim/Jeans:
+Keys: jeans_fit, jeans_waist_rise, jeans_stretch, jeans_wash_shade
+If category is near Outerwear/Jacket:
+Keys: outerwear_type, outerwear_length
+
+Values should ideally match standard Styli Master Attribute formats like "A-Line", "Maxi", etc.
+All keys should output string values. Ignore confidence scores, just output the strings directly.
+"""
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": image_url,
+                                    "detail": "high"
+                                },
+                            },
+                        ],
+                    }
+                ],
+                max_tokens=600,
+                response_format={"type": "json_object"}
+            )
+            content = response.choices[0].message.content
+            return json.loads(content) if content else {}
+        except Exception as e:
+            print(f"PO AI Extraction Error: {e}")
+            return {}
 
 ai_service = AIService()
 
@@ -493,6 +543,53 @@ def process_ai_correction_retraining(correction_id: str):
             correction.retraining_status = 'failed'
             correction.retraining_notes = str(e)[:255]
             correction.processed_at = utcnow()
+            db.commit()
+    finally:
+        db.close()
+
+def process_po_ai_extraction_job(po_request_id: str):
+    """
+    Background task to process PO AI attribute extraction for all items in a request.
+    """
+    from app.models.product import Product
+    db: Session = SessionLocal()
+    po_request: PORequest | None = None
+    try:
+        po_request = db.query(PORequest).filter(PORequest.id == po_request_id).first()
+        if not po_request:
+            return
+
+        for item in po_request.items:
+            product = db.query(Product).filter(Product.id == item.product_id).first()
+            if not product:
+                continue
+            
+            image = db.query(ProductImage).filter(ProductImage.product_id == product.id).order_by(ProductImage.created_at).first()
+            
+            if image and image.file_url:
+                image_url = image.file_url
+                if image_url.startswith('/static/') or 'localhost' in image_url or '127.0.0.1' in image_url:
+                    from urllib.parse import urlparse
+                    import base64
+                    path_part = urlparse(image_url).path if image_url.startswith('http') else image_url
+                    local_path = Path(path_part.lstrip('/'))
+                    if local_path.exists():
+                        b64 = base64.b64encode(local_path.read_bytes()).decode('utf-8')
+                        # Derive mimetype
+                        ext = local_path.suffix.lower()
+                        mime = 'image/png' if ext == '.png' else 'image/webp' if ext == '.webp' else 'image/jpeg'
+                        image_url = f"data:{mime};base64,{b64}"
+                
+                attributes = ai_service.extract_po_attributes(image_url, product.category or "Top")
+                item.extracted_attributes = attributes
+            else:
+                item.extracted_attributes = {"error": "no image found"}
+        
+        po_request.status = 'ready'
+        db.commit()
+    except Exception as e:
+        if po_request:
+            po_request.status = 'draft'
             db.commit()
     finally:
         db.close()

@@ -61,22 +61,31 @@
 - [x] Build tech-pack PDF flow (upload, OCR, measurement extraction, validation flags).
 - [x] Build catalog table UX: search, filter, inline edit, bulk edit, status transitions.
 - [x] Implement SKU auto-generation from configured pattern.
-- [] Build marketplace export generation (CSV/XLSX) with validation + export history.
+- [x] Build marketplace export generation (CSV/XLSX) with validation + export history.
 
-### Phase 3: Module 2 PO Automation (Weeks 5-6)
+### Phase 3: Module 2 PO Format Builder (Weeks 5-6)
 
 - [ ] Implement schema/tables:
-  - [ ] `purchase_orders`, `po_line_items`.
-- [ ] Build PO ingestion:
-  - [ ] manual upload (PDF/Excel)
-  - [ ] Gmail/Outlook connector skeleton (OAuth + polling/webhook)
-- [ ] Build PO parsing pipeline:
-  - [ ] marketplace detection
-  - [ ] structured extraction (PO number/date/items/totals/address)
-  - [ ] confidence + review queue
-- [ ] Build PO validation rules (SKU match, totals check, inventory availability check).
-- [ ] Build PO dashboard with filters/sort/search/status workflow.
-- [ ] Build PO confirmation generation + send/download + status tracking.
+  - [ ] `po_requests`, `po_request_items`.
+- [ ] Build PO Format Builder UI:
+  - [ ] Select catalog items for PO request
+  - [ ] Manual input fields: PO price, OSP inside price, Fabric/fiber composition
+  - [ ] Size ratio calculator configuration (S:M:L:XL:XXL quantities)
+- [ ] Build AI Image Extraction Pipeline (Category-specific detailed attributes):
+  - [ ] Top: fit, style, neck, length, print, sleeve
+  - [ ] Dress: shape, neck, print, sleeve, neck, women's type
+  - [ ] Ethnic: print, length, sleeve, pattern, fit, type, neckline, leg style, sleeve type
+  - [ ] Denim Jeans: fit, waist rise, stretch, wash shade
+  - [ ] Outwear/Jackets: type, length
+- [ ] Build Automated Field Mapping (from catalog to PO sheet):
+  - [ ] Style code + color-way suffix (AA/AB)
+  - [ ] Brand, category, gender (L1/L2/L3)
+  - [ ] Country of origin → India (fixed)
+  - [ ] Woven/knit classification
+  - [ ] Product name (already built)
+- [ ] Build Document Generation:
+  - [ ] Generate detailed PO format sheet (matching Styli PO template) expanding catalog data into garment-level attributes.
+  - [ ] Download/export generated PO format sheet.
 
 ### Phase 4: Module 3 Invoice & Packing (Week 7)
 

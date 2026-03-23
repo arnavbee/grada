@@ -13,6 +13,7 @@ import { apiRequest } from '@/src/lib/api-client';
 const navigation = [
   { label: 'Dashboard', href: '/dashboard' },
   { label: 'Catalog', href: '/dashboard/catalog' },
+  { label: 'PO Format Builder', href: '/dashboard/po-builder' },
   { label: 'Inventory', href: '/dashboard/inventory' },
   { label: 'Orders', href: '/dashboard/orders' },
   { label: 'Settings', href: '/dashboard/settings' },
