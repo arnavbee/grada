@@ -33,6 +33,10 @@ const EMPTY_BRAND_PROFILE: BrandProfileInput = {
   pan_number: "",
   bill_to_address: "",
   ship_to_address: "",
+  instagram_handle: "",
+  website_url: "",
+  facebook_handle: "",
+  snapchat_handle: "",
   invoice_prefix: "INV",
   default_igst_rate: 5,
 };
@@ -102,6 +106,10 @@ export function SettingsView(): JSX.Element {
           pan_number: profile.pan_number,
           bill_to_address: profile.bill_to_address,
           ship_to_address: profile.ship_to_address,
+          instagram_handle: profile.instagram_handle,
+          website_url: profile.website_url,
+          facebook_handle: profile.facebook_handle,
+          snapchat_handle: profile.snapchat_handle,
           invoice_prefix: profile.invoice_prefix,
           default_igst_rate: profile.default_igst_rate,
         });
@@ -146,6 +154,10 @@ export function SettingsView(): JSX.Element {
         pan_number: saved.pan_number,
         bill_to_address: saved.bill_to_address,
         ship_to_address: saved.ship_to_address,
+        instagram_handle: saved.instagram_handle,
+        website_url: saved.website_url,
+        facebook_handle: saved.facebook_handle,
+        snapchat_handle: saved.snapchat_handle,
         invoice_prefix: saved.invoice_prefix,
         default_igst_rate: saved.default_igst_rate,
       });
@@ -325,6 +337,38 @@ export function SettingsView(): JSX.Element {
                 setBrandProfile((current) => ({ ...current, pan_number: event.target.value }))
               }
               value={brandProfile.pan_number}
+            />
+            <InputField
+              disabled={loading}
+              label="Instagram handle"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, instagram_handle: event.target.value }))
+              }
+              value={brandProfile.instagram_handle}
+            />
+            <InputField
+              disabled={loading}
+              label="Website"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, website_url: event.target.value }))
+              }
+              value={brandProfile.website_url}
+            />
+            <InputField
+              disabled={loading}
+              label="Facebook handle"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, facebook_handle: event.target.value }))
+              }
+              value={brandProfile.facebook_handle}
+            />
+            <InputField
+              disabled={loading}
+              label="Snapchat handle"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, snapchat_handle: event.target.value }))
+              }
+              value={brandProfile.snapchat_handle}
             />
             <div className="md:col-span-2">
               <label className="block">

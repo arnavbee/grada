@@ -62,6 +62,10 @@ def _to_brand_profile_response(company_id: str, company_settings: CompanySetting
         pan_number=str(brand_profile_payload.get('pan_number') or ''),
         bill_to_address=str(brand_profile_payload.get('bill_to_address') or ''),
         ship_to_address=str(brand_profile_payload.get('ship_to_address') or ''),
+        instagram_handle=str(brand_profile_payload.get('instagram_handle') or ''),
+        website_url=str(brand_profile_payload.get('website_url') or ''),
+        facebook_handle=str(brand_profile_payload.get('facebook_handle') or ''),
+        snapchat_handle=str(brand_profile_payload.get('snapchat_handle') or ''),
         invoice_prefix=company_settings.invoice_prefix or 'INV',
         default_igst_rate=float(brand_profile_payload.get('default_igst_rate') or 5),
     )
@@ -121,6 +125,10 @@ def update_brand_profile(
         'pan_number': payload.pan_number.strip(),
         'bill_to_address': payload.bill_to_address.strip(),
         'ship_to_address': payload.ship_to_address.strip(),
+        'instagram_handle': payload.instagram_handle.strip(),
+        'website_url': payload.website_url.strip(),
+        'facebook_handle': payload.facebook_handle.strip(),
+        'snapchat_handle': payload.snapchat_handle.strip(),
         'default_igst_rate': payload.default_igst_rate,
     }
     company_settings.invoice_prefix = payload.invoice_prefix.strip()

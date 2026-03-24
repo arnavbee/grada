@@ -1,6 +1,7 @@
 # Full Stack MVP TODO Plan
 
 Last updated: 2026-03-24
+Status refresh: aligned with repo state and targeted tests on 2026-03-24
 
 ## 1) Current Project Snapshot
 
@@ -18,11 +19,12 @@ Last updated: 2026-03-24
   - Auth and tenancy
   - Catalog workflows
   - Received PO workflows
+  - Downstream document generation
   - PO format builder v2 workflow
   - Super-admin analytics
 - Current implementation is weakest in:
-  - Invoice and packing
   - Unified dashboard data layer
+  - Orders and inventory operational surfaces
   - Durable background jobs
   - Settings and integrations
 
@@ -101,7 +103,8 @@ Last updated: 2026-03-24
 - [x] Catalog page
 - [x] PO builder page
 - [x] Admin console page
-- [x] Placeholder routes for inventory, orders, and settings
+- [x] Settings page
+- [x] Placeholder routes for inventory and orders
 
 ## 4) Known Gaps and Drift To Fix First
 
@@ -126,7 +129,7 @@ Last updated: 2026-03-24
 
 ## 5) Recently Completed: Received PO Processing
 
-This is the next major feature to build now.
+This phase is now implemented end to end in the repo. The next work here is hardening, AI-assisted parsing quality, and broader automated coverage.
 
 Business flow:
 
@@ -155,9 +158,9 @@ Important architecture decisions for this phase:
 - [x] Keep these settings in the current backend shape:
   - [x] structured brand-profile data inside `company_settings.settings_json`
   - [x] dedicated `carton_capacity_rules` table for editable capacity rules
-- [ ] Keep settings UI inside the existing dashboard route structure:
-  - [ ] extend `/dashboard/settings`
-  - [ ] avoid introducing a separate non-dashboard settings surface unless necessary
+- [x] Keep settings UI inside the existing dashboard route structure:
+  - [x] extend `/dashboard/settings`
+  - [x] avoid introducing a separate non-dashboard settings surface unless necessary
 
 ### Phase 3B: Data Model for Received POs
 
@@ -202,7 +205,7 @@ Important architecture decisions for this phase:
   - [x] create `received_pos` record with `uploaded` status
 - [x] Implement parse job kickoff using the current background-task model.
 - [x] Add parser service in the API:
-  - [ ] PDF extraction via `pdfplumber`
+  - [x] PDF extraction via `pdfplumber`
   - [x] Excel extraction via `openpyxl` or fallback parser
   - [x] normalize extracted table/text before AI parsing
   - [ ] pass normalized content through the existing AI service layer for structured extraction
@@ -345,7 +348,7 @@ Important architecture decisions for this phase:
   - [ ] dashboard-shell auth profile loading
   - [ ] catalog interactions
   - [ ] PO builder step transitions
-- [ ] Add frontend tests for received PO flows:
+- [x] Add frontend tests for received PO flows:
   - [x] helper coverage for formatting, totals, draft shaping, and file URL resolution
   - [x] upload and parse polling state
   - [x] editable review table before confirm
@@ -356,28 +359,28 @@ Important architecture decisions for this phase:
   - [ ] permission boundaries across roles
   - [ ] multi-tenant isolation on every new endpoint group
   - [ ] object storage and local storage parity
-- [ ] Add API tests for received PO flows:
+- [x] Add API tests for received PO flows:
   - [x] upload -> parse -> confirm
   - [x] edit lock after confirmation
   - [x] tenant isolation on received PO detail
-  - [ ] invoice calculation correctness
-  - [ ] carton assignment correctness
-  - [ ] barcode/invoice/packing-list job state handling
+  - [x] invoice calculation correctness
+  - [x] carton assignment correctness
+  - [x] barcode/invoice/packing-list job state handling
 - [ ] Add end-to-end tests for:
   - [ ] sign up -> sign in -> dashboard access
   - [ ] upload -> analyze -> create product -> export
   - [ ] select products -> configure PO -> extract -> export
   - [ ] upload received PO -> review -> confirm -> generate documents
 
-### Acceptance Criteria For Next Phase
+### Acceptance Criteria For Received PO Phase
 
-- [ ] Uploading a PDF or Excel received PO creates a record and parses line items within an acceptable async window.
-- [ ] User can review and edit extracted PO fields before confirmation.
-- [ ] Confirming a received PO makes it read-only.
-- [ ] Barcode PDF generates from confirmed PO line items with correct per-SKU labels.
-- [ ] Invoice calculations are correct and use brand profile defaults.
-- [ ] Packing list carton assignment respects company carton-capacity rules.
-- [ ] Barcode, invoice, and packing-list PDFs are all downloadable from the documents page.
+- [x] Uploading a PDF or Excel received PO creates a record and parses line items within an acceptable async window.
+- [x] User can review and edit extracted PO fields before confirmation.
+- [x] Confirming a received PO makes it read-only.
+- [x] Barcode PDF generates from confirmed PO line items with correct per-SKU labels.
+- [x] Invoice calculations are correct and use brand profile defaults.
+- [x] Packing list carton assignment respects company carton-capacity rules.
+- [x] Barcode, invoice, and packing-list PDFs are all downloadable from the documents page.
 - [ ] All received PO endpoints are auth-protected and tenant-scoped.
 
 ## 7) Scope Guardrails
@@ -390,11 +393,14 @@ Important architecture decisions for this phase:
 
 ## 8) Immediate Next Actions
 
-- [ ] Lock the data model for received POs, downstream documents, and carton rules.
-- [ ] Build brand profile + carton rules in `/dashboard/settings`.
+- [x] Lock the data model for received POs, downstream documents, and carton rules.
+- [x] Build brand profile + carton rules in `/dashboard/settings`.
 - [x] Implement FastAPI received PO upload/list/get/confirm APIs.
 - [x] Implement parse pipeline and polling-based review flow.
 - [x] Build barcode, invoice, and packing-list generation on top of confirmed received POs.
+- [ ] Route normalized received PO payloads through the shared AI service for higher-quality structured extraction.
+- [ ] Add end-to-end coverage for the full received PO review -> confirm -> documents workflow.
+- [ ] Replace placeholder inventory and orders pages with live operational views.
 
 ## 9) Implementation Checklist By File Path
 
@@ -563,7 +569,7 @@ Use this as the build sequence for the next phase.
   - add `openpyxl`
   - add `python-barcode`
   - add `reportlab`
-- [ ] Update [README.md](/Users/arnavbsingh/Downloads/kira-web/README.md)
+- [x] Update [README.md](/Users/arnavbsingh/Downloads/kira-web/README.md)
   - document received PO flow once the feature lands
-- [ ] Update [apps/api/README.md](/Users/arnavbsingh/Downloads/kira-web/apps/api/README.md)
+- [x] Update [apps/api/README.md](/Users/arnavbsingh/Downloads/kira-web/apps/api/README.md)
   - document new endpoints and dependency/runtime requirements

@@ -8,6 +8,10 @@ class BrandProfileSettings(BaseModel):
     pan_number: str = Field(min_length=5, max_length=32)
     bill_to_address: str = Field(min_length=5, max_length=1000)
     ship_to_address: str = Field(min_length=5, max_length=1000)
+    instagram_handle: str = Field(default='', max_length=255)
+    website_url: str = Field(default='', max_length=255)
+    facebook_handle: str = Field(default='', max_length=255)
+    snapchat_handle: str = Field(default='', max_length=255)
     invoice_prefix: str = Field(default='INV', min_length=1, max_length=24)
     default_igst_rate: float = Field(default=5, ge=0, le=100)
 
@@ -20,6 +24,10 @@ class BrandProfileResponse(BaseModel):
     pan_number: str = ''
     bill_to_address: str = ''
     ship_to_address: str = ''
+    instagram_handle: str = ''
+    website_url: str = ''
+    facebook_handle: str = ''
+    snapchat_handle: str = ''
     invoice_prefix: str = 'INV'
     default_igst_rate: float = 5
 

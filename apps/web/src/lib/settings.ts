@@ -8,6 +8,10 @@ export interface BrandProfile {
   pan_number: string;
   bill_to_address: string;
   ship_to_address: string;
+  instagram_handle: string;
+  website_url: string;
+  facebook_handle: string;
+  snapchat_handle: string;
   invoice_prefix: string;
   default_igst_rate: number;
 }
@@ -19,6 +23,10 @@ export interface BrandProfileInput {
   pan_number: string;
   bill_to_address: string;
   ship_to_address: string;
+  instagram_handle: string;
+  website_url: string;
+  facebook_handle: string;
+  snapchat_handle: string;
   invoice_prefix: string;
   default_igst_rate: number;
 }

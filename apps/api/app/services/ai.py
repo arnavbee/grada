@@ -119,6 +119,74 @@ class AIService:
             return 'No recent correction hints were provided.'
         return '\n'.join(lines)
 
+    @staticmethod
+    def _build_po_request_messages(prompt: str, image_url: str, *, image_detail: str) -> list[dict[str, Any]]:
+        return [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_url,
+                            "detail": image_detail,
+                        },
+                    },
+                ],
+            }
+        ]
+
+    @staticmethod
+    def _is_prompt_token_limit_error(exc: Exception) -> bool:
+        return 'prompt tokens limit exceeded' in str(exc).lower()
+
+    def _build_po_attribute_prompt(self, category: str, *, compact: bool) -> str:
+        if compact:
+            enum_block = '; '.join(
+                f'{field_name}={"|".join(options)}' for field_name, options in DRESS_ATTRIBUTES.items()
+            )
+            return (
+                f'Extract Styli PO attributes for a women\'s fashion image. Category hint: {category}. '
+                'Return JSON only as '
+                '{"fields":{"dress_print":{"value":"","confidence":0},"dress_length":{"value":"","confidence":0},'
+                '"dress_shape":{"value":"","confidence":0},"sleeve_length":{"value":"","confidence":0},'
+                '"neck_women":{"value":"","confidence":0},"sleeve_styling":{"value":"","confidence":0},'
+                '"woven_knits":{"value":"","confidence":0}}}. '
+                'For dress fields, use exactly one listed enum value or "". '
+                'For woven_knits, use "Woven", "Knitted", or "". '
+                'If unclear, keep the value empty and lower the confidence. '
+                f'Enums: {enum_block}'
+            )
+
+        dress_enum_block = '\n'.join(
+            f'- {field_name}: {", ".join(options)}' for field_name, options in DRESS_ATTRIBUTES.items()
+        )
+        return f"""
+You are extracting Styli PO attributes for a women's fashion image.
+The garment category hint is: {category}.
+
+Return ONLY valid JSON with this exact structure:
+{{
+  "fields": {{
+    "dress_print": {{"value": "...", "confidence": 0-100}},
+    "dress_length": {{"value": "...", "confidence": 0-100}},
+    "dress_shape": {{"value": "...", "confidence": 0-100}},
+    "sleeve_length": {{"value": "...", "confidence": 0-100}},
+    "neck_women": {{"value": "...", "confidence": 0-100}},
+    "sleeve_styling": {{"value": "...", "confidence": 0-100}},
+    "woven_knits": {{"value": "Woven" or "Knitted", "confidence": 0-100}}
+  }}
+}}
+
+Rules:
+1. Use only these allowed values for the dress attributes:
+{dress_enum_block}
+2. If an attribute is not visible, set its value to "" with low confidence.
+3. Do not return free text outside the enum lists for dress fields.
+4. Do not include explanations or markdown.
+"""
+
     def analyze_image(
         self,
         image_url: str,
@@ -204,57 +272,24 @@ Format strictly as:
         """
         log_url = image_url[:60] + "..." if len(image_url) > 60 else image_url
         logger.info("[PO AI] Requesting analysis for category='%s' image='%s'", category, log_url)
-
-        dress_enum_block = '\n'.join(
-            f'- {field_name}: {", ".join(options)}' for field_name, options in DRESS_ATTRIBUTES.items()
+        attempt_configs = (
+            {'max_tokens': 220, 'compact_prompt': False, 'image_detail': 'high'},
+            {'max_tokens': 220, 'compact_prompt': True, 'image_detail': 'low'},
+            {'max_tokens': 140, 'compact_prompt': True, 'image_detail': 'low'},
         )
 
-        prompt = f"""
-You are extracting Styli PO attributes for a women's fashion image.
-The garment category hint is: {category}.
-
-Return ONLY valid JSON with this exact structure:
-{{
-  "fields": {{
-    "dress_print": {{"value": "...", "confidence": 0-100}},
-    "dress_length": {{"value": "...", "confidence": 0-100}},
-    "dress_shape": {{"value": "...", "confidence": 0-100}},
-    "sleeve_length": {{"value": "...", "confidence": 0-100}},
-    "neck_women": {{"value": "...", "confidence": 0-100}},
-    "sleeve_styling": {{"value": "...", "confidence": 0-100}},
-    "woven_knits": {{"value": "Woven" or "Knitted", "confidence": 0-100}}
-  }}
-}}
-
-Rules:
-1. Use only these allowed values for the dress attributes:
-{dress_enum_block}
-2. If an attribute is not visible, set its value to "" with low confidence.
-3. Do not return free text outside the enum lists for dress fields.
-4. Do not include explanations or markdown.
-"""
-        request_messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": image_url,
-                            "detail": "high"
-                        },
-                    },
-                ],
-            }
-        ]
-
-        for max_tokens in (220, 140):
+        for attempt_config in attempt_configs:
+            prompt = self._build_po_attribute_prompt(category, compact=attempt_config['compact_prompt'])
+            request_messages = self._build_po_request_messages(
+                prompt,
+                image_url,
+                image_detail=attempt_config['image_detail'],
+            )
             try:
                 response = self.client.chat.completions.create(
                     model="gpt-4o",
                     messages=request_messages,
-                    max_tokens=max_tokens,
+                    max_tokens=attempt_config['max_tokens'],
                     response_format={"type": "json_object"}
                 )
                 content = response.choices[0].message.content
@@ -267,12 +302,23 @@ Rules:
                 parsed = json.loads(content)
                 return normalize_ai_attributes(parsed)
             except APIStatusError as exc:
-                if exc.status_code == 402 and max_tokens != 140:
-                    logger.warning(
-                        '[PO AI] Credit-limited response at max_tokens=%s, retrying with a smaller budget.',
-                        max_tokens,
-                    )
+                prompt_too_large = self._is_prompt_token_limit_error(exc)
+                has_more_attempts = attempt_config != attempt_configs[-1]
+                if exc.status_code == 402 and has_more_attempts:
+                    if prompt_too_large:
+                        logger.warning(
+                            '[PO AI] Prompt too large for provider limit, retrying with a compact request.',
+                        )
+                    else:
+                        logger.warning(
+                            '[PO AI] Credit-limited response at max_tokens=%s, retrying with a smaller budget.',
+                            attempt_config['max_tokens'],
+                        )
                     continue
+                if exc.status_code == 402 and prompt_too_large:
+                    logger.warning(
+                        '[PO AI] Prompt still exceeds provider limit after compact fallback.',
+                    )
                 logger.exception('[PO AI] Extraction failed')
                 return normalize_ai_attributes(None)
             except Exception:

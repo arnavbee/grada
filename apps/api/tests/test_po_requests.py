@@ -1,5 +1,6 @@
 import csv
 from io import BytesIO
+from types import SimpleNamespace
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -7,6 +8,7 @@ from openpyxl import load_workbook
 
 from app.db.session import init_db
 from app.main import app
+from app.services import ai as ai_module
 
 init_db()
 client = TestClient(app)
@@ -202,3 +204,43 @@ def test_po_builder_ai_extraction_normalizes_enum_fields(monkeypatch) -> None:
     assert detail_payload['items'][0]['extracted_attributes']['fields']['dress_print']['value'] == 'Plain'
     assert detail_payload['items'][0]['extracted_attributes']['fields']['neck_women']['value'] == 'High Neck'
     assert detail_payload['items'][0]['extracted_attributes']['review_required'] is True
+
+
+def test_po_ai_retries_with_compact_prompt_when_provider_rejects_prompt_size(monkeypatch) -> None:
+    captured_calls: list[dict] = []
+
+    class FakeAPIStatusError(Exception):
+        def __init__(self, status_code: int, message: str) -> None:
+            super().__init__(message)
+            self.status_code = status_code
+
+    def _fake_create(**kwargs):
+        captured_calls.append(kwargs)
+        if len(captured_calls) == 1:
+            raise FakeAPIStatusError(402, 'Prompt tokens limit exceeded: 2032 > 1928')
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(
+                        content=(
+                            '{"fields":{"dress_print":{"value":"Plain","confidence":91},'
+                            '"woven_knits":{"value":"Woven","confidence":97}}}'
+                        )
+                    )
+                )
+            ]
+        )
+
+    monkeypatch.setattr(ai_module, 'APIStatusError', FakeAPIStatusError)
+    monkeypatch.setattr(ai_module.ai_service.client.chat.completions, 'create', _fake_create)
+
+    result = ai_module.ai_service.extract_po_attributes('https://cdn.example.com/dress.jpg', 'Dress')
+
+    assert len(captured_calls) == 2
+    first_message = captured_calls[0]['messages'][0]['content']
+    second_message = captured_calls[1]['messages'][0]['content']
+    assert first_message[1]['image_url']['detail'] == 'high'
+    assert second_message[1]['image_url']['detail'] == 'low'
+    assert len(second_message[0]['text']) < len(first_message[0]['text'])
+    assert result['fields']['dress_print']['value'] == 'Plain'
+    assert result['fields']['woven_knits']['value'] == 'Woven'

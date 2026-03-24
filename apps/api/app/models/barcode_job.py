@@ -16,6 +16,9 @@ class BarcodeJob(Base):
         index=True,
     )
     status: Mapped[str] = mapped_column(String(32), default='pending', index=True, nullable=False)
+    template_kind: Mapped[str] = mapped_column(String(16), default='styli', nullable=False)
+    template_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     file_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     total_stickers: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    total_pages: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)

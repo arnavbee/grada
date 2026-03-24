@@ -16,6 +16,7 @@ from app.models.product import Product
 from app.models.product_image import ProductImage
 from app.models.product_measurement import ProductMeasurement
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
+from app.models.sticker_template import StickerElement, StickerTemplate
 from app.models.user import User
 
 __all__ = [
@@ -42,5 +43,7 @@ __all__ = [
     'ProductMeasurement',
     'ReceivedPO',
     'ReceivedPOLineItem',
+    'StickerElement',
+    'StickerTemplate',
     'User',
 ]

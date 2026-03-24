@@ -9,6 +9,7 @@ from app.main import app
 from app.models.carton_capacity_rule import CartonCapacityRule
 from app.models.company_settings import CompanySettings
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
+from app.services.received_po_documents import _resolve_model_display_value
 
 init_db()
 client = TestClient(app)
@@ -223,6 +224,8 @@ def test_barcode_job_generation_updates_status_and_writes_pdf() -> None:
     payload = _wait_for_barcode_job(headers, received_po_id)
     assert payload['status'] == 'done'
     assert payload['total_stickers'] == 2
+    assert payload['template_kind'] == 'styli'
+    assert payload['total_pages'] >= 1
     assert payload['file_url'].startswith('/static/generated/barcodes/')
 
     barcode_path = Path('static') / Path(payload['file_url'].removeprefix('/static/'))
@@ -230,5 +233,102 @@ def test_barcode_job_generation_updates_status_and_writes_pdf() -> None:
     barcode_bytes = barcode_path.read_bytes()
     assert barcode_bytes.startswith(b'%PDF-')
     assert b'Made in India' in barcode_bytes
-    assert b'HRDS25001-A-BLACK-S' in barcode_bytes
-    assert b'Model: MOD-1' in barcode_bytes
+    assert b'PO No : STY-2026-00999' in barcode_bytes
+    assert b'Model No. : MOD-1' in barcode_bytes
+    assert b'Qty: 10' in barcode_bytes
+
+
+def test_custom_sticker_template_preview_and_sheet_generation() -> None:
+    headers = _auth_headers()
+    _, received_po_id = _seed_confirmed_received_po(headers)
+
+    create_template = client.post(
+        '/api/v1/sticker-templates',
+        headers=headers,
+        json={
+            'name': 'Marketplace Label',
+            'width_mm': 45.03,
+            'height_mm': 60,
+            'border_color': '#000000',
+            'border_radius_mm': 2,
+            'background_color': '#FFFFFF',
+            'is_default': False,
+            'elements': [
+                {
+                    'element_type': 'text_dynamic',
+                    'x_mm': 4,
+                    'y_mm': 4,
+                    'width_mm': 36,
+                    'height_mm': 6,
+                    'z_index': 0,
+                    'properties': {
+                        'field': 'po_number',
+                        'label': 'PO No : ',
+                        'label_weight': 'normal',
+                        'value_weight': 'bold',
+                        'font_size': 10,
+                        'alignment': 'center',
+                        'color': '#000000',
+                    },
+                },
+                {
+                    'element_type': 'barcode',
+                    'x_mm': 5,
+                    'y_mm': 18,
+                    'width_mm': 34,
+                    'height_mm': 14,
+                    'z_index': 1,
+                    'properties': {
+                        'field': 'styli_sku',
+                        'custom_formula': 'styli_sku',
+                        'barcode_type': 'code128',
+                        'show_number': True,
+                        'number_font_size': 7,
+                    },
+                },
+            ],
+        },
+    )
+    assert create_template.status_code == 201
+    template_id = create_template.json()['id']
+
+    preview = client.post(f'/api/v1/sticker-templates/{template_id}/preview', headers=headers)
+    assert preview.status_code == 200
+    assert preview.headers['content-type'] == 'application/pdf'
+    assert preview.content.startswith(b'%PDF-')
+
+    custom_sheet = client.post(
+        '/api/v1/barcode/generate-custom-sheet',
+        headers=headers,
+        json={
+            'template_id': template_id,
+            'received_po_id': received_po_id,
+            'line_items': [
+                {
+                    'po_number': '70150792',
+                    'model_number': 'IN000090128',
+                    'option_id': '7015079228',
+                    'size': 'M',
+                    'quantity': 7,
+                    'sku_id': 'HRDS25001-A-BLACK-M',
+                    'color': 'Black',
+                    'brand_name': 'House Of Raeli',
+                }
+            ],
+        },
+    )
+    assert custom_sheet.status_code == 200
+    body = custom_sheet.json()
+    assert body['total_stickers'] == 1
+    assert body['total_pages'] == 1
+    assert body['file_url'].startswith('/static/generated/barcodes/')
+
+    custom_sheet_path = Path('static') / Path(body['file_url'].removeprefix('/static/'))
+    assert custom_sheet_path.exists()
+    assert custom_sheet_path.read_bytes().startswith(b'%PDF-')
+
+
+def test_model_display_uses_brand_style_code_when_model_number_missing() -> None:
+    assert _resolve_model_display_value(None, 'IN000090128') == 'IN000090128'
+    assert _resolve_model_display_value('', 'IN000090128') == 'IN000090128'
+    assert _resolve_model_display_value('MODEL-7', 'IN000090128') == 'MODEL-7'

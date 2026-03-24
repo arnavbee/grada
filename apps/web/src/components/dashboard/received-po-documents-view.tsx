@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { CartonBreakdown } from "@/src/components/received-po/CartonBreakdown";
@@ -11,6 +12,7 @@ import {
   type BarcodeJob,
   type Invoice,
   type PackingList,
+  type ReceivedPO,
   createBarcodeJob,
   createInvoiceDraft,
   createPackingList,
@@ -24,6 +26,7 @@ import {
   updateInvoice,
   updatePackingListCarton,
 } from "@/src/lib/received-po";
+import { listStickerTemplates, type StickerTemplate } from "@/src/lib/sticker-templates";
 import {
   buildCartonDrafts,
   type CartonDraftState,
@@ -37,7 +40,13 @@ interface ReceivedPODocumentsViewProps {
 export function ReceivedPODocumentsView({
   receivedPoId,
 }: ReceivedPODocumentsViewProps): JSX.Element {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedTemplateId = searchParams.get("templateId");
+  const [receivedPO, setReceivedPO] = useState<ReceivedPO | null>(null);
   const [barcodeJob, setBarcodeJob] = useState<BarcodeJob | null>(null);
+  const [stickerTemplates, setStickerTemplates] = useState<StickerTemplate[]>([]);
+  const [selectedBarcodeTemplate, setSelectedBarcodeTemplate] = useState<string>("styli");
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [packingList, setPackingList] = useState<PackingList | null>(null);
   const [grossWeight, setGrossWeight] = useState("");
@@ -57,16 +66,27 @@ export function ReceivedPODocumentsView({
     let active = true;
     async function load(): Promise<void> {
       try {
-        await getReceivedPO(receivedPoId);
-        const [nextBarcodeJob, nextInvoice, nextPackingList] = await Promise.all([
-          getOptionalBarcodeJob(receivedPoId),
-          getOptionalInvoice(receivedPoId),
-          getOptionalPackingList(receivedPoId),
-        ]);
+        const [nextReceivedPO, nextBarcodeJob, nextInvoice, nextPackingList, nextTemplates] =
+          await Promise.all([
+            getReceivedPO(receivedPoId),
+            getOptionalBarcodeJob(receivedPoId),
+            getOptionalInvoice(receivedPoId),
+            getOptionalPackingList(receivedPoId),
+            listStickerTemplates(),
+          ]);
         if (!active) {
           return;
         }
+        const defaultTemplateId = nextTemplates.find((template) => template.is_default)?.id ?? null;
+        setReceivedPO(nextReceivedPO);
         setBarcodeJob(nextBarcodeJob);
+        setStickerTemplates(nextTemplates);
+        setSelectedBarcodeTemplate(
+          requestedTemplateId &&
+            nextTemplates.some((template) => template.id === requestedTemplateId)
+            ? requestedTemplateId
+            : (nextBarcodeJob?.template_id ?? defaultTemplateId ?? "styli"),
+        );
         setInvoice(nextInvoice);
         setGrossWeight(nextInvoice?.gross_weight?.toString() ?? "");
         setPackingList(nextPackingList);
@@ -89,7 +109,7 @@ export function ReceivedPODocumentsView({
     return () => {
       active = false;
     };
-  }, [receivedPoId]);
+  }, [receivedPoId, requestedTemplateId]);
 
   useEffect(() => {
     if (!barcodeJob || !["pending", "generating"].includes(barcodeJob.status)) {
@@ -173,7 +193,12 @@ export function ReceivedPODocumentsView({
       setWorkingKey("barcodes");
       setError(null);
       setStatusLine(null);
-      await createBarcodeJob(receivedPoId);
+      await createBarcodeJob(
+        receivedPoId,
+        selectedBarcodeTemplate === "styli"
+          ? { template_kind: "styli" }
+          : { template_kind: "custom", template_id: selectedBarcodeTemplate },
+      );
       const nextStatus = await getOptionalBarcodeJob(receivedPoId);
       setBarcodeJob(nextStatus);
       setStatusLine("Barcode generation started.");
@@ -317,7 +342,66 @@ export function ReceivedPODocumentsView({
             description={`${barcodeJob?.total_stickers ?? 0} stickers ready for barcode output.`}
             status={barcodeJob?.status ?? "not generated"}
             title="Barcode sheet"
-          />
+          >
+            <div className="space-y-3 text-sm text-kira-darkgray">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-kira-brown/10 px-2 py-1 text-xs font-medium uppercase tracking-[0.08em] text-kira-brown">
+                  {selectedBarcodeTemplate === "styli" ? "Styli format" : "Custom template"}
+                </span>
+                {barcodeJob?.total_pages ? <span>{barcodeJob.total_pages} page(s)</span> : null}
+              </div>
+              <label className="block">
+                <span className="mb-1 block text-kira-darkgray">Sticker template</span>
+                <select
+                  className="kira-focus-ring w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value === "__create_new__") {
+                      router.push(
+                        `/dashboard/sticker-builder?returnTo=${encodeURIComponent(
+                          `/dashboard/received-pos/${receivedPoId}/documents`,
+                        )}&preset=styli`,
+                      );
+                      return;
+                    }
+                    setSelectedBarcodeTemplate(value);
+                  }}
+                  value={selectedBarcodeTemplate}
+                >
+                  <option value="styli">
+                    Styli format
+                    {receivedPO?.distributor?.toLowerCase().includes("styli")
+                      ? " (PO default)"
+                      : ""}
+                  </option>
+                  {stickerTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                      {template.is_default ? " (Default)" : ""}
+                    </option>
+                  ))}
+                  <option value="__create_new__">Create new template...</option>
+                </select>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() =>
+                    router.push(
+                      `/dashboard/sticker-builder?returnTo=${encodeURIComponent(
+                        `/dashboard/received-pos/${receivedPoId}/documents`,
+                      )}&preset=styli`,
+                    )
+                  }
+                  variant="secondary"
+                >
+                  Open sticker builder
+                </Button>
+                <p className="text-xs text-kira-midgray">
+                  Save a new template in the builder and you&apos;ll return here with it selected.
+                </p>
+              </div>
+            </div>
+          </DocumentCard>
 
           <DocumentCard
             actions={

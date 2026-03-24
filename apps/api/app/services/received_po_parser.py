@@ -17,14 +17,22 @@ from app.models.received_po import ReceivedPO, ReceivedPOLineItem
 
 SIZE_ORDER = {'XS': 0, 'S': 1, 'M': 2, 'L': 3, 'XL': 4, 'XXL': 5, 'XXXL': 6}
 LINE_ITEM_FIELD_ALIASES = {
-    'brand_style_code': {'brand style code', 'brand_style_code', 'style code', 'style_code'},
+    'brand_style_code': {
+        'brand style code',
+        'brand_style_code',
+        'style code',
+        'style_code',
+        'vendor style number',
+        'vendor style no',
+        'vendor style no.',
+    },
     'styli_style_id': {'styli style id', 'styli_style_id', 'styli id', 'style id'},
-    'model_number': {'model number', 'model_number', 'model no', 'model no.'},
-    'option_id': {'option id', 'option_id', 'option'},
-    'sku_id': {'sku id', 'sku_id', 'sku'},
+    'model_number': {'model number', 'model_number', 'model no', 'model no.', 'model code', 'model_code'},
+    'option_id': {'option id', 'option_id', 'option', 'styli option id'},
+    'sku_id': {'sku id', 'sku_id', 'sku', 'styli sku'},
     'color': {'color', 'colour'},
     'size': {'size'},
-    'quantity': {'quantity', 'qty', 'pieces'},
+    'quantity': {'quantity', 'qty', 'pieces', 'total', 'unit quantity'},
     'po_price': {'po price', 'po_price', 'price', 'unit price', 'po rate'},
 }
 
@@ -212,6 +220,7 @@ def _extract_line_items_from_rows(rows: list[list[str]]) -> list[dict[str, objec
 def _extract_po_number(raw_text: str) -> str | None:
     patterns = [
         r'\b(STY-\d{4}-\d{3,})\b',
+        r'\bPO\b\s*\|\s*([A-Za-z0-9\-\/]+)',
         r'po\s*(?:number|no\.?)\s*[:\-]?\s*([A-Za-z0-9\-\/]+)',
     ]
     for pattern in patterns:
@@ -223,16 +232,17 @@ def _extract_po_number(raw_text: str) -> str | None:
 
 def _extract_po_date(raw_text: str) -> datetime | None:
     patterns = [
-        r'po\s*date\s*[:\-]?\s*(\d{4}-\d{2}-\d{2})',
-        r'po\s*date\s*[:\-]?\s*(\d{2}/\d{2}/\d{4})',
-        r'po\s*date\s*[:\-]?\s*(\d{2}-\d{2}-\d{4})',
+        r'po\s*date\s*(?:\||[:\-])?\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})',
+        r'po\s*date\s*(?:\||[:\-])?\s*(\d{4}-\d{2}-\d{2})',
+        r'po\s*date\s*(?:\||[:\-])?\s*(\d{2}/\d{2}/\d{4})',
+        r'po\s*date\s*(?:\||[:\-])?\s*(\d{2}-\d{2}-\d{4})',
     ]
     for pattern in patterns:
         match = re.search(pattern, raw_text, flags=re.IGNORECASE)
         if not match:
             continue
         value = match.group(1).strip()
-        for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y'):
+        for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y'):
             try:
                 return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
             except ValueError:

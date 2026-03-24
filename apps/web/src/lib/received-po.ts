@@ -1,5 +1,6 @@
 import { apiRequest } from "@/src/lib/api-client";
 import { getResolvedApiOriginUrl } from "@/src/lib/api-url";
+import type { StickerTemplateKind } from "@/src/lib/sticker-templates";
 
 export type ReceivedPOStatus = "uploaded" | "parsing" | "parsed" | "confirmed" | "failed";
 export type BarcodeJobStatus = "pending" | "generating" | "done" | "failed";
@@ -55,8 +56,11 @@ export interface BarcodeJob {
   id: string;
   received_po_id: string;
   status: BarcodeJobStatus;
+  template_kind: StickerTemplateKind;
+  template_id: string | null;
   file_url: string | null;
   total_stickers: number;
+  total_pages: number;
   created_at: string;
 }
 
@@ -212,9 +216,13 @@ export async function confirmReceivedPO(receivedPoId: string): Promise<ReceivedP
   });
 }
 
-export async function createBarcodeJob(receivedPoId: string): Promise<BarcodeJobCreateResponse> {
+export async function createBarcodeJob(
+  receivedPoId: string,
+  payload?: { template_kind?: StickerTemplateKind; template_id?: string | null },
+): Promise<BarcodeJobCreateResponse> {
   return apiRequest<BarcodeJobCreateResponse>(`/received-pos/${receivedPoId}/barcode`, {
     method: "POST",
+    body: JSON.stringify(payload ?? {}),
   });
 }
 

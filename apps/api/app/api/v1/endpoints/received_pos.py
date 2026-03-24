@@ -15,6 +15,7 @@ from app.models.company_settings import CompanySettings
 from app.models.invoice import Invoice
 from app.models.packing_list import PackingList, PackingListCarton
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
+from app.models.sticker_template import StickerTemplate
 from app.models.user import User
 from app.schemas.invoice import InvoiceGeneratePdfResponse, InvoiceResponse, InvoiceUpdateRequest
 from app.schemas.packing_list import (
@@ -36,6 +37,7 @@ from app.schemas.received_po import (
     ReceivedPOStatus,
     ReceivedPOUploadResponse,
 )
+from app.schemas.sticker_template import CreateBarcodeJobRequest
 from app.services.object_storage import get_object_storage_service
 from app.services.job_queue import (
     JOB_TYPE_RECEIVED_PO_BARCODE_PDF,
@@ -373,6 +375,7 @@ def confirm_received_po(
 @router.post('/{received_po_id}/barcode', response_model=BarcodeJobCreateResponse, status_code=status.HTTP_201_CREATED)
 def create_barcode_job(
     received_po_id: str,
+    payload: CreateBarcodeJobRequest | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles('admin', 'manager', 'operator')),
 ) -> BarcodeJobCreateResponse:
@@ -380,10 +383,27 @@ def create_barcode_job(
     if record.status != 'confirmed':
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Confirm the received PO before generating documents.')
 
+    next_payload = payload or CreateBarcodeJobRequest()
+    if next_payload.template_kind == 'custom':
+        if not next_payload.template_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Custom template selection is required.')
+        template = (
+            db.query(StickerTemplate)
+            .filter(
+                StickerTemplate.id == next_payload.template_id,
+                StickerTemplate.company_id == current_user.company_id,
+            )
+            .first()
+        )
+        if template is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Sticker template not found.')
+
     job = BarcodeJob(
         id=str(uuid4()),
         received_po_id=record.id,
         status='pending',
+        template_kind=next_payload.template_kind,
+        template_id=next_payload.template_id,
         total_stickers=len(record.items),
     )
     db.add(job)

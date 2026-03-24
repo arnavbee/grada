@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
 import { Button } from "@/src/components/ui/button";
 import { apiRequest } from "@/src/lib/api-client";
-import { getResolvedApiBaseUrl } from "@/src/lib/api-url";
+import { getResolvedApiBaseUrl, getResolvedApiOriginUrl } from "@/src/lib/api-url";
 import { getPOBuilderDefaults, type POBuilderDefaults } from "@/src/lib/settings";
 import {
   ATTRIBUTE_LABELS,
@@ -199,6 +199,19 @@ function getStepForStatus(status: PORequestResponse["status"]): number {
     return 4;
   }
   return 2;
+}
+
+function getProductImageUrl(imageUrl: string | null | undefined): string | null {
+  if (!imageUrl) {
+    return null;
+  }
+  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    return imageUrl;
+  }
+  if (imageUrl.startsWith("/static")) {
+    return `${getResolvedApiOriginUrl()}${imageUrl}`;
+  }
+  return imageUrl;
 }
 
 export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.Element {
@@ -530,12 +543,12 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                     type="button"
                   >
                     <div className="relative aspect-[4/5] bg-kira-warmgray/25">
-                      {product.primary_image_url ? (
+                      {getProductImageUrl(product.primary_image_url) ? (
                         <Image
                           alt={product.title}
                           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                           fill
-                          src={product.primary_image_url}
+                          src={getProductImageUrl(product.primary_image_url) ?? ""}
                           unoptimized
                         />
                       ) : (
@@ -623,12 +636,12 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                 <div className="space-y-4">
                   <div className="flex gap-4">
                     <div className="relative h-28 w-24 overflow-hidden rounded-2xl bg-kira-warmgray/25">
-                      {item.product?.primary_image_url ? (
+                      {getProductImageUrl(item.product?.primary_image_url) ? (
                         <Image
-                          alt={item.product.title}
+                          alt={item.product?.title || "Catalog style"}
                           className="h-full w-full object-cover"
                           fill
-                          src={item.product.primary_image_url}
+                          src={getProductImageUrl(item.product?.primary_image_url) ?? ""}
                           unoptimized
                         />
                       ) : null}
@@ -907,72 +920,103 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                         </div>
                       </div>
 
-                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {reviewFields.map((fieldKey) => {
-                          const fieldValue =
-                            item.extracted_attributes.fields[fieldKey]?.value ?? "";
-                          const confidence = item.extracted_attributes.fields[fieldKey]?.confidence;
-                          const isLowConfidence =
-                            typeof confidence === "number" &&
-                            lowConfidenceFields.includes(fieldKey);
-                          const fieldOptions = DRESS_ATTRIBUTE_OPTIONS[fieldKey] ?? [];
-
-                          return (
-                            <label
-                              key={`${item.id}-${fieldKey}`}
-                              className={`rounded-2xl border p-4 text-sm ${
-                                isLowConfidence
-                                  ? "border-amber-300 bg-amber-50/70 dark:border-amber-500/40 dark:bg-amber-500/10"
-                                  : "border-kira-warmgray/70 bg-kira-warmgray/10 dark:bg-white/5"
-                              }`}
-                            >
-                              <div className="mb-2 flex items-center justify-between gap-3">
-                                <span className="font-medium text-kira-black">
-                                  {ATTRIBUTE_LABELS[fieldKey]}
-                                </span>
-                                <span
-                                  className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                                    isLowConfidence
-                                      ? "bg-amber-200 text-amber-900 dark:bg-amber-300/30 dark:text-amber-100"
-                                      : "bg-kira-offwhite/75 text-kira-darkgray dark:bg-white/10"
-                                  }`}
-                                >
-                                  {typeof confidence === "number"
-                                    ? `${Math.round(confidence)}%`
-                                    : "manual"}
-                                </span>
+                      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+                        <div className="space-y-4">
+                          <div className="relative aspect-[4/5] overflow-hidden rounded-[24px] border border-kira-warmgray/70 bg-kira-warmgray/20">
+                            {getProductImageUrl(item.product?.primary_image_url) ? (
+                              <Image
+                                alt={item.product?.title || "Catalog style"}
+                                className="h-full w-full object-cover"
+                                fill
+                                src={getProductImageUrl(item.product?.primary_image_url) ?? ""}
+                                unoptimized
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center px-6 text-center text-xs uppercase tracking-[0.2em] text-kira-darkgray/45">
+                                No image available
                               </div>
-                              <select
-                                className="w-full rounded-xl border border-kira-warmgray bg-kira-offwhite/70 px-3 py-2 text-kira-black outline-none transition focus:border-kira-brown dark:bg-white/10"
-                                onChange={(event) => {
-                                  updateDraftItem(item.id, (current) => ({
-                                    ...current,
-                                    extracted_attributes: {
-                                      review_required: current.extracted_attributes.review_required,
-                                      fields: {
-                                        ...current.extracted_attributes.fields,
-                                        [fieldKey]: {
-                                          value: event.target.value,
-                                          confidence:
-                                            current.extracted_attributes.fields[fieldKey]
-                                              ?.confidence ?? null,
+                            )}
+                          </div>
+                          <div className="rounded-2xl border border-kira-warmgray/70 bg-kira-warmgray/10 p-4 text-sm text-kira-darkgray">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-kira-darkgray/55">
+                              Review against image
+                            </p>
+                            <p className="mt-2 leading-6">
+                              Compare the AI-selected dress attributes with the style image before
+                              approving the workbook.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                          {reviewFields.map((fieldKey) => {
+                            const fieldValue =
+                              item.extracted_attributes.fields[fieldKey]?.value ?? "";
+                            const confidence =
+                              item.extracted_attributes.fields[fieldKey]?.confidence;
+                            const isLowConfidence =
+                              typeof confidence === "number" &&
+                              lowConfidenceFields.includes(fieldKey);
+                            const fieldOptions = DRESS_ATTRIBUTE_OPTIONS[fieldKey] ?? [];
+
+                            return (
+                              <label
+                                key={`${item.id}-${fieldKey}`}
+                                className={`rounded-2xl border p-4 text-sm ${
+                                  isLowConfidence
+                                    ? "border-amber-300 bg-amber-50/70 dark:border-amber-500/40 dark:bg-amber-500/10"
+                                    : "border-kira-warmgray/70 bg-kira-warmgray/10 dark:bg-white/5"
+                                }`}
+                              >
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                  <span className="font-medium text-kira-black">
+                                    {ATTRIBUTE_LABELS[fieldKey]}
+                                  </span>
+                                  <span
+                                    className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                                      isLowConfidence
+                                        ? "bg-amber-200 text-amber-900 dark:bg-amber-300/30 dark:text-amber-100"
+                                        : "bg-kira-offwhite/75 text-kira-darkgray dark:bg-white/10"
+                                    }`}
+                                  >
+                                    {typeof confidence === "number"
+                                      ? `${Math.round(confidence)}%`
+                                      : "manual"}
+                                  </span>
+                                </div>
+                                <select
+                                  className="w-full rounded-xl border border-kira-warmgray bg-kira-offwhite/70 px-3 py-2 text-kira-black outline-none transition focus:border-kira-brown dark:bg-white/10"
+                                  onChange={(event) => {
+                                    updateDraftItem(item.id, (current) => ({
+                                      ...current,
+                                      extracted_attributes: {
+                                        review_required:
+                                          current.extracted_attributes.review_required,
+                                        fields: {
+                                          ...current.extracted_attributes.fields,
+                                          [fieldKey]: {
+                                            value: event.target.value,
+                                            confidence:
+                                              current.extracted_attributes.fields[fieldKey]
+                                                ?.confidence ?? null,
+                                          },
                                         },
                                       },
-                                    },
-                                  }));
-                                }}
-                                value={fieldValue}
-                              >
-                                <option value="">Select...</option>
-                                {fieldOptions.map((option) => (
-                                  <option key={`${fieldKey}-${option}`} value={option}>
-                                    {option}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          );
-                        })}
+                                    }));
+                                  }}
+                                  value={fieldValue}
+                                >
+                                  <option value="">Select...</option>
+                                  {fieldOptions.map((option) => (
+                                    <option key={`${fieldKey}-${option}`} value={option}>
+                                      {option}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
                     </article>
                   );

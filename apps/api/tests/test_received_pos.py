@@ -270,6 +270,63 @@ def test_received_po_upload_parses_excel_into_line_items() -> None:
     assert final_payload['items'][0]['sku_id'] == 'HRDS25001-A-BLACK-S'
 
 
+def test_received_po_upload_parses_vendor_export_format() -> None:
+    headers = _auth_headers('Received PO Vendor Format Co')
+
+    xlsx_bytes = _build_test_xlsx(
+        [
+            ['Booked By', '', 'Shipment Terms', 'FOB', 'PO', '70058628'],
+            ['Supplier', 'HOUSE OF RAELI', 'Payment Terms', 'TT', 'PO Date', '2026-01-29 06:33:20'],
+            [
+                'Vendor Style Number',
+                'Style Id',
+                'Styli Option ID',
+                'Styli SKU',
+                'Colour',
+                'Size',
+                'Total',
+                'PO Price',
+            ],
+            ['MSDR106MXSOBK-A-Black', '70328991', '7032899101', '703289910102', 'Black', 'S', 1, 600],
+            ['MSDR106MXSOBK-A-Black', '70328991', '7032899101', '703289910103', 'Black', 'M', 2, 600],
+        ]
+    )
+
+    upload = client.post(
+        '/api/v1/received-pos/upload',
+        headers=headers,
+        files={
+            'file': (
+                'vendor-format-po.xlsx',
+                xlsx_bytes,
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            )
+        },
+    )
+    assert upload.status_code == 201
+    received_po_id = upload.json()['received_po_id']
+
+    final_payload = None
+    for _ in range(20):
+        detail = client.get(f'/api/v1/received-pos/{received_po_id}', headers=headers)
+        assert detail.status_code == 200
+        final_payload = detail.json()
+        if final_payload['status'] in {'parsed', 'failed'}:
+            break
+        time.sleep(0.05)
+
+    assert final_payload is not None
+    assert final_payload['status'] == 'parsed'
+    assert final_payload['po_number'] == '70058628'
+    assert final_payload['po_date'] == '2026-01-29T06:33:20'
+    assert len(final_payload['items']) == 2
+    assert final_payload['items'][0]['brand_style_code'] == 'MSDR106MXSOBK-A-Black'
+    assert final_payload['items'][0]['styli_style_id'] == '70328991'
+    assert final_payload['items'][0]['option_id'] == '7032899101'
+    assert final_payload['items'][0]['sku_id'] == '703289910102'
+    assert final_payload['items'][0]['quantity'] == 1
+
+
 def test_received_po_is_company_scoped() -> None:
     headers_a = _auth_headers('Tenant A')
     headers_b = _auth_headers('Tenant B')

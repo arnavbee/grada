@@ -3,6 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.sticker_template import StickerTemplateKind
+
 ReceivedPOStatus = Literal['uploaded', 'parsing', 'parsed', 'confirmed', 'failed']
 BarcodeJobStatus = Literal['pending', 'generating', 'done', 'failed']
 
@@ -72,8 +74,11 @@ class BarcodeJobResponse(BaseModel):
     id: str
     received_po_id: str
     status: BarcodeJobStatus
+    template_kind: StickerTemplateKind
+    template_id: str | None
     file_url: str | None
     total_stickers: int
+    total_pages: int
     created_at: datetime
 
 

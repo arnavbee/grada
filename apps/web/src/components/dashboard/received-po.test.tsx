@@ -28,6 +28,7 @@ const {
   updatePackingListCartonMock,
   generatePackingListPdfMock,
   resolveFileUrlMock,
+  listStickerTemplatesMock,
 } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   uploadReceivedPOMock: vi.fn(),
@@ -48,12 +49,14 @@ const {
   resolveFileUrlMock: vi.fn((url: string | null | undefined) =>
     url ? `https://files.example.test${url}` : null,
   ),
+  listStickerTemplatesMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
     push: pushMock,
   }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("next/link", () => ({
@@ -103,6 +106,10 @@ vi.mock("@/src/lib/received-po", async () => {
     resolveFileUrl: resolveFileUrlMock,
   };
 });
+
+vi.mock("@/src/lib/sticker-templates", () => ({
+  listStickerTemplates: listStickerTemplatesMock,
+}));
 
 function buildReceivedPO(status: ReceivedPO["status"]): ReceivedPO {
   return {
@@ -173,8 +180,11 @@ function buildBarcodeJob(status: BarcodeJob["status"], fileUrl: string | null = 
     id: "job_1",
     received_po_id: "po_1",
     status,
+    template_kind: "styli",
+    template_id: null,
     file_url: fileUrl,
     total_stickers: 1,
+    total_pages: 1,
     created_at: "2026-03-24T00:00:00+00:00",
   };
 }
@@ -234,6 +244,8 @@ describe("received PO dashboard flows", () => {
     updatePackingListCartonMock.mockReset();
     generatePackingListPdfMock.mockReset();
     resolveFileUrlMock.mockClear();
+    listStickerTemplatesMock.mockReset();
+    listStickerTemplatesMock.mockResolvedValue([]);
   });
 
   afterEach(() => {
