@@ -8,49 +8,56 @@ import { FooterBrand } from "@/src/components/FooterBrand";
 const modules = [
   {
     title: "Smart Catalog",
-    detail: "AI-assisted image attributes, editable catalog tables, and marketplace-ready exports.",
+    detail:
+      "Build clean catalog styles with images, measurements, AI-assisted attributes, and export-ready product data.",
   },
   {
-    title: "PO Automation",
-    detail: "Capture, parse, validate, and confirm purchase orders in one pipeline.",
+    title: "PO Format Builder",
+    detail:
+      "Turn approved catalog styles into marketplace-ready colorway x size workbooks with reviewed dress attributes.",
   },
   {
-    title: "Invoice & Packing",
-    detail: "GST-ready invoice flows with barcode and print-ready packing templates.",
+    title: "Received PO Documents",
+    detail:
+      "Upload the marketplace PO once, confirm line items, then generate barcode sheets, invoices, and packing lists.",
   },
 ];
 
 const metrics = [
-  { label: "Manual Hours Saved", value: "70+ / week" },
-  { label: "PO Processing Speed", value: "< 1 min" },
-  { label: "Catalog Export Time", value: "< 30 sec" },
+  { label: "Core Workflows", value: "Catalog → PO → Docs" },
+  { label: "Workbook Logic", value: "Colorway × Size" },
+  { label: "Doc Outputs", value: "Barcode / Invoice / Packing" },
 ];
 
 const challengeAreas = [
-  "Order management chaos",
-  "Inventory blind spots",
-  "Outdated technology",
-  "Can't scale operations",
-  "High error rates",
-  "Customer complaints",
+  "Catalog data scattered across sheets and chats",
+  "Marketplace PO templates built manually in Excel",
+  "Colorway and size row mistakes before submission",
+  "Received POs re-keyed again for documents",
+  "Barcode, invoice, and packing list created separately",
+  "Too many handoffs, not enough operational visibility",
 ];
 
 const workflowSteps = [
   {
-    title: "Capture",
-    detail: "Ingest product, order, and document inputs from your operations flow.",
+    title: "Build Catalog",
+    detail:
+      "Create clean style records with imagery, measurements, and AI-assisted product enrichment.",
   },
   {
-    title: "Automate",
-    detail: "Use AI-assisted workflows for catalog enrichment, PO handling, and document prep.",
+    title: "Prepare PO Workbook",
+    detail:
+      "Explode styles into colorways and sizes, review attributes, and export the marketplace-ready workbook.",
   },
   {
-    title: "Validate",
-    detail: "Review confidence, checks, and exceptions before finalizing operational outputs.",
+    title: "Confirm Received PO",
+    detail:
+      "Upload the returned marketplace PO, review extracted line items, and lock the approved source of truth.",
   },
   {
-    title: "Ship",
-    detail: "Move faster from data to execution with clean, auditable, team-ready handoffs.",
+    title: "Generate Documents",
+    detail:
+      "Produce barcode stickers, invoice PDFs, and packing lists from the same confirmed PO record.",
   },
 ];
 
@@ -69,34 +76,34 @@ const contactChannels = [
 
 const tickerItems = [
   "Catalog Intelligence",
-  "PO Automation",
-  "Invoice & Packing",
-  "Unified Dashboard",
-  "Wholesale Operations Audit",
+  "Marketplace Workbook Export",
+  "Received PO Review",
+  "Code128 Barcode Sheets",
+  "Invoice & Packing Docs",
 ];
 
 const pulseBlocks = [
-  { label: "Catalog readiness", value: 92 },
-  { label: "Order processing speed", value: 84 },
-  { label: "Operational visibility", value: 88 },
+  { label: "Catalog readiness", value: 91 },
+  { label: "PO workbook coverage", value: 94 },
+  { label: "Post-PO document flow", value: 89 },
 ];
 
 const fashionMotifPrimary = [
   "Dresses",
-  "Cord Sets",
+  "Coord Sets",
   "Fabric Library",
   "Colorways",
   "Tech Pack",
-  "Sampling",
+  "Received POs",
 ];
 
 const fashionMotifSecondary = [
   "Pattern Blocks",
   "Fit Review",
-  "Grading",
-  "Trim Mapping",
-  "Line Sheet",
-  "Production Ready",
+  "Size Ratios",
+  "Barcode Sheets",
+  "Invoice Drafts",
+  "Packing Ready",
 ];
 
 export default function LandingPage(): JSX.Element {
@@ -109,14 +116,24 @@ export default function LandingPage(): JSX.Element {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
           <div className="md:col-span-8 relative z-10">
             <h1 className="max-w-3xl text-[4.5rem] font-bold leading-none tracking-tighter md:text-[7.5rem] lg:text-[9rem] animate-letter-spacing">
-              Grada<span className="inline-block md:ml-1 mb-1 md:mb-3 h-3 w-3 md:h-6 md:w-6 bg-kira-brown animate-pulse-dot" style={{ animationDelay: "400ms" }} />
+              Grada
+              <span
+                className="inline-block md:ml-1 mb-1 md:mb-3 h-3 w-3 md:h-6 md:w-6 bg-kira-brown animate-pulse-dot"
+                style={{ animationDelay: "400ms" }}
+              />
             </h1>
-            <p className="mt-6 max-w-3xl text-3xl leading-tight md:text-5xl animate-fade-in-up" style={{ animationDelay: "800ms" }}>
-              Stop losing margin to wholesale operations chaos.
+            <p
+              className="mt-6 max-w-3xl text-3xl leading-tight md:text-5xl animate-fade-in-up"
+              style={{ animationDelay: "800ms" }}
+            >
+              One operating layer for catalog, marketplace workbooks, and received-PO documents.
             </p>
-            <p className="mt-6 max-w-2xl text-kira-darkgray md:text-lg animate-fade-in-up" style={{ animationDelay: "1000ms" }}>
-              Empowering Every Step of Wholesale. grada is a focused operating layer for fashion teams handling
-              inventory, marketplace orders, documents, and reporting.
+            <p
+              className="mt-6 max-w-2xl text-kira-darkgray md:text-lg animate-fade-in-up"
+              style={{ animationDelay: "1000ms" }}
+            >
+              Grada helps fashion brands move from catalog style creation to PO submission prep and
+              then to barcode, invoice, and packing outputs after the marketplace PO comes back.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link href="/dashboard">
@@ -139,20 +156,30 @@ export default function LandingPage(): JSX.Element {
                 View Design System
               </Link>
             </div>
-            <p className="mt-6 text-sm text-kira-midgray animate-fade-in-up" style={{ animationDelay: "1200ms" }}>Start today, stay efficient forever.</p>
+            <p
+              className="mt-6 text-sm text-kira-midgray animate-fade-in-up"
+              style={{ animationDelay: "1200ms" }}
+            >
+              Built for apparel teams selling into marketplace workflows, not generic back-office
+              software.
+            </p>
           </div>
 
           <Card
             className="animate-enter kira-soft-glow !border-kira-darkgray/20 !text-kira-offwhite p-6 md:col-span-4 md:p-6"
             style={{
               animationDelay: "120ms",
-              background: "linear-gradient(180deg, rgba(25, 31, 28, 0.98) 0%, rgba(13, 18, 16, 0.98) 100%)",
+              background:
+                "linear-gradient(180deg, rgba(25, 31, 28, 0.98) 0%, rgba(13, 18, 16, 0.98) 100%)",
             }}
           >
             <p className="text-xs uppercase tracking-[0.1em] text-kira-warmgray">Snapshot</p>
             <div className="mt-4 space-y-4">
               {metrics.map((metric) => (
-                <div className="border-b border-kira-midgray/35 pb-3 last:border-0" key={metric.label}>
+                <div
+                  className="border-b border-kira-midgray/35 pb-3 last:border-0"
+                  key={metric.label}
+                >
                   <p className="text-xs text-kira-warmgray">{metric.label}</p>
                   <p className="text-2xl font-semibold">{metric.value}</p>
                 </div>
@@ -169,7 +196,9 @@ export default function LandingPage(): JSX.Element {
             key={module.title}
             style={{ animationDelay: `${120 + index * 80}ms` }}
           >
-            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Module {index + 1}</p>
+            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+              Module {index + 1}
+            </p>
             <h2 className="mt-2 text-2xl">{module.title}</h2>
             <p className="mt-2 text-kira-darkgray">{module.detail}</p>
           </Card>
@@ -182,10 +211,14 @@ export default function LandingPage(): JSX.Element {
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Fashion Ops Focus</p>
-            <h2 className="mt-1 text-2xl">Built for Apparel Teams</h2>
+            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+              Fashion Ops Focus
+            </p>
+            <h2 className="mt-1 text-2xl">Built for Apparel Supply Workflows</h2>
           </div>
-          <p className="text-sm text-kira-midgray">Season-ready operational context with visual motifs</p>
+          <p className="text-sm text-kira-midgray">
+            Structured around how brands actually work with marketplace buyers
+          </p>
         </div>
         <div className="mt-4 space-y-3">
           <div className="kira-surface-soft overflow-hidden rounded-xl border border-kira-warmgray/35">
@@ -217,13 +250,18 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <Card className="animate-enter overflow-hidden p-5 md:p-7" style={{ animationDelay: "220ms" }}>
+      <Card
+        className="animate-enter overflow-hidden p-5 md:p-7"
+        style={{ animationDelay: "220ms" }}
+      >
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Operational Pulse</p>
-            <h2 className="mt-2 text-3xl">Performance Momentum</h2>
+            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+              Operational Pulse
+            </p>
+            <h2 className="mt-2 text-3xl">Workflow Coverage</h2>
           </div>
-          <p className="text-sm text-kira-midgray">Live visual benchmark</p>
+          <p className="text-sm text-kira-midgray">Where Grada is already strongest today</p>
         </div>
         <div className="mt-5 space-y-4">
           {pulseBlocks.map((block, index) => (
@@ -244,26 +282,37 @@ export default function LandingPage(): JSX.Element {
       </Card>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card className="animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7" style={{ animationDelay: "260ms" }}>
+        <Card
+          className="animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7"
+          style={{ animationDelay: "260ms" }}
+        >
           <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Common Challenges</p>
-          <h2 className="mt-2 text-3xl">Where Teams Lose Time</h2>
+          <h2 className="mt-2 text-3xl">Where Fashion Ops Break Down</h2>
           <p className="mt-2 text-kira-darkgray">
-            We designed grada around the exact pain points found in wholesale operations teams.
+            Grada is designed around the work brands still do manually between cataloging, PO prep,
+            and document generation.
           </p>
           <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {challengeAreas.map((challenge) => (
-              <div className="rounded-none border border-kira-warmgray/45 px-3 py-2 text-sm text-kira-darkgray" key={challenge}>
+              <div
+                className="rounded-none border border-kira-warmgray/45 px-3 py-2 text-sm text-kira-darkgray"
+                key={challenge}
+              >
                 {challenge}
               </div>
             ))}
           </div>
         </Card>
 
-        <Card className="animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7" style={{ animationDelay: "320ms" }}>
+        <Card
+          className="animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7"
+          style={{ animationDelay: "320ms" }}
+        >
           <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Get Started</p>
-          <h2 className="mt-2 text-3xl">Let&apos;s Talk About Your Operations</h2>
+          <h2 className="mt-2 text-3xl">See If Grada Fits Your Workflow</h2>
           <p className="mt-2 text-kira-darkgray">
-            Book your free wholesale operations audit. We&apos;ll analyze your current systems and identify your biggest automation opportunities.
+            Walk through your current catalog, workbook, and received-PO process with us and
+            we&apos;ll show you where Grada fits fastest.
           </p>
           <div className="mt-5 space-y-2">
             {contactChannels.map((channel) => (
@@ -289,17 +338,25 @@ export default function LandingPage(): JSX.Element {
             key={step.title}
             style={{ animationDelay: `${360 + index * 60}ms` }}
           >
-            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Step {index + 1}</p>
+            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+              Step {index + 1}
+            </p>
             <h3 className="mt-2 text-2xl">{step.title}</h3>
             <p className="mt-2 text-sm text-kira-darkgray">{step.detail}</p>
           </Card>
         ))}
       </section>
 
-      <section className="kira-surface-elevated animate-enter overflow-hidden rounded-2xl border border-kira-warmgray/35" style={{ animationDelay: "520ms" }}>
+      <section
+        className="kira-surface-elevated animate-enter overflow-hidden rounded-2xl border border-kira-warmgray/35"
+        style={{ animationDelay: "520ms" }}
+      >
         <div className="kira-marquee flex min-w-max items-center gap-6 py-3">
           {[...tickerItems, ...tickerItems].map((item, index) => (
-            <span className="inline-flex items-center gap-4 text-sm uppercase tracking-[0.08em] text-kira-midgray" key={`${item}-${index}`}>
+            <span
+              className="inline-flex items-center gap-4 text-sm uppercase tracking-[0.08em] text-kira-midgray"
+              key={`${item}-${index}`}
+            >
               {item}
               <span className="h-1.5 w-1.5 rounded-full bg-kira-brown/80" />
             </span>
@@ -312,7 +369,8 @@ export default function LandingPage(): JSX.Element {
           <div>
             <h2>See grada in Action</h2>
             <p className="mt-1 text-kira-darkgray">
-              Open the live dashboard and move directly into catalog and operations workflows.
+              Open the live dashboard and move directly into catalog, PO builder, and received-PO
+              workflows.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -330,13 +388,18 @@ export default function LandingPage(): JSX.Element {
 
       <FooterBrand />
 
-      <footer className="surface-card animate-enter relative z-10 p-5 md:p-7" style={{ animationDelay: "640ms" }}>
+      <footer
+        className="surface-card animate-enter relative z-10 p-5 md:p-7"
+        style={{ animationDelay: "640ms" }}
+      >
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">grada</p>
-            <p className="mt-1 text-kira-darkgray">Empowering Every Step of Wholesale!</p>
+            <p className="mt-1 text-kira-darkgray">
+              Catalog to workbook to received-PO documents, in one flow.
+            </p>
           </div>
-          <p className="text-sm text-kira-midgray">© 2025 grada. All rights reserved.</p>
+          <p className="text-sm text-kira-midgray">© 2026 grada. All rights reserved.</p>
         </div>
       </footer>
     </main>

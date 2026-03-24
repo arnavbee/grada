@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   ChangeEvent,
   DragEvent,
@@ -146,6 +147,22 @@ const TEMPLATE_FIELD_LABELS: Record<TemplateConstrainedField, string> = {
   fabric: "Fabric",
   composition: "Composition",
   wovenKnits: "Woven / Knits",
+};
+const TEMPLATE_LABEL_TO_API_MAP: Record<
+  TemplateConstrainedField,
+  | "allowed_categories"
+  | "allowed_style_names"
+  | "allowed_colors"
+  | "allowed_fabrics"
+  | "allowed_compositions"
+  | "allowed_woven_knits"
+> = {
+  category: "allowed_categories",
+  styleName: "allowed_style_names",
+  color: "allowed_colors",
+  fabric: "allowed_fabrics",
+  composition: "allowed_compositions",
+  wovenKnits: "allowed_woven_knits",
 };
 
 interface CatalogProduct {
@@ -392,7 +409,7 @@ const defaultCatalogTemplateDraft: {
   allowed_fabrics: ["Poly Georgette", "Polymoss", "polycrepe"],
   allowed_compositions: ["100% Cotton", "100% Polyester"],
   allowed_woven_knits: ["Knits", "Woven"],
-  style_code_pattern: "HRD-{CATEGORY}-{YY}-{BRAND}",
+  style_code_pattern: "",
   is_active: true,
 };
 
@@ -881,6 +898,7 @@ export function CatalogView(): JSX.Element {
   const [catalogRows, setCatalogRows] = useState<CatalogRow[]>([]);
   const [catalogNotice, setCatalogNotice] = useState<string | null>(null);
   const [isCatalogLoading, setIsCatalogLoading] = useState(true);
+  const [companyBrand, setCompanyBrand] = useState("GEN");
 
   const [searchValue, setSearchValue] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
@@ -1065,6 +1083,20 @@ export function CatalogView(): JSX.Element {
   useEffect(() => {
     catalogTemplatesRef.current = catalogTemplates;
   }, [catalogTemplates]);
+
+  useEffect(() => {
+    let mounted = true;
+    apiRequest<{ company_name?: string | null }>("/auth/me")
+      .then((profile) => {
+        if (mounted && profile.company_name?.trim()) {
+          setCompanyBrand(profile.company_name.trim());
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -1370,27 +1402,10 @@ export function CatalogView(): JSX.Element {
     [catalogTemplates, selectedTemplateId],
   );
 
-  const templateLabelToApiMap: Record<
-    TemplateConstrainedField,
-    | "allowed_categories"
-    | "allowed_style_names"
-    | "allowed_colors"
-    | "allowed_fabrics"
-    | "allowed_compositions"
-    | "allowed_woven_knits"
-  > = {
-    category: "allowed_categories",
-    styleName: "allowed_style_names",
-    color: "allowed_colors",
-    fabric: "allowed_fabrics",
-    composition: "allowed_compositions",
-    wovenKnits: "allowed_woven_knits",
-  };
-
   const getTemplateAllowedList = useCallback(
     (field: TemplateConstrainedField): string[] => {
       if (!activeTemplate) return [];
-      const mappedKey = templateLabelToApiMap[field];
+      const mappedKey = TEMPLATE_LABEL_TO_API_MAP[field];
       return activeTemplate[mappedKey] || [];
     },
     [activeTemplate],
@@ -1425,7 +1440,7 @@ export function CatalogView(): JSX.Element {
         source,
         onConfirm: async (addToTemplate: boolean) => {
           if (addToTemplate && activeTemplate && activeTemplate.id !== "local-default-template") {
-            const listKey = templateLabelToApiMap[field];
+            const listKey = TEMPLATE_LABEL_TO_API_MAP[field];
             const currentList = activeTemplate[listKey];
             const patchData = { [listKey]: [...currentList, value] };
             try {
@@ -2104,7 +2119,7 @@ export function CatalogView(): JSX.Element {
             {
               method: "POST",
               body: JSON.stringify({
-                brand: "GEN",
+                brand: companyBrand,
                 category: resolvedCategory,
                 pattern: activeTemplate?.style_code_pattern ?? undefined,
               }),
@@ -4320,7 +4335,7 @@ export function CatalogView(): JSX.Element {
                       <option value="xlsx">XLSX</option>
                     </select>
                     <button
-                      className="kira-focus-ring bg-kira-black px-4 py-2 text-sm font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:cursor-not-allowed disabled:opacity-60"
+                      className="kira-focus-ring bg-kira-black dark:bg-white px-4 py-2 text-sm font-semibold uppercase tracking-[0.06em] text-kira-offwhite dark:text-black disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={isCreatingExport}
                       onClick={() => void handleCreateMarketplaceExport()}
                       type="button"
@@ -4507,7 +4522,7 @@ export function CatalogView(): JSX.Element {
                   ))}
                 </select>
                 <button
-                  className="kira-focus-ring bg-kira-black px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:cursor-not-allowed disabled:opacity-60"
+                  className="kira-focus-ring bg-kira-black dark:bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite dark:text-black disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={isBulkApplying}
                   onClick={() => void handleApplyBulkEdit()}
                   type="button"
@@ -4554,7 +4569,7 @@ export function CatalogView(): JSX.Element {
                   </select>
                 ) : null}
                 <button
-                  className="kira-focus-ring bg-kira-black px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:cursor-not-allowed disabled:opacity-60"
+                  className="kira-focus-ring bg-kira-black dark:bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite dark:text-black disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={isBatchActionApplying || batchAction === ""}
                   onClick={() => void handleRunBatchAction()}
                   type="button"
@@ -4620,10 +4635,13 @@ export function CatalogView(): JSX.Element {
                     <td className="px-4 py-4">
                       <div className="flex h-14 w-14 items-center justify-center bg-kira-warmgray/15 text-sm font-semibold text-kira-darkgray overflow-hidden">
                         {row.primary_image_url ? (
-                          <img
+                          <Image
                             src={getImageUrl(row.primary_image_url) ?? ""}
                             alt=""
                             className="h-full w-full object-cover"
+                            height={56}
+                            unoptimized
+                            width={56}
                           />
                         ) : (
                           (row.imageName ?? row.name).slice(0, 1).toUpperCase()
@@ -4743,7 +4761,7 @@ export function CatalogView(): JSX.Element {
                   Cancel
                 </button>
                 <button
-                  className="kira-focus-ring bg-kira-black px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite hover:bg-kira-black/90"
+                  className="kira-focus-ring bg-kira-black dark:bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite dark:text-black hover:bg-kira-black/90 dark:hover:bg-gray-200"
                   onClick={() => {
                     const cb = document.getElementById("add-to-template-cb") as HTMLInputElement;
                     outOfBoundsPrompt.onConfirm(cb ? cb.checked : false);
@@ -4942,9 +4960,9 @@ export function CatalogView(): JSX.Element {
 
       {isTemplatePanelOpen ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4 md:p-6">
-          <div className="kira-modal-open mx-auto my-2 w-full max-w-[1120px] border border-[#D1D5DB] bg-[#F7F7F5] shadow-[0_30px_90px_rgba(6,6,6,0.24)]">
-            <div className="sticky top-0 z-20 flex items-center justify-between border-b border-[#D9DDDB] bg-[#F7F7F5] px-7 py-5">
-              <h3 className="font-serif text-4xl font-semibold leading-none md:text-5xl">
+          <div className="kira-modal-open mx-auto my-2 w-full max-w-[1120px] border border-[#D1D5DB] dark:border-white/10 bg-[#F7F7F5] dark:bg-[#12141B] shadow-[0_30px_90px_rgba(6,6,6,0.24)]">
+            <div className="sticky top-0 z-20 flex items-center justify-between border-b border-[#D9DDDB] dark:border-white/10 bg-[#F7F7F5] dark:bg-[#12141B] px-7 py-5">
+              <h3 className="font-serif text-4xl font-semibold leading-none md:text-5xl dark:text-white">
                 Template Manager
               </h3>
               <div className="flex items-center gap-2">
@@ -4965,7 +4983,7 @@ export function CatalogView(): JSX.Element {
                 </button>
                 <button
                   type="button"
-                  className="kira-focus-ring bg-kira-black px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:opacity-60"
+                  className="kira-focus-ring bg-kira-black dark:bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite dark:text-black disabled:opacity-60"
                   disabled={isTemplateSaving}
                   onClick={() => void handleSaveTemplate("new")}
                 >
@@ -4993,9 +5011,9 @@ export function CatalogView(): JSX.Element {
                 <p className="mb-4 text-sm text-kira-darkgray ">{templateNotice}</p>
               ) : null}
               <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-                <aside className="border border-kira-warmgray/45 bg-kira-offwhite ">
-                  <div className="border-b border-kira-warmgray/35 px-3 py-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-kira-midgray">
+                <aside className="border border-kira-warmgray/45 dark:border-white/10 bg-kira-offwhite dark:bg-[#1C1E26] ">
+                  <div className="border-b border-kira-warmgray/35 dark:border-white/10 px-3 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-kira-midgray dark:text-gray-400">
                       Saved Templates
                     </p>
                   </div>
@@ -5010,8 +5028,8 @@ export function CatalogView(): JSX.Element {
                           className={cn(
                             "kira-focus-ring flex w-full items-center justify-between border px-2 py-2 text-left text-sm",
                             selectedTemplateId === template.id
-                              ? "border-kira-black bg-white text-kira-black "
-                              : "border-transparent text-kira-darkgray hover:border-kira-warmgray/45 hover:bg-white ",
+                              ? "border-kira-black dark:border-white bg-white dark:bg-[#2A2D35] text-kira-black dark:text-white "
+                              : "border-transparent text-kira-darkgray dark:text-gray-400 hover:border-kira-warmgray/45 hover:bg-white dark:hover:bg-[#2A2D35] ",
                           )}
                           onClick={() => setSelectedTemplateId(template.id)}
                         >
@@ -5027,8 +5045,8 @@ export function CatalogView(): JSX.Element {
                   </div>
                 </aside>
 
-                <div className="min-w-0 border border-kira-warmgray/45 bg-kira-offwhite p-4">
-                  <p className="mb-3 text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                <div className="min-w-0 border border-kira-warmgray/45 dark:border-white/10 bg-kira-offwhite dark:bg-[#1C1E26] p-4">
+                  <p className="mb-3 text-xs uppercase tracking-[0.08em] text-kira-midgray dark:text-gray-400">
                     {selectedTemplateId
                       ? `Editing: ${activeTemplate?.name ?? "Template"}`
                       : "Creating new template"}
@@ -5039,7 +5057,7 @@ export function CatalogView(): JSX.Element {
                         Template Name
                       </label>
                       <input
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white dark:placeholder-gray-500 "
                         onChange={(event) => setTemplateName(event.target.value)}
                         value={templateName}
                       />
@@ -5049,7 +5067,7 @@ export function CatalogView(): JSX.Element {
                         Description
                       </label>
                       <input
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white dark:placeholder-gray-500 "
                         onChange={(event) => setTemplateDescription(event.target.value)}
                         value={templateDescription}
                       />
@@ -5059,7 +5077,7 @@ export function CatalogView(): JSX.Element {
                         Default Category
                       </label>
                       <select
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm"
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm dark:text-white dark:bg-[#1C1E26]"
                         onChange={(event) => setTemplateDefaultCategory(event.target.value)}
                         value={templateDefaultCategory}
                       >
@@ -5075,7 +5093,7 @@ export function CatalogView(): JSX.Element {
                         Default Style Name
                       </label>
                       <select
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm"
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm dark:text-white dark:bg-[#1C1E26]"
                         onChange={(event) => setTemplateDefaultStyleName(event.target.value)}
                         value={templateDefaultStyleName}
                       >
@@ -5091,9 +5109,9 @@ export function CatalogView(): JSX.Element {
                         Style Code Pattern
                       </label>
                       <input
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white dark:placeholder-gray-500 "
                         onChange={(event) => setTemplateStylePattern(event.target.value)}
-                        placeholder="HRD-{CATEGORY}-{YY}-{BRAND}"
+                        placeholder="Leave empty for Auto (e.g. JINDS26001)"
                         value={templateStylePattern}
                       />
                     </div>
@@ -5102,7 +5120,7 @@ export function CatalogView(): JSX.Element {
                         Default Color
                       </label>
                       <select
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm"
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm dark:text-white dark:bg-[#1C1E26]"
                         onChange={(event) => setTemplateDefaultColor(event.target.value)}
                         value={templateDefaultColor}
                       >
@@ -5118,7 +5136,7 @@ export function CatalogView(): JSX.Element {
                         Default Fabric
                       </label>
                       <select
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm"
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm dark:text-white dark:bg-[#1C1E26]"
                         onChange={(event) => setTemplateDefaultFabric(event.target.value)}
                         value={templateDefaultFabric}
                       >
@@ -5134,7 +5152,7 @@ export function CatalogView(): JSX.Element {
                         Default Composition
                       </label>
                       <select
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm"
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm dark:text-white dark:bg-[#1C1E26]"
                         onChange={(event) => setTemplateDefaultComposition(event.target.value)}
                         value={templateDefaultComposition}
                       >
@@ -5150,7 +5168,7 @@ export function CatalogView(): JSX.Element {
                         Allowed Colors (comma separated)
                       </label>
                       <input
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white dark:placeholder-gray-500 "
                         onChange={(event) => setTemplateAllowedColors(event.target.value)}
                         value={templateAllowedColors}
                       />
@@ -5160,7 +5178,7 @@ export function CatalogView(): JSX.Element {
                         Allowed Fabrics (comma separated)
                       </label>
                       <input
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white dark:placeholder-gray-500 "
                         onChange={(event) => setTemplateAllowedFabrics(event.target.value)}
                         value={templateAllowedFabrics}
                       />
@@ -5170,7 +5188,7 @@ export function CatalogView(): JSX.Element {
                         Allowed Categories (comma separated)
                       </label>
                       <input
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white dark:placeholder-gray-500 "
                         onChange={(event) => setTemplateAllowedCategories(event.target.value)}
                         value={templateAllowedCategories}
                       />
@@ -5180,7 +5198,7 @@ export function CatalogView(): JSX.Element {
                         Allowed Style Names (comma separated)
                       </label>
                       <input
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white dark:placeholder-gray-500 "
                         onChange={(event) => setTemplateAllowedStyleNames(event.target.value)}
                         value={templateAllowedStyleNames}
                       />
@@ -5190,7 +5208,7 @@ export function CatalogView(): JSX.Element {
                         Allowed Compositions (comma separated)
                       </label>
                       <input
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white dark:placeholder-gray-500 "
                         onChange={(event) => setTemplateAllowedCompositions(event.target.value)}
                         value={templateAllowedCompositions}
                       />
@@ -5200,7 +5218,7 @@ export function CatalogView(): JSX.Element {
                         Allowed Woven / Knits (comma separated)
                       </label>
                       <input
-                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                        className="kira-focus-ring w-full border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white dark:placeholder-gray-500 "
                         onChange={(event) => setTemplateAllowedWovenKnits(event.target.value)}
                         value={templateAllowedWovenKnits}
                       />
@@ -5215,9 +5233,9 @@ export function CatalogView(): JSX.Element {
 
       {isBulkUploadOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="kira-modal-open w-full max-w-[850px] border border-kira-warmgray/50 bg-[#FAFAFA] shadow-2xl transition-all duration-300">
-            <div className="flex items-center justify-between border-b border-kira-warmgray/50 px-6 py-5">
-              <h2 className="font-serif text-[28px] font-semibold text-kira-black tracking-tight">
+          <div className="kira-modal-open w-full max-w-[850px] border border-kira-warmgray/50 dark:border-white/10 bg-[#FAFAFA] dark:bg-[#12141B] shadow-2xl transition-all duration-300">
+            <div className="flex items-center justify-between border-b border-kira-warmgray/50 dark:border-white/10 px-6 py-5">
+              <h2 className="font-serif text-[28px] font-semibold text-kira-black dark:text-white tracking-tight">
                 Bulk Upload
               </h2>
               <button
@@ -5244,8 +5262,8 @@ export function CatalogView(): JSX.Element {
                   className={cn(
                     "cursor-pointer border-[1.5px] border-dashed py-24 text-center transition-all duration-200 flex flex-col items-center justify-center",
                     isDropActive
-                      ? "border-kira-brown bg-kira-brown/5"
-                      : "border-[#D9D9D9] hover:border-kira-midgray hover:bg-black/[0.02]",
+                      ? "border-kira-brown bg-kira-brown/5 dark:border-kira-brown/50 dark:bg-kira-brown/20"
+                      : "border-[#D9D9D9] dark:border-white/20 hover:border-kira-midgray hover:bg-black/[0.02] dark:hover:bg-white/5",
                   )}
                   onClick={() => fileInputRef.current?.click()}
                   onDragEnter={(e) => {
@@ -5276,10 +5294,10 @@ export function CatalogView(): JSX.Element {
                       />
                     </svg>
                   </div>
-                  <p className="text-[#111827] font-medium text-[15px] mb-1">
+                  <p className="text-[#111827] dark:text-gray-200 font-medium text-[15px] mb-1">
                     Drag & drop multiple images
                   </p>
-                  <p className="text-[#6B7280] text-[13px]">
+                  <p className="text-[#6B7280] dark:text-gray-400 text-[13px]">
                     or click to select • PNG, JPG up to 10MB each
                   </p>
                 </div>
@@ -5294,22 +5312,22 @@ export function CatalogView(): JSX.Element {
               <div className="flex flex-col h-[65vh]">
                 <div className="flex-1 overflow-y-auto px-6 py-6 border-b border-kira-warmgray/50 ">
                   {/* Common Settings Box */}
-                  <div className="border border-[#E5E7EB] bg-white mb-8">
-                    <div className="px-5 py-3.5 border-b border-[#E5E7EB] flex items-center gap-2">
+                  <div className="border border-[#E5E7EB] dark:border-white/10 bg-white dark:bg-[#1C1E26] mb-8">
+                    <div className="px-5 py-3.5 border-b border-[#E5E7EB] dark:border-white/10 flex items-center gap-2">
                       <svg
                         width="16"
                         height="16"
                         viewBox="0 0 24 24"
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
-                        className="text-[#6B7280]"
+                        className="text-[#6B7280] dark:text-gray-400"
                       >
                         <path
                           d="M12 2L2 7l10 5 10-5-10-5zm0 13.5l-10-5v3.5l10 5 10-5v-3.5l-10 5z"
                           fill="currentColor"
                         />
                       </svg>
-                      <span className="text-xs font-semibold tracking-wider text-[#6B7280]">
+                      <span className="text-xs font-semibold tracking-wider text-[#6B7280] dark:text-gray-400">
                         COMMON SETTINGS (APPLIED TO ALL ITEMS)
                       </span>
                     </div>
@@ -5319,7 +5337,7 @@ export function CatalogView(): JSX.Element {
                         <div>
                           <span className="text-[11px] text-[#9CA3AF] mr-3">Composition</span>
                           <select
-                            className="bg-transparent text-sm text-[#111827] border-b border-[#E5E7EB] pb-2 outline-none w-36 cursor-pointer"
+                            className="bg-transparent text-sm text-[#111827] dark:text-white border-b border-[#E5E7EB] dark:border-white/10 pb-2 outline-none w-36 cursor-pointer dark:bg-[#12141B]"
                             value={bulkComposition}
                             onChange={(e) => setBulkComposition(e.target.value)}
                           >
@@ -5330,7 +5348,7 @@ export function CatalogView(): JSX.Element {
                         <div>
                           <span className="text-[11px] text-[#9CA3AF] mr-3">Woven/Knits</span>
                           <select
-                            className="bg-transparent text-sm text-[#111827] border-b border-[#E5E7EB] pb-2 outline-none w-24 cursor-pointer"
+                            className="bg-transparent text-sm text-[#111827] dark:text-white border-b border-[#E5E7EB] dark:border-white/10 pb-2 outline-none w-24 cursor-pointer dark:bg-[#12141B]"
                             value={bulkWovenKnits}
                             onChange={(e) => setBulkWovenKnits(e.target.value)}
                           >
@@ -5347,7 +5365,7 @@ export function CatalogView(): JSX.Element {
                             type="text"
                             value={bulkPoPrice}
                             onChange={(e) => setBulkPoPrice(e.target.value)}
-                            className="bg-transparent text-sm text-[#111827] border-b border-[#E5E7EB] pb-2 outline-none w-24"
+                            className="bg-transparent text-sm text-[#111827] dark:text-white border-b border-[#E5E7EB] dark:border-white/10 pb-2 outline-none w-24"
                           />
                         </div>
                         <div>
@@ -5356,7 +5374,7 @@ export function CatalogView(): JSX.Element {
                             type="text"
                             value={bulkOspSar}
                             onChange={(e) => setBulkOspSar(e.target.value)}
-                            className="bg-transparent text-sm text-[#111827] border-b border-[#E5E7EB] pb-2 outline-none w-24"
+                            className="bg-transparent text-sm text-[#111827] dark:text-white border-b border-[#E5E7EB] dark:border-white/10 pb-2 outline-none w-24"
                           />
                         </div>
                       </div>
@@ -5381,22 +5399,28 @@ export function CatalogView(): JSX.Element {
                     </button>
                   </div>
 
-                  <div className="space-y-[2px] bg-[#E5E7EB] border border-[#E5E7EB]">
+                  <div className="space-y-[2px] bg-[#E5E7EB] dark:bg-black/40 border border-[#E5E7EB] dark:border-white/10">
                     {uploadItems.map((item, idx) => (
-                      <div key={item.id} className="bg-white p-4 flex items-center justify-between">
+                      <div
+                        key={item.id}
+                        className="bg-white dark:bg-[#1C1E26] p-4 flex items-center justify-between"
+                      >
                         <div className="flex items-center gap-6">
-                          <div className="w-[100px] h-[100px] bg-[#E5E7EB] flex items-center justify-center text-[#9CA3AF] overflow-hidden">
+                          <div className="w-[100px] h-[100px] bg-[#E5E7EB] dark:bg-black/30 flex items-center justify-center text-[#9CA3AF] overflow-hidden">
                             {item.previewUrl ? (
-                              <img
+                              <Image
                                 src={item.previewUrl}
                                 alt={item.name}
                                 className="w-full h-full object-cover"
+                                height={100}
+                                unoptimized
+                                width={100}
                               />
                             ) : (
                               <i className="ri-image-line text-2xl"></i>
                             )}
                           </div>
-                          <span className="font-medium text-[#111827] text-[15px]">
+                          <span className="font-medium text-[#111827] dark:text-gray-200 text-[15px]">
                             {item.name}
                           </span>
                         </div>
@@ -5429,9 +5453,9 @@ export function CatalogView(): JSX.Element {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 px-6 py-5 bg-white border-t border-[#E5E7EB]">
+                <div className="flex justify-end gap-3 px-6 py-5 bg-white dark:bg-[#12141B] border-t border-[#E5E7EB] dark:border-white/10">
                   <button
-                    className="border border-[#D1D5DB] bg-white px-8 py-3 text-xs font-bold tracking-widest text-[#111827] hover:bg-gray-50 transition-colors"
+                    className="border border-[#D1D5DB] dark:border-white/10 bg-white dark:bg-[#1C1E26] px-8 py-3 text-xs font-bold tracking-widest text-[#111827] dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#2A2D35] transition-colors"
                     onClick={() => setIsBulkUploadOpen(false)}
                     type="button"
                   >
@@ -5455,11 +5479,13 @@ export function CatalogView(): JSX.Element {
 
       {isBulkReviewOpen ? (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/55 p-4">
-          <div className="w-full max-w-[1220px] border border-kira-warmgray/55 bg-kira-offwhite shadow-2xl">
-            <div className="flex items-center justify-between border-b border-kira-warmgray/45 px-6 py-4">
+          <div className="w-full max-w-[1220px] border border-kira-warmgray/55 dark:border-white/10 bg-kira-offwhite dark:bg-[#12141B] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-kira-warmgray/45 dark:border-white/10 px-6 py-4">
               <div>
-                <h3 className="text-xl font-semibold text-kira-black ">Batch Review</h3>
-                <p className="text-sm text-kira-midgray">
+                <h3 className="text-xl font-semibold text-kira-black dark:text-white ">
+                  Batch Review
+                </h3>
+                <p className="text-sm text-kira-midgray dark:text-gray-400">
                   Verify AI suggestions before catalog save.
                 </p>
               </div>
@@ -5474,25 +5500,29 @@ export function CatalogView(): JSX.Element {
 
             <div className="border-b border-kira-warmgray/35 px-6 py-4">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                <div className="border border-kira-warmgray/40 bg-white px-3 py-2 text-xs text-kira-darkgray ">
+                <div className="border border-kira-warmgray/40 dark:border-white/10 bg-white dark:bg-[#1C1E26] px-3 py-2 text-xs text-kira-darkgray dark:text-gray-300 ">
                   Analyzed:{" "}
-                  <span className="font-semibold text-kira-black ">{bulkReviewStats.analyzed}</span>
+                  <span className="font-semibold text-kira-black dark:text-white ">
+                    {bulkReviewStats.analyzed}
+                  </span>
                 </div>
-                <div className="border border-kira-warmgray/40 bg-white px-3 py-2 text-xs text-kira-darkgray ">
+                <div className="border border-kira-warmgray/40 dark:border-white/10 bg-white dark:bg-[#1C1E26] px-3 py-2 text-xs text-kira-darkgray dark:text-gray-300 ">
                   Ready:{" "}
                   <span className="font-semibold text-[#1E7145]">{bulkReviewStats.ready}</span>
                 </div>
-                <div className="border border-kira-warmgray/40 bg-white px-3 py-2 text-xs text-kira-darkgray ">
+                <div className="border border-kira-warmgray/40 dark:border-white/10 bg-white dark:bg-[#1C1E26] px-3 py-2 text-xs text-kira-darkgray dark:text-gray-300 ">
                   Needs Review:{" "}
                   <span className="font-semibold text-[#B45309]">
                     {bulkReviewStats.needsReview}
                   </span>
                 </div>
-                <div className="border border-kira-warmgray/40 bg-white px-3 py-2 text-xs text-kira-darkgray ">
+                <div className="border border-kira-warmgray/40 dark:border-white/10 bg-white dark:bg-[#1C1E26] px-3 py-2 text-xs text-kira-darkgray dark:text-gray-300 ">
                   Approved:{" "}
-                  <span className="font-semibold text-kira-black ">{bulkReviewStats.approved}</span>
+                  <span className="font-semibold text-kira-black dark:text-white ">
+                    {bulkReviewStats.approved}
+                  </span>
                 </div>
-                <div className="border border-kira-warmgray/40 bg-white px-3 py-2 text-xs text-kira-darkgray ">
+                <div className="border border-kira-warmgray/40 dark:border-white/10 bg-white dark:bg-[#1C1E26] px-3 py-2 text-xs text-kira-darkgray dark:text-gray-300 ">
                   Failed:{" "}
                   <span className="font-semibold text-rose-700">{bulkReviewStats.failed}</span>
                 </div>
@@ -5500,13 +5530,13 @@ export function CatalogView(): JSX.Element {
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <input
                   type="search"
-                  className="kira-focus-ring min-w-[220px] flex-1 border border-kira-warmgray/55 bg-white px-3 py-2 text-sm text-kira-black "
+                  className="kira-focus-ring min-w-[220px] flex-1 border border-kira-warmgray/55 dark:border-white/20 bg-white dark:bg-[#1C1E26] px-3 py-2 text-sm text-kira-black dark:text-white dark:placeholder-gray-500 "
                   placeholder="Search file/style/category..."
                   value={bulkReviewQuery}
                   onChange={(event) => setBulkReviewQuery(event.target.value)}
                 />
                 <select
-                  className="kira-focus-ring border border-kira-warmgray/55 bg-white px-3 py-2 text-sm text-kira-darkgray "
+                  className="kira-focus-ring border border-kira-warmgray/55 dark:border-white/20 bg-white dark:bg-[#1C1E26] px-3 py-2 text-sm text-kira-darkgray dark:text-white "
                   value={bulkReviewFilter}
                   onChange={(event) =>
                     setBulkReviewFilter(
@@ -5536,8 +5566,8 @@ export function CatalogView(): JSX.Element {
             </div>
 
             <div className="max-h-[62vh] overflow-auto px-6 py-4">
-              <table className="min-w-full border border-kira-warmgray/45 bg-white text-sm">
-                <thead className="sticky top-0 z-10 bg-kira-offwhite text-[11px] uppercase tracking-[0.06em] text-kira-midgray">
+              <table className="min-w-full border border-kira-warmgray/45 dark:border-white/10 bg-white dark:bg-[#1C1E26] text-sm">
+                <thead className="sticky top-0 z-10 bg-kira-offwhite dark:bg-[#2A2D35] text-[11px] uppercase tracking-[0.06em] text-kira-midgray dark:text-gray-400">
                   <tr>
                     <th className="px-2 py-2 text-left">Image</th>
                     <th className="px-2 py-2 text-left">Style No</th>
@@ -5553,14 +5583,20 @@ export function CatalogView(): JSX.Element {
                 </thead>
                 <tbody>
                   {bulkReviewRows.map((item) => (
-                    <tr key={item.id} className="border-t border-kira-warmgray/35 ">
+                    <tr
+                      key={item.id}
+                      className="border-t border-kira-warmgray/35 dark:border-white/10 "
+                    >
                       <td className="px-2 py-2">
-                        <div className="h-12 w-12 overflow-hidden border border-kira-warmgray/45 bg-kira-offwhite ">
+                        <div className="h-12 w-12 overflow-hidden border border-kira-warmgray/45 dark:border-white/10 bg-kira-offwhite dark:bg-black/40 ">
                           {item.previewUrl ? (
-                            <img
+                            <Image
                               src={item.previewUrl}
                               alt={item.name}
                               className="h-full w-full object-cover"
+                              height={48}
+                              unoptimized
+                              width={48}
                             />
                           ) : null}
                         </div>
@@ -5568,7 +5604,7 @@ export function CatalogView(): JSX.Element {
                       <td className="px-2 py-2">
                         {item.analysis ? (
                           <input
-                            className="kira-focus-ring w-36 border border-kira-warmgray/45 px-2 py-1 text-xs"
+                            className="kira-focus-ring w-36 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.styleNo}
                             onChange={(event) =>
                               updateUploadAnalysisField(
@@ -5585,7 +5621,7 @@ export function CatalogView(): JSX.Element {
                       <td className="px-2 py-2">
                         {item.analysis ? (
                           <input
-                            className="kira-focus-ring w-40 border border-kira-warmgray/45 px-2 py-1 text-xs"
+                            className="kira-focus-ring w-40 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.styleName}
                             onChange={(event) =>
                               updateUploadAnalysisField(item.id, "styleName", event.target.value)
@@ -5596,7 +5632,7 @@ export function CatalogView(): JSX.Element {
                       <td className="px-2 py-2">
                         {item.analysis ? (
                           <input
-                            className="kira-focus-ring w-28 border border-kira-warmgray/45 px-2 py-1 text-xs"
+                            className="kira-focus-ring w-28 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.category}
                             onChange={(event) =>
                               updateUploadAnalysisField(item.id, "category", event.target.value)
@@ -5617,7 +5653,7 @@ export function CatalogView(): JSX.Element {
                       <td className="px-2 py-2">
                         {item.analysis ? (
                           <input
-                            className="kira-focus-ring w-28 border border-kira-warmgray/45 px-2 py-1 text-xs"
+                            className="kira-focus-ring w-28 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.color}
                             onChange={(event) =>
                               updateUploadAnalysisField(item.id, "color", event.target.value)
@@ -5638,7 +5674,7 @@ export function CatalogView(): JSX.Element {
                       <td className="px-2 py-2">
                         {item.analysis ? (
                           <input
-                            className="kira-focus-ring w-36 border border-kira-warmgray/45 px-2 py-1 text-xs"
+                            className="kira-focus-ring w-36 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.fabric}
                             onChange={(event) =>
                               updateUploadAnalysisField(item.id, "fabric", event.target.value)
@@ -5659,7 +5695,7 @@ export function CatalogView(): JSX.Element {
                       <td className="px-2 py-2">
                         {item.analysis ? (
                           <input
-                            className="kira-focus-ring w-14 border border-kira-warmgray/45 px-2 py-1 text-xs"
+                            className="kira-focus-ring w-14 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.units}
                             onChange={(event) =>
                               updateUploadAnalysisField(
@@ -5674,7 +5710,7 @@ export function CatalogView(): JSX.Element {
                       <td className="px-2 py-2">
                         {item.analysis ? (
                           <input
-                            className="kira-focus-ring w-16 border border-kira-warmgray/45 px-2 py-1 text-xs"
+                            className="kira-focus-ring w-16 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.ospSar}
                             onChange={(event) =>
                               updateUploadAnalysisField(
@@ -5725,17 +5761,17 @@ export function CatalogView(): JSX.Element {
               </table>
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-kira-warmgray/35 px-6 py-4">
+            <div className="flex justify-end gap-3 border-t border-kira-warmgray/35 dark:border-white/10 px-6 py-4">
               <button
                 type="button"
-                className="kira-focus-ring border border-kira-warmgray/55 px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray "
+                className="kira-focus-ring border border-kira-warmgray/55 dark:border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray dark:text-gray-300 "
                 onClick={() => setIsBulkReviewOpen(false)}
               >
                 Close
               </button>
               <button
                 type="button"
-                className="kira-focus-ring border border-kira-warmgray/55 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray disabled:opacity-60"
+                className="kira-focus-ring border border-kira-warmgray/55 dark:border-white/10 bg-white dark:bg-[#1C1E26] px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray dark:text-gray-300 disabled:opacity-60"
                 disabled={isSavingReviewedItems}
                 onClick={() => void handleSaveReviewedItems(true)}
               >
@@ -5743,7 +5779,7 @@ export function CatalogView(): JSX.Element {
               </button>
               <button
                 type="button"
-                className="kira-focus-ring bg-kira-black px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:opacity-60"
+                className="kira-focus-ring bg-kira-black dark:bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite dark:text-black disabled:opacity-60"
                 disabled={isSavingReviewedItems}
                 onClick={() => void handleSaveReviewedItems(false)}
               >
@@ -5756,23 +5792,25 @@ export function CatalogView(): JSX.Element {
 
       {isFindReplaceOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg border border-kira-warmgray/55 bg-kira-offwhite p-6 shadow-2xl">
+          <div className="w-full max-w-lg border border-kira-warmgray/55 dark:border-white/10 bg-kira-offwhite dark:bg-[#12141B] p-6 shadow-2xl">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-kira-black ">Batch Find & Replace</h3>
+              <h3 className="text-lg font-semibold text-kira-black dark:text-white ">
+                Batch Find & Replace
+              </h3>
               <button
                 type="button"
-                className="kira-focus-ring inline-flex h-8 w-8 items-center justify-center text-kira-midgray hover:text-kira-black "
+                className="kira-focus-ring inline-flex h-8 w-8 items-center justify-center text-kira-midgray dark:text-gray-400 hover:text-kira-black dark:hover:text-white "
                 onClick={() => setIsFindReplaceOpen(false)}
               >
                 <CloseIcon />
               </button>
             </div>
-            <p className="mt-2 text-sm text-kira-midgray">
+            <p className="mt-2 text-sm text-kira-midgray dark:text-gray-400">
               Apply text replacement across selected rows.
             </p>
             <div className="mt-4 grid grid-cols-1 gap-3">
               <select
-                className="kira-focus-ring border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-darkgray "
+                className="kira-focus-ring border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-darkgray dark:text-gray-200 dark:bg-[#1C1E26] "
                 onChange={(event) =>
                   setFindReplaceField(event.target.value as BatchFindReplaceField)
                 }
@@ -5785,13 +5823,13 @@ export function CatalogView(): JSX.Element {
                 ))}
               </select>
               <input
-                className="kira-focus-ring border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                className="kira-focus-ring border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white "
                 onChange={(event) => setFindReplaceQuery(event.target.value)}
                 placeholder="Find text"
                 value={findReplaceQuery}
               />
               <input
-                className="kira-focus-ring border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                className="kira-focus-ring border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white "
                 onChange={(event) => setFindReplaceReplacement(event.target.value)}
                 placeholder="Replace with"
                 value={findReplaceReplacement}
@@ -5800,14 +5838,14 @@ export function CatalogView(): JSX.Element {
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
-                className="kira-focus-ring border border-kira-warmgray/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray "
+                className="kira-focus-ring border border-kira-warmgray/55 dark:border-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray dark:text-gray-300 hover:bg-white/5 "
                 onClick={() => setIsFindReplaceOpen(false)}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="kira-focus-ring bg-kira-black px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite"
+                className="kira-focus-ring bg-kira-black dark:bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite dark:text-black"
                 onClick={() => void handleApplyFindReplace()}
               >
                 Apply
@@ -5819,21 +5857,25 @@ export function CatalogView(): JSX.Element {
 
       {isPriceAdjustOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg border border-kira-warmgray/55 bg-kira-offwhite p-6 shadow-2xl">
+          <div className="w-full max-w-lg border border-kira-warmgray/55 dark:border-white/10 bg-kira-offwhite dark:bg-[#12141B] p-6 shadow-2xl">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-kira-black ">Batch Price Adjustment</h3>
+              <h3 className="text-lg font-semibold text-kira-black dark:text-white ">
+                Batch Price Adjustment
+              </h3>
               <button
                 type="button"
-                className="kira-focus-ring inline-flex h-8 w-8 items-center justify-center text-kira-midgray hover:text-kira-black "
+                className="kira-focus-ring inline-flex h-8 w-8 items-center justify-center text-kira-midgray dark:text-gray-400 hover:text-kira-black dark:hover:text-white "
                 onClick={() => setIsPriceAdjustOpen(false)}
               >
                 <CloseIcon />
               </button>
             </div>
-            <p className="mt-2 text-sm text-kira-midgray">Adjust selected prices in one step.</p>
+            <p className="mt-2 text-sm text-kira-midgray dark:text-gray-400">
+              Adjust selected prices in one step.
+            </p>
             <div className="mt-4 grid grid-cols-1 gap-3">
               <select
-                className="kira-focus-ring border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-darkgray "
+                className="kira-focus-ring border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-darkgray dark:text-gray-200 dark:bg-[#1C1E26] "
                 onChange={(event) => setPriceAdjustMode(event.target.value as PriceAdjustMode)}
                 value={priceAdjustMode}
               >
@@ -5843,7 +5885,7 @@ export function CatalogView(): JSX.Element {
                 <option value="set_exact">Set exact price</option>
               </select>
               <input
-                className="kira-focus-ring border border-kira-warmgray/55 bg-transparent px-3 py-2 text-sm text-kira-black "
+                className="kira-focus-ring border border-kira-warmgray/55 dark:border-white/20 bg-transparent px-3 py-2 text-sm text-kira-black dark:text-white "
                 onChange={(event) => setPriceAdjustValue(event.target.value)}
                 placeholder="Value"
                 value={priceAdjustValue}
@@ -5852,14 +5894,14 @@ export function CatalogView(): JSX.Element {
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
-                className="kira-focus-ring border border-kira-warmgray/55 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray "
+                className="kira-focus-ring border border-kira-warmgray/55 dark:border-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray dark:text-gray-300 hover:bg-white/5 "
                 onClick={() => setIsPriceAdjustOpen(false)}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="kira-focus-ring bg-kira-black px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite"
+                className="kira-focus-ring bg-kira-black dark:bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite dark:text-black"
                 onClick={() => void handleApplyPriceAdjustment()}
               >
                 Apply
@@ -5919,10 +5961,12 @@ export function CatalogView(): JSX.Element {
                           className="relative w-full aspect-[3/4] cursor-pointer overflow-hidden border border-[#D3D7D4] dark:border-white/10 bg-[#ECEFEE] dark:bg-[#1C1E26]"
                           onClick={() => addItemImageInputRef.current?.click()}
                         >
-                          <img
+                          <Image
                             src={getImageUrl(imagePreviewUrl) ?? ""}
                             alt="Preview"
                             className="h-full w-full object-cover"
+                            fill
+                            unoptimized
                           />
                           <button
                             type="button"
@@ -6053,7 +6097,9 @@ export function CatalogView(): JSX.Element {
                         {!isAnalyzing ? (
                           <p className="text-xs text-kira-midgray">
                             AI analysis is manual. Click{" "}
-                            <span className="font-semibold text-kira-black dark:text-white ">ANALYZE WITH AI</span>{" "}
+                            <span className="font-semibold text-kira-black dark:text-white ">
+                              ANALYZE WITH AI
+                            </span>{" "}
                             after uploading.
                           </p>
                         ) : null}
@@ -6242,12 +6288,18 @@ export function CatalogView(): JSX.Element {
                         }}
                         onDrop={handleAddItemDrop}
                       >
-                        <span className="text-kira-black dark:text-gray-300"><UploadIcon /></span>
+                        <span className="text-kira-black dark:text-gray-300">
+                          <UploadIcon />
+                        </span>
                         <p className="mt-4 text-xl font-semibold text-kira-black dark:text-white ">
                           Click to upload{" "}
-                          <span className="font-normal text-kira-midgray dark:text-gray-400">or drag and drop</span>
+                          <span className="font-normal text-kira-midgray dark:text-gray-400">
+                            or drag and drop
+                          </span>
                         </p>
-                        <p className="mt-2 text-base text-kira-midgray dark:text-gray-400">PNG, JPG up to 10MB</p>
+                        <p className="mt-2 text-base text-kira-midgray dark:text-gray-400">
+                          PNG, JPG up to 10MB
+                        </p>
                         {itemImageError ? (
                           <p className="mt-2 text-sm text-rose-700">{itemImageError}</p>
                         ) : null}
@@ -6272,7 +6324,7 @@ export function CatalogView(): JSX.Element {
                                 {
                                   method: "POST",
                                   body: JSON.stringify({
-                                    brand: "GEN",
+                                    brand: companyBrand,
                                     category: itemCategory,
                                     pattern: activeTemplate?.style_code_pattern ?? undefined,
                                   }),
@@ -6592,7 +6644,7 @@ export function CatalogView(): JSX.Element {
                 <button
                   type="submit"
                   disabled={isFeedbackSubmitting}
-                  className="kira-focus-ring bg-kira-black px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite disabled:opacity-60"
+                  className="kira-focus-ring bg-kira-black dark:bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-offwhite dark:text-black disabled:opacity-60"
                 >
                   {isFeedbackSubmitting ? "Submitting..." : "Submit Feedback"}
                 </button>

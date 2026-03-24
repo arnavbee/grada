@@ -6,7 +6,7 @@
     "dev": "pnpm run clean && next dev",
     "build": "next build",
     "start": "next start",
-    "clean": "node -e \"const fs=require('fs');for (const dir of ['.next','.next-dev','../../node_modules/.cache/next']) fs.rmSync(dir,{ recursive:true, force:true });\"",
+    "clean": "node -e \"const fs=require('fs');for (const dir of ['.next','../../node_modules/.cache/next']) fs.rmSync(dir,{ recursive:true, force:true });\"",
     "lint": "next lint",
     "test": "vitest run"
   },
@@ -16,12 +16,15 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.9",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.17",
+    "jsdom": "^25.0.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "vitest": "^2.1.2"

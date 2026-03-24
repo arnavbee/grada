@@ -354,14 +354,12 @@ def _render_pattern_sku(
     pattern: str,
     payload: GenerateStyleCodeRequest,
 ) -> str:
-    token_map = {
-        '{BRAND}': _sku_token(payload.brand, 'GEN'),
-        '{CATEGORY}': _sku_token(payload.category, 'CAT'),
-        '{COLOR}': 'NA',
-        '{SIZE}': 'OS',
-        '{YEAR}': str(datetime.now(timezone.utc).year),
-        '{YY}': str(datetime.now(timezone.utc).year)[-2:],
-    }
+    token_map = _build_sku_token_map(
+        brand=payload.brand,
+        category=payload.category,
+        color=None,
+        size=None,
+    )
     rendered = pattern.upper()
     for key, value in token_map.items():
         rendered = rendered.replace(key, value)
@@ -370,6 +368,46 @@ def _render_pattern_sku(
     if not rendered:
         rendered = 'SKU'
     return _find_unique_sku(db, company_id, rendered)
+
+
+def _build_sku_token_map(
+    *,
+    brand: str | None,
+    category: str | None,
+    color: str | None,
+    size: str | None,
+) -> dict[str, str]:
+    current_year = str(datetime.now(timezone.utc).year)
+    return {
+        '{BRAND}': _sku_token(brand, 'GEN'),
+        '{CATEGORY}': _sku_token(category, 'CAT'),
+        '{COLOR}': _sku_token(color, 'NA'),
+        '{SIZE}': _sku_token(size, 'OS'),
+        '{YEAR}': current_year,
+        '{YY}': current_year[-2:],
+    }
+
+
+def _render_sku_from_format(
+    *,
+    sku_format: str,
+    brand: str | None,
+    category: str | None,
+    color: str | None,
+    size: str | None,
+) -> str:
+    rendered = sku_format.upper()
+    for key, value in _build_sku_token_map(
+        brand=brand,
+        category=category,
+        color=color,
+        size=size,
+    ).items():
+        rendered = rendered.replace(key, value)
+
+    rendered = re.sub(r'[^A-Z0-9-]+', '-', rendered)
+    rendered = re.sub(r'-{2,}', '-', rendered).strip('-')
+    return rendered or 'SKU'
 
 
 def _compute_image_hash(image_url: str) -> str:
@@ -828,9 +866,9 @@ def _get_brand_initials(brand: str | None, fallback: str = 'GN') -> str:
     if not brand: return fallback
     words = [w for w in re.split(r'[^A-Za-z0-9]+', brand) if w]
     if len(words) == 1:
-        return words[0][:3].upper()
+        return words[0][:2].upper()
     elif len(words) >= 2:
-        return ''.join(w[0] for w in words).upper()
+        return ''.join(w[0] for w in words)[:2].upper()
     return fallback
 
 def _get_category_abbr(category: str | None, fallback: str = 'XX') -> str:
@@ -856,18 +894,27 @@ def _find_formatted_unique_sku(db: Session, company_id: str, base_sku: str, curr
 
 def _generate_sku(db: Session, company_id: str, company_settings: CompanySettings | None, payload: ProductCreateRequest) -> str:
     from app.models.company import Company
+
     company = db.query(Company).filter(Company.id == company_id).first()
-    company_name = company.name if company else "Generic"
-    
+    company_name = company.name if company else 'Generic'
+
     brand_val = payload.brand
     if not brand_val or brand_val.strip().lower() == 'generic':
         brand_val = company_name
 
-    brand_initials = _get_brand_initials(brand_val)
-    category_abbr = _get_category_abbr(payload.category)
-    year = str(datetime.now(timezone.utc).year)[-2:]
-    base = f"{brand_initials}{category_abbr}{year}"
-    return _find_formatted_unique_sku(db, company_id, base)
+    configured_format = (
+        company_settings.sku_format.strip()
+        if company_settings and company_settings.sku_format and company_settings.sku_format.strip()
+        else '{BRAND}-{CATEGORY}-{COLOR}-{SIZE}'
+    )
+    base_sku = _render_sku_from_format(
+        sku_format=configured_format,
+        brand=brand_val,
+        category=payload.category,
+        color=payload.color,
+        size=payload.size,
+    )
+    return _find_unique_sku(db, company_id, base_sku)
 
 
 def _to_product_response(product: Product) -> ProductResponse:
@@ -1509,8 +1556,10 @@ def generate_style_code(
     db: DbSession,
     current_user: WriteUser,
 ) -> GenerateStyleCodeResponse:
-    if payload.pattern and payload.pattern.strip():
-        sku = _render_pattern_sku(db, current_user.company_id, payload.pattern.strip(), payload)
+    pattern = payload.pattern.strip() if payload.pattern else ''
+
+    if pattern:
+        sku = _render_pattern_sku(db, current_user.company_id, pattern, payload)
         return GenerateStyleCodeResponse(style_code=sku)
 
     company_settings = (
@@ -1520,11 +1569,11 @@ def generate_style_code(
     # We can reuse the _generate_sku logic but pass a dummy ProductCreateRequest
     # to format the SKU.
     dummy_payload = ProductCreateRequest(
-        title="Dummy",
+        title='Dummy',
         brand=payload.brand,
         category=payload.category,
-        color="NA",
-        size="OS"
+        color='NA',
+        size='OS',
     )
     sku = _generate_sku(db, current_user.company_id, company_settings, dummy_payload)
     return GenerateStyleCodeResponse(style_code=sku)

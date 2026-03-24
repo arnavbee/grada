@@ -20,6 +20,11 @@ class PORequest(Base):
     )
 
     items: Mapped[List["PORequestItem"]] = relationship("PORequestItem", back_populates="po_request", cascade="all, delete-orphan")
+    rows: Mapped[List['PORequestRow']] = relationship(
+        'PORequestRow',
+        back_populates='po_request',
+        cascade='all, delete-orphan',
+    )
 
 
 class PORequestItem(Base):
@@ -42,3 +47,13 @@ class PORequestItem(Base):
     )
 
     po_request: Mapped["PORequest"] = relationship("PORequest", back_populates="items")
+    colorways: Mapped[List['PORequestColorway']] = relationship(
+        'PORequestColorway',
+        back_populates='item',
+        cascade='all, delete-orphan',
+    )
+    rows: Mapped[List['PORequestRow']] = relationship(
+        'PORequestRow',
+        back_populates='item',
+        cascade='all, delete-orphan',
+    )

@@ -22,7 +22,11 @@ dependencies = [
   "uvicorn[standard]>=0.31.0,<1.0.0",
   "pydantic-settings>=2.5.2,<3.0.0",
   "openai>=1.47.0,<2.0.0",
-  "boto3>=1.35.0,<2.0.0"
+  "boto3>=1.35.0,<2.0.0",
+  "openpyxl>=3.1.5,<4.0.0",
+  "pdfplumber>=0.11.4,<1.0.0",
+  "python-barcode>=0.15.1,<1.0.0",
+  "reportlab>=4.2.5,<5.0.0"
 ]
 
 [project.optional-dependencies]

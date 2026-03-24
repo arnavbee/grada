@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -8,25 +9,30 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.security import TokenError, decode_access_token
 from app.db.session import init_db
+from app.services.job_queue import start_job_worker, stop_job_worker
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
-    yield
+    start_job_worker()
+    try:
+        yield
+    finally:
+        stop_job_worker()
 
 
 app = FastAPI(title='grada', version='0.1.0', lifespan=lifespan)
 
 origins = [origin.strip() for origin in settings.frontend_origins.split(',') if origin.strip()]
-print(f"DEBUG: Loaded CORS Origins: {origins}")
+logger.info('Configured CORS origins: %s', origins)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # DEBUG: Allow all temporarily
-    # allow_origins=origins,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=['*'],
     allow_headers=['*'],
@@ -49,14 +55,14 @@ async def attach_auth_payload(request: Request, call_next):
 
 @app.middleware('http')
 async def log_requests(request: Request, call_next):
-    print(f"Incoming Request: {request.method} {request.url}")
+    logger.info('Incoming Request: %s %s', request.method, request.url)
     try:
         response = await call_next(request)
-        print(f"Request Processed: {response.status_code}")
+        logger.info('Request Processed: %s', response.status_code)
         return response
-    except Exception as e:
-        print(f"Request Failed: {e}")
-        raise e
+    except Exception:
+        logger.exception('Request Failed')
+        raise
 
 
 app.include_router(api_router, prefix='/api/v1')

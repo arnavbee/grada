@@ -1,5 +1,5 @@
-import { POBuilderView } from '@/src/components/dashboard/po-builder-view';
+import { POBuilderListView } from "@/src/components/dashboard/po-builder-list-view";
 
 export default function POBuilderPage(): JSX.Element {
-  return <POBuilderView />;
+  return <POBuilderListView />;
 }

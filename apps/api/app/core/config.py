@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     R2_PUBLIC_BASE_URL: str | None = None
     R2_REGION: str = 'auto'
 
+    job_worker_enabled: bool = True
+    job_worker_poll_interval_seconds: float = 0.5
+
 
 @lru_cache
 def get_settings() -> Settings:

@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -6,9 +7,10 @@ from urllib.parse import urlparse
 from urllib.request import urlopen
 from uuid import uuid4
 
-from openai import OpenAI
+from openai import APIStatusError, OpenAI
 from sqlalchemy.orm import Session
 
+from app.config.styli_attributes import DRESS_ATTRIBUTES
 from app.core.config import get_settings
 from app.db.base import utcnow
 from app.db.session import SessionLocal
@@ -17,8 +19,10 @@ from app.models.processing_job import ProcessingJob
 from app.models.product_image import ProductImage
 from app.models.product_measurement import ProductMeasurement
 from app.models.po_request import PORequest, PORequestItem
+from app.services.po_builder import normalize_ai_attributes, rebuild_po_request_rows
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 TECHPACK_SOURCE = 'techpack_ocr'
 MEASUREMENT_ALIASES: dict[str, tuple[str, ...]] = {
@@ -191,57 +195,91 @@ Format strictly as:
             
             return json.loads(content)
         except Exception as e:
-            print(f"AI Analysis Error: {e}")
+            logger.exception('AI analysis failed')
             return {"error": str(e)}
 
     def extract_po_attributes(self, image_url: str, category: str) -> dict[str, Any]:
         """
         Extract detailed Styli GARMENT attributes for a PO based on product category.
         """
+        log_url = image_url[:60] + "..." if len(image_url) > 60 else image_url
+        logger.info("[PO AI] Requesting analysis for category='%s' image='%s'", category, log_url)
+
+        dress_enum_block = '\n'.join(
+            f'- {field_name}: {", ".join(options)}' for field_name, options in DRESS_ATTRIBUTES.items()
+        )
+
         prompt = f"""
-Analyze this fashion product image and extract detailed attributes for a {category} garment.
-Return a valid JSON object with these exact keys based on the category.
+You are extracting Styli PO attributes for a women's fashion image.
+The garment category hint is: {category}.
 
-If category is near Top/Shirt:
-Keys: tops_fit, top_style, top_neck, top_length, top_print, sleeve_length
-If category is near Dress:
-Keys: dress_shape, neck_women_dress, dress_print, sleeve_length_women_dress, sleeve_styling_dress, dress_length
-If category is near Ethnic:
-Keys: ethnic_print, ethnic_length, ethnic_sleeve, ethnic_pattern, ethnic_fit, ethnic_type, ethnic_neckline, ethnic_leg_style, ethnic_sleeve_type
-If category is near Denim/Jeans:
-Keys: jeans_fit, jeans_waist_rise, jeans_stretch, jeans_wash_shade
-If category is near Outerwear/Jacket:
-Keys: outerwear_type, outerwear_length
+Return ONLY valid JSON with this exact structure:
+{{
+  "fields": {{
+    "dress_print": {{"value": "...", "confidence": 0-100}},
+    "dress_length": {{"value": "...", "confidence": 0-100}},
+    "dress_shape": {{"value": "...", "confidence": 0-100}},
+    "sleeve_length": {{"value": "...", "confidence": 0-100}},
+    "neck_women": {{"value": "...", "confidence": 0-100}},
+    "sleeve_styling": {{"value": "...", "confidence": 0-100}},
+    "woven_knits": {{"value": "Woven" or "Knitted", "confidence": 0-100}}
+  }}
+}}
 
-Values should ideally match standard Styli Master Attribute formats like "A-Line", "Maxi", etc.
-All keys should output string values. Ignore confidence scores, just output the strings directly.
+Rules:
+1. Use only these allowed values for the dress attributes:
+{dress_enum_block}
+2. If an attribute is not visible, set its value to "" with low confidence.
+3. Do not return free text outside the enum lists for dress fields.
+4. Do not include explanations or markdown.
 """
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
+        request_messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
                     {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": image_url,
-                                    "detail": "high"
-                                },
-                            },
-                        ],
-                    }
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_url,
+                            "detail": "high"
+                        },
+                    },
                 ],
-                max_tokens=600,
-                response_format={"type": "json_object"}
-            )
-            content = response.choices[0].message.content
-            return json.loads(content) if content else {}
-        except Exception as e:
-            print(f"PO AI Extraction Error: {e}")
-            return {}
+            }
+        ]
+
+        for max_tokens in (220, 140):
+            try:
+                response = self.client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=request_messages,
+                    max_tokens=max_tokens,
+                    response_format={"type": "json_object"}
+                )
+                content = response.choices[0].message.content
+                logger.info('[PO AI] Raw response for %s: %s', category, content)
+
+                if not content:
+                    logger.warning('[PO AI] OpenAI returned an empty message content.')
+                    return normalize_ai_attributes(None)
+
+                parsed = json.loads(content)
+                return normalize_ai_attributes(parsed)
+            except APIStatusError as exc:
+                if exc.status_code == 402 and max_tokens != 140:
+                    logger.warning(
+                        '[PO AI] Credit-limited response at max_tokens=%s, retrying with a smaller budget.',
+                        max_tokens,
+                    )
+                    continue
+                logger.exception('[PO AI] Extraction failed')
+                return normalize_ai_attributes(None)
+            except Exception:
+                logger.exception('[PO AI] Extraction failed')
+                return normalize_ai_attributes(None)
+
+        return normalize_ai_attributes(None)
 
 ai_service = AIService()
 
@@ -382,6 +420,8 @@ def process_image_analysis_job(job_id: str):
 
         job.status = 'processing'
         job.started_at = utcnow()
+        job.progress_percent = 15
+        job.error_message = None
         db.commit()
 
         # Parse payload
@@ -396,31 +436,31 @@ def process_image_analysis_job(job_id: str):
         if image_id:
             image = db.query(ProductImage).filter(ProductImage.id == image_id).first()
             if image:
-                 # Call AI Service
-                 # Prefer image_data (base64) if provided, otherwise fallback to URL
-                 image_source = image_data if image_data else image.file_url
-                 
-                 analysis = ai_service.analyze_image(image_source)
-                 
-                 # Update Image
-                 image.analysis_json = json.dumps(analysis, separators=(',', ':'))
-                 image.processing_status = 'completed'
-                 
-                 # Update Job
-                 job.result_json = json.dumps(analysis, separators=(',', ':'))
-                 job.status = 'completed'
-                 job.completed_at = utcnow()
-                 job.progress_percent = 100
-                 db.commit()
-                 return
+                # Prefer inline image data when available, otherwise fall back to the stored URL.
+                image_source = image_data if image_data else image.file_url
+
+                analysis = ai_service.analyze_image(image_source)
+                if isinstance(analysis, dict) and isinstance(analysis.get('error'), str):
+                    raise RuntimeError(analysis['error'])
+
+                image.analysis_json = json.dumps(analysis, separators=(',', ':'))
+                image.processing_status = 'completed'
+
+                job.result_json = json.dumps(analysis, separators=(',', ':'))
+                job.status = 'completed'
+                job.completed_at = utcnow()
+                job.progress_percent = 100
+                db.commit()
+                return
             else:
-                 job.error_message = f"ProductImage {image_id} not found"
+                job.error_message = f'ProductImage {image_id} not found'
         else:
-             job.error_message = "Missing image_id in payload"
+            job.error_message = 'Missing image_id in payload'
 
         # Fallback for failure cases
         job.status = 'failed'
         job.completed_at = utcnow()
+        job.progress_percent = 100
         db.commit()
 
     except Exception as e:
@@ -428,6 +468,7 @@ def process_image_analysis_job(job_id: str):
             job.status = 'failed'
             job.error_message = str(e)
             job.completed_at = utcnow()
+            job.progress_percent = 100
             db.commit()
     finally:
         db.close()
@@ -448,12 +489,14 @@ def process_techpack_ocr_job(job_id: str):
         job.status = 'processing'
         job.started_at = utcnow()
         job.progress_percent = 15
+        job.error_message = None
         db.commit()
 
         if not job.product_id:
             job.status = 'failed'
             job.error_message = 'techpack_ocr requires product_id.'
             job.completed_at = utcnow()
+            job.progress_percent = 100
             db.commit()
             return
 
@@ -504,12 +547,14 @@ def process_techpack_ocr_job(job_id: str):
         job.status = 'completed'
         job.progress_percent = 100
         job.completed_at = utcnow()
+        job.error_message = None
         db.commit()
     except Exception as e:
         if job:
             job.status = 'failed'
             job.error_message = str(e)
             job.completed_at = utcnow()
+            job.progress_percent = 100
             db.commit()
     finally:
         db.close()
@@ -547,6 +592,65 @@ def process_ai_correction_retraining(correction_id: str):
     finally:
         db.close()
 
+def _resolve_image_url_for_po(image_url: str) -> str:
+    """
+    Convert any image URL (local /static/, localhost, or remote) to a form
+    that can be sent to OpenAI: either a data-URI (for local files) or the
+    original URL (for public remote URLs).
+    """
+    import base64
+    from urllib.parse import urlparse
+
+    url = image_url.strip()
+    if not url or url.startswith('data:'):
+        return url
+
+    # ai.py lives at: apps/api/app/services/ai.py
+    # parents[0] = apps/api/app/services/
+    # parents[1] = apps/api/app/
+    # parents[2] = apps/api/          <-- API root, where static/ lives
+    api_root = Path(__file__).resolve().parents[2]
+    static_root = api_root / 'static'
+
+    # FastAPI uvicorn runs from apps/api/ so CWD is also a valid fallback
+    cwd_static = Path.cwd() / 'static'
+
+    parsed = urlparse(url)
+
+    # Derive the /static/... relative portion
+    static_relative = ''
+    if url.startswith('/static/'):
+        static_relative = url[len('/static/'):]
+    elif parsed.path.startswith('/static/'):
+        static_relative = parsed.path[len('/static/'):]
+
+    if static_relative:
+        for candidate in [static_root / static_relative, cwd_static / static_relative]:
+            if candidate.exists():
+                raw = candidate.read_bytes()
+                ext = candidate.suffix.lower()
+                mime = 'image/png' if ext == '.png' else 'image/webp' if ext == '.webp' else 'image/jpeg'
+                return f'data:{mime};base64,{base64.b64encode(raw).decode()}'
+        print(f'[PO Extraction] WARNING: local image not found at {static_root / static_relative} or {cwd_static / static_relative}')
+        return url
+
+    # For localhost/127.0.0.1 URLs without /static/ prefix, try an HTTP fetch
+    if parsed.hostname in {'localhost', '127.0.0.1'}:
+        try:
+            from urllib.request import urlopen, Request as UrlRequest
+            req = UrlRequest(url, headers={'User-Agent': 'kira-po-extractor/1.0'})
+            with urlopen(req, timeout=8) as resp:
+                raw = resp.read()
+                mime = resp.headers.get_content_type() or 'image/jpeg'
+            return f'data:{mime};base64,{base64.b64encode(raw).decode()}'
+        except Exception as fetch_err:
+            print(f'[PO Extraction] WARNING: could not fetch local URL {url}: {fetch_err}')
+            return url
+
+    # Remote public URL — return as-is and let OpenAI fetch it
+    return url
+
+
 def process_po_ai_extraction_job(po_request_id: str):
     """
     Background task to process PO AI attribute extraction for all items in a request.
@@ -557,39 +661,68 @@ def process_po_ai_extraction_job(po_request_id: str):
     try:
         po_request = db.query(PORequest).filter(PORequest.id == po_request_id).first()
         if not po_request:
+            logger.warning('[PO Extraction] PO Request %s not found.', po_request_id)
             return
+
+        logger.info('[PO Extraction] Starting extraction for PO %s (%s items)', po_request_id, len(po_request.items))
+        extracted_item_count = 0
 
         for item in po_request.items:
             product = db.query(Product).filter(Product.id == item.product_id).first()
             if not product:
+                logger.warning('[PO Extraction] Product %s not found, skipping.', item.product_id)
+                item.extracted_attributes = normalize_ai_attributes(None)
                 continue
-            
-            image = db.query(ProductImage).filter(ProductImage.product_id == product.id).order_by(ProductImage.created_at).first()
-            
-            if image and image.file_url:
-                image_url = image.file_url
-                if image_url.startswith('/static/') or 'localhost' in image_url or '127.0.0.1' in image_url:
-                    from urllib.parse import urlparse
-                    import base64
-                    path_part = urlparse(image_url).path if image_url.startswith('http') else image_url
-                    local_path = Path(path_part.lstrip('/'))
-                    if local_path.exists():
-                        b64 = base64.b64encode(local_path.read_bytes()).decode('utf-8')
-                        # Derive mimetype
-                        ext = local_path.suffix.lower()
-                        mime = 'image/png' if ext == '.png' else 'image/webp' if ext == '.webp' else 'image/jpeg'
-                        image_url = f"data:{mime};base64,{b64}"
-                
-                attributes = ai_service.extract_po_attributes(image_url, product.category or "Top")
-                item.extracted_attributes = attributes
+
+            # Try dedicated ProductImage first, fall back to ai_attributes / primary_image_url
+            image_record = (
+                db.query(ProductImage)
+                .filter(ProductImage.product_id == product.id)
+                .order_by(ProductImage.created_at)
+                .first()
+            )
+            raw_url: str | None = None
+            if image_record and image_record.file_url:
+                raw_url = image_record.file_url
             else:
-                item.extracted_attributes = {"error": "no image found"}
-        
-        po_request.status = 'ready'
+                product_ai_attributes = _parse_payload(product.ai_attributes_json)
+                primary_image_url = product_ai_attributes.get('primary_image_url')
+                if isinstance(primary_image_url, str) and primary_image_url.strip():
+                    raw_url = primary_image_url.strip()
+
+            if not raw_url:
+                logger.warning('[PO Extraction] No image found for product %s, skipping AI call.', product.id)
+                item.extracted_attributes = normalize_ai_attributes(None)
+                continue
+
+            try:
+                resolved_url = _resolve_image_url_for_po(raw_url)
+                logger.info(
+                    '[PO Extraction] Extracting attributes for product %s (category=%s)',
+                    product.id,
+                    product.category,
+                )
+                attributes = ai_service.extract_po_attributes(resolved_url, product.category or 'Dress')
+                item.extracted_attributes = normalize_ai_attributes(attributes)
+                if item.extracted_attributes.get('fields'):
+                    extracted_item_count += 1
+                logger.info(
+                    '[PO Extraction] Got %s attributes for product %s',
+                    len(item.extracted_attributes.get('fields', {})),
+                    product.id,
+                )
+            except Exception as item_err:
+                logger.exception('[PO Extraction] Error extracting product %s', product.id)
+                item.extracted_attributes = normalize_ai_attributes(None)
+
+        rebuild_po_request_rows(db, po_request)
+        po_request.status = 'ready' if extracted_item_count > 0 else 'failed'
         db.commit()
+        logger.info('[PO Extraction] Done. PO %s marked %s.', po_request_id, po_request.status)
     except Exception as e:
+        logger.exception('[PO Extraction] Fatal error for PO %s', po_request_id)
         if po_request:
-            po_request.status = 'draft'
+            po_request.status = 'failed'
             db.commit()
     finally:
         db.close()
