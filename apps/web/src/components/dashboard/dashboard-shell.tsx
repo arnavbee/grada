@@ -14,6 +14,9 @@ const navigation = [
   { label: "Catalog", href: "/dashboard/catalog" },
   { label: "PO Format Builder", href: "/dashboard/po-builder" },
   { label: "Received POs", href: "/dashboard/received-pos" },
+  { label: "Invoices", href: "/dashboard/invoices" },
+  { label: "Barcodes", href: "/dashboard/barcodes" },
+  { label: "Packing Lists", href: "/dashboard/packing-lists" },
   { label: "Sticker Builder", href: "/dashboard/sticker-builder" },
   { label: "Settings", href: "/dashboard/settings" },
 ] as const;

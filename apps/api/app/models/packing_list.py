@@ -16,6 +16,15 @@ class PackingList(Base):
         index=True,
     )
     company_id: Mapped[str] = mapped_column(String(36), ForeignKey('companies.id', ondelete='CASCADE'), index=True)
+    # Invoice linkage — packing list is downstream of an invoice snapshot
+    invoice_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey('invoices.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
+    invoice_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    invoice_date: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default='draft', index=True, nullable=False)
     file_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)

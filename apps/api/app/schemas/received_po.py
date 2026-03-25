@@ -16,6 +16,7 @@ class ReceivedPOLineItemBase(BaseModel):
     option_id: str | None = Field(default=None, max_length=128)
     sku_id: str = Field(min_length=1, max_length=160)
     color: str | None = Field(default=None, max_length=128)
+    knitted_woven: str | None = Field(default=None, max_length=64)
     size: str | None = Field(default=None, max_length=32)
     quantity: int = Field(ge=0)
     po_price: float | None = Field(default=None, ge=0)
@@ -40,6 +41,7 @@ class ReceivedPOLineItemResponse(BaseModel):
     option_id: str | None
     sku_id: str
     color: str | None
+    knitted_woven: str | None
     size: str | None
     quantity: int
     po_price: float | None
@@ -80,6 +82,24 @@ class BarcodeJobResponse(BaseModel):
     total_stickers: int
     total_pages: int
     created_at: datetime
+
+
+class BarcodeJobListItemResponse(BaseModel):
+    id: str
+    received_po_id: str
+    po_number: str | None
+    template_kind: StickerTemplateKind
+    template_id: str | None
+    status: BarcodeJobStatus
+    total_stickers: int
+    total_pages: int
+    file_url: str | None
+    created_at: datetime
+
+
+class BarcodeJobListResponse(BaseModel):
+    items: list[BarcodeJobListItemResponse]
+    total: int
 
 
 class ReceivedPOListItemResponse(BaseModel):

@@ -6,8 +6,26 @@ class BrandProfileSettings(BaseModel):
     address: str = Field(min_length=5, max_length=1000)
     gst_number: str = Field(min_length=5, max_length=32)
     pan_number: str = Field(min_length=5, max_length=32)
+    fbs_name: str = Field(default='', max_length=255)
+    vendor_company_name: str = Field(default='', max_length=255)
+    supplier_city: str = Field(default='', max_length=128)
+    supplier_state: str = Field(default='', max_length=128)
+    supplier_pincode: str = Field(default='', max_length=32)
+    delivery_from_name: str = Field(default='', max_length=255)
+    delivery_from_address: str = Field(default='', max_length=1000)
+    delivery_from_city: str = Field(default='', max_length=128)
+    delivery_from_pincode: str = Field(default='', max_length=32)
+    origin_country: str = Field(default='India', max_length=128)
+    origin_state: str = Field(default='Haryana', max_length=128)
+    origin_district: str = Field(default='Gurugram', max_length=128)
+    bill_to_name: str = Field(default='', max_length=255)
     bill_to_address: str = Field(min_length=5, max_length=1000)
+    bill_to_gst: str = Field(default='', max_length=32)
+    bill_to_pan: str = Field(default='', max_length=32)
+    ship_to_name: str = Field(default='', max_length=255)
     ship_to_address: str = Field(min_length=5, max_length=1000)
+    ship_to_gst: str = Field(default='', max_length=32)
+    stamp_image_url: str = Field(default='', max_length=512)
     instagram_handle: str = Field(default='', max_length=255)
     website_url: str = Field(default='', max_length=255)
     facebook_handle: str = Field(default='', max_length=255)
@@ -22,8 +40,26 @@ class BrandProfileResponse(BaseModel):
     address: str = ''
     gst_number: str = ''
     pan_number: str = ''
+    fbs_name: str = ''
+    vendor_company_name: str = ''
+    supplier_city: str = ''
+    supplier_state: str = ''
+    supplier_pincode: str = ''
+    delivery_from_name: str = ''
+    delivery_from_address: str = ''
+    delivery_from_city: str = ''
+    delivery_from_pincode: str = ''
+    origin_country: str = 'India'
+    origin_state: str = 'Haryana'
+    origin_district: str = 'Gurugram'
+    bill_to_name: str = ''
     bill_to_address: str = ''
+    bill_to_gst: str = ''
+    bill_to_pan: str = ''
+    ship_to_name: str = ''
     ship_to_address: str = ''
+    ship_to_gst: str = ''
+    stamp_image_url: str = ''
     instagram_handle: str = ''
     website_url: str = ''
     facebook_handle: str = ''

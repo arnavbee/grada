@@ -3,21 +3,28 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
+from app.config.hsn_codes import get_hsn_code
 from app.core.audit import log_audit
 from app.db.session import get_db
 from app.models.barcode_job import BarcodeJob
 from app.models.company_settings import CompanySettings
-from app.models.invoice import Invoice
+from app.models.invoice import Invoice, InvoiceLineItem
 from app.models.packing_list import PackingList, PackingListCarton
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
 from app.models.sticker_template import StickerTemplate
 from app.models.user import User
-from app.schemas.invoice import InvoiceGeneratePdfResponse, InvoiceResponse, InvoiceUpdateRequest
+from app.schemas.invoice import (
+    InvoiceCreateRequest,
+    InvoiceDetails,
+    InvoiceGeneratePdfResponse,
+    InvoiceResponse,
+    InvoiceUpdateRequest,
+)
 from app.schemas.packing_list import (
     PackingListCartonResponse,
     PackingListCartonUpdateRequest,
@@ -47,6 +54,7 @@ from app.services.job_queue import (
     enqueue_processing_job,
 )
 from app.services.packing_list_service import assign_cartons_for_received_po
+from app.utils.amount_words import convert_to_words
 
 router = APIRouter(prefix='/received-pos', tags=['received_pos'])
 object_storage = get_object_storage_service()
@@ -59,6 +67,8 @@ ALLOWED_UPLOAD_CONTENT_TYPES = {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 }
 ALLOWED_UPLOAD_SUFFIXES = {'.pdf', '.xls', '.xlsx'}
+DEFAULT_PRODUCT_DESCRIPTION = 'Women Dress'
+DEFAULT_KNITTED_WOVEN = 'Woven'
 
 
 def _json_loads(raw: str | None) -> dict[str, object]:
@@ -72,20 +82,28 @@ def _json_loads(raw: str | None) -> dict[str, object]:
 
 
 def _to_invoice_response(record: Invoice) -> InvoiceResponse:
+    details = InvoiceDetails(**_json_loads(record.details_json))
     return InvoiceResponse(
         id=record.id,
         received_po_id=record.received_po_id,
         company_id=record.company_id,
         invoice_number=record.invoice_number,
         invoice_date=record.invoice_date,
+        number_of_cartons=record.number_of_cartons,
+        export_mode=record.export_mode,
         gross_weight=float(record.gross_weight) if record.gross_weight is not None else None,
+        total_quantity=int(record.total_quantity),
         subtotal=float(record.subtotal),
         igst_rate=float(record.igst_rate),
         igst_amount=float(record.igst_amount),
         total_amount=float(record.total_amount),
+        total_amount_words=record.total_amount_words,
         status=record.status,
         file_url=record.file_url,
         created_at=record.created_at,
+        updated_at=record.updated_at,
+        details=details,
+        line_items=record.line_items,
     )
 
 
@@ -94,6 +112,9 @@ def _to_packing_list_response(record: PackingList) -> PackingListResponse:
         id=record.id,
         received_po_id=record.received_po_id,
         company_id=record.company_id,
+        invoice_id=record.invoice_id,
+        invoice_number=record.invoice_number,
+        invoice_date=record.invoice_date,
         status=record.status,
         file_url=record.file_url,
         created_at=record.created_at,
@@ -125,9 +146,185 @@ def _get_default_igst_rate(company_settings: CompanySettings) -> float:
     return 5.0
 
 
-def _format_invoice_number(prefix: str, next_number: int) -> str:
-    year = datetime.now(timezone.utc).year
-    return f'{prefix}-{year}-{next_number:03d}'
+def _brand_profile(company_settings: CompanySettings | None) -> dict[str, object]:
+    settings_payload = _json_loads(company_settings.settings_json if company_settings else '{}')
+    brand_profile = settings_payload.get('brand_profile')
+    return brand_profile if isinstance(brand_profile, dict) else {}
+
+
+def _po_builder_defaults(company_settings: CompanySettings | None) -> dict[str, object]:
+    settings_payload = _json_loads(company_settings.settings_json if company_settings else '{}')
+    defaults = settings_payload.get('po_builder_defaults')
+    return defaults if isinstance(defaults, dict) else {}
+
+
+def _default_invoice_details(
+    company_settings: CompanySettings | None, received_po: ReceivedPO | None = None
+) -> InvoiceDetails:
+    profile = _brand_profile(company_settings)
+    supplier_name = str(profile.get('supplier_name') or '').strip()
+    address = str(profile.get('address') or '').strip()
+    return InvoiceDetails(
+        marketplace_name=str(received_po.distributor if received_po else '') or 'Marketplace',
+        supplier_name=supplier_name,
+        address=address,
+        gst_number=str(profile.get('gst_number') or '').strip(),
+        pan_number=str(profile.get('pan_number') or '').strip(),
+        fbs_name=str(profile.get('fbs_name') or supplier_name).strip(),
+        vendor_company_name=str(profile.get('vendor_company_name') or supplier_name).strip(),
+        supplier_city=str(profile.get('supplier_city') or '').strip(),
+        supplier_state=str(profile.get('supplier_state') or '').strip(),
+        supplier_pincode=str(profile.get('supplier_pincode') or '').strip(),
+        delivery_from_name=str(profile.get('delivery_from_name') or supplier_name).strip(),
+        delivery_from_address=str(profile.get('delivery_from_address') or address).strip(),
+        delivery_from_city=str(profile.get('delivery_from_city') or '').strip(),
+        delivery_from_pincode=str(profile.get('delivery_from_pincode') or '').strip(),
+        origin_country=str(profile.get('origin_country') or 'India').strip() or 'India',
+        origin_state=str(profile.get('origin_state') or '').strip(),
+        origin_district=str(profile.get('origin_district') or '').strip(),
+        bill_to_name=str(
+            profile.get('bill_to_name') or 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
+        ).strip(),
+        bill_to_address=str(
+            profile.get('bill_to_address')
+            or 'Near Pole No. 646, Khasra No. 36/1, V.P.O. Bamnoli, Main Bijwasan Road, New Delhi - 110077'
+        ).strip(),
+        bill_to_gst=str(profile.get('bill_to_gst') or '07AAGCN3134K1ZF').strip(),
+        bill_to_pan=str(profile.get('bill_to_pan') or 'AAGCN3134K').strip(),
+        ship_to_name=str(
+            profile.get('ship_to_name') or 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
+        ).strip(),
+        ship_to_address=str(
+            profile.get('ship_to_address')
+            or 'Plot no 113, Village Bamnoli, District - South West Delhi, New Delhi - 110077'
+        ).strip(),
+        ship_to_gst=str(profile.get('ship_to_gst') or '07AAGCN3134K1ZF').strip(),
+        stamp_image_url=str(profile.get('stamp_image_url') or '').strip(),
+    )
+
+
+def _resolve_invoice_details(
+    payload_details: InvoiceDetails | None,
+    company_settings: CompanySettings | None,
+    received_po: ReceivedPO | None = None,
+) -> InvoiceDetails:
+    if payload_details is not None:
+        return payload_details
+    return _default_invoice_details(company_settings, received_po)
+
+
+def _apply_invoice_details_to_line_items(
+    line_items: list[InvoiceLineItem], details: InvoiceDetails
+) -> None:
+    for row in line_items:
+        row.country_of_origin = details.origin_country or 'India'
+        row.state_of_origin = details.origin_state or row.state_of_origin
+        row.district_of_origin = details.origin_district or row.district_of_origin
+
+
+def _current_financial_year(now: datetime | None = None) -> str:
+    current = now or datetime.now(timezone.utc)
+    if current.month >= 4:
+        start = current.year % 100
+        end = (current.year + 1) % 100
+    else:
+        start = (current.year - 1) % 100
+        end = current.year % 100
+    return f'{start:02d}-{end:02d}'
+
+
+def _format_invoice_number(prefix: str, next_number: int, now: datetime | None = None) -> str:
+    return f'{prefix}/{_current_financial_year(now)}/{next_number:04d}'
+
+
+def _derive_vendor_style_hash(sku_id: str, size: str | None) -> str:
+    normalized_sku = str(sku_id or '').strip()
+    normalized_size = str(size or '').strip()
+    size_suffix = f'-{normalized_size}'
+    if normalized_size and normalized_sku.upper().endswith(size_suffix.upper()):
+        return normalized_sku[: -len(size_suffix)]
+    return normalized_sku
+
+
+def _styli_size_code(size: str | None) -> str:
+    mapping = {'S': '02', 'M': '03', 'L': '04', 'XL': '05', 'XXL': '30'}
+    return mapping.get(str(size or '').strip().upper(), '02')
+
+
+def _build_neom_sku_id(option_id: str | None, size: str | None, sku_id: str) -> str:
+    normalized_option_id = str(option_id or '').strip()
+    if normalized_option_id:
+        return f'{normalized_option_id}{_styli_size_code(size)}'
+    return str(sku_id or '').strip()
+
+
+def _default_product_description(line_item: ReceivedPOLineItem) -> str:
+    color = str(line_item.color or '').strip()
+    if color:
+        return f'{DEFAULT_PRODUCT_DESCRIPTION} - {color}'
+    return DEFAULT_PRODUCT_DESCRIPTION
+
+
+def _money(value: float) -> float:
+    return round(float(value or 0), 2)
+
+
+def _invoice_line_item_rows(
+    received_po: ReceivedPO,
+    line_items: list[ReceivedPOLineItem],
+    company_settings: CompanySettings,
+    *,
+    igst_rate: float,
+) -> tuple[list[InvoiceLineItem], int, float, float, float, str]:
+    brand_profile = _brand_profile(company_settings)
+    po_defaults = _po_builder_defaults(company_settings)
+    default_fabric = str(po_defaults.get('default_fabric_composition') or '100% Polyester').strip()
+    origin_country = str(brand_profile.get('origin_country') or 'India').strip() or 'India'
+    origin_state = str(brand_profile.get('origin_state') or 'Haryana').strip() or 'Haryana'
+    origin_district = str(brand_profile.get('origin_district') or 'Gurugram').strip() or 'Gurugram'
+    rows: list[InvoiceLineItem] = []
+    total_quantity = 0
+    subtotal = 0.0
+    for index, line_item in enumerate(line_items):
+        quantity = int(line_item.quantity or 0)
+        unit_price = _money(float(line_item.po_price or 0))
+        net_taxable_amount = _money(quantity * unit_price)
+        igst_amount = _money(net_taxable_amount * igst_rate / 100)
+        total_amount = _money(net_taxable_amount + igst_amount)
+        total_quantity += quantity
+        subtotal = _money(subtotal + net_taxable_amount)
+        rows.append(
+            InvoiceLineItem(
+                id=str(uuid4()),
+                source_line_item_id=line_item.id,
+                vendor_style_hash=_derive_vendor_style_hash(line_item.sku_id, line_item.size),
+                neom_sku_id=_build_neom_sku_id(line_item.option_id, line_item.size, line_item.sku_id),
+                neom_po_code=str(received_po.po_number or '').strip() or '-',
+                product_description=_default_product_description(line_item),
+                hsn_code=get_hsn_code(default_fabric),
+                model_number=str(line_item.model_number or line_item.brand_style_code or '-').strip() or '-',
+                fabric_composition=default_fabric,
+                knitted_woven=str(line_item.knitted_woven or DEFAULT_KNITTED_WOVEN).strip() or DEFAULT_KNITTED_WOVEN,
+                neom_size=str(line_item.size or '-').strip() or '-',
+                country_of_origin=origin_country,
+                state_of_origin=origin_state,
+                district_of_origin=origin_district,
+                quantity=quantity,
+                unit_price=unit_price,
+                net_taxable_amount=net_taxable_amount,
+                gst_rate=igst_rate,
+                igst_amount=igst_amount,
+                cgst_amount=0.0,
+                sgst_amount=0.0,
+                total_gst_amount=igst_amount,
+                total_amount=total_amount,
+                sort_order=index,
+            )
+        )
+    invoice_igst_amount = _money(subtotal * igst_rate / 100)
+    total_amount = _money(subtotal + invoice_igst_amount)
+    total_amount_words = convert_to_words(total_amount)
+    return rows, total_quantity, subtotal, invoice_igst_amount, total_amount, total_amount_words
 
 
 def _get_invoice_or_404(db: Session, company_id: str, received_po_id: str) -> Invoice:
@@ -335,6 +532,7 @@ def update_received_po_items(
         row.option_id = update.option_id.strip() if update.option_id else None
         row.sku_id = update.sku_id.strip()
         row.color = update.color.strip() if update.color else None
+        row.knitted_woven = update.knitted_woven.strip() if update.knitted_woven else None
         row.size = update.size.strip() if update.size else None
         row.quantity = update.quantity
         row.po_price = update.po_price
@@ -442,6 +640,7 @@ def get_barcode_job_status(
 @router.post('/{received_po_id}/invoice', response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
 def create_invoice_draft(
     received_po_id: str,
+    payload: InvoiceCreateRequest = Body(default=InvoiceCreateRequest()),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles('admin', 'manager', 'operator')),
 ) -> InvoiceResponse:
@@ -457,11 +656,16 @@ def create_invoice_draft(
         return _to_invoice_response(existing)
 
     company_settings = _get_company_settings(db, current_user.company_id)
-    subtotal = sum(float(item.po_price or 0) * int(item.quantity or 0) for item in record.items)
     igst_rate = _get_default_igst_rate(company_settings)
-    igst_amount = round(subtotal * igst_rate / 100, 2)
-    total_amount = round(subtotal + igst_amount, 2)
+    line_item_rows, total_quantity, subtotal, igst_amount, total_amount, total_amount_words = _invoice_line_item_rows(
+        record,
+        list(record.items),
+        company_settings,
+        igst_rate=igst_rate,
+    )
 
+    invoice_details = _resolve_invoice_details(payload.details, company_settings, record)
+    _apply_invoice_details_to_line_items(line_item_rows, invoice_details)
     invoice_number = _format_invoice_number(company_settings.invoice_prefix or 'INV', company_settings.invoice_next_number)
     invoice = Invoice(
         id=str(uuid4()),
@@ -469,20 +673,35 @@ def create_invoice_draft(
         company_id=current_user.company_id,
         invoice_number=invoice_number,
         invoice_date=datetime.now(timezone.utc),
+        number_of_cartons=payload.number_of_cartons,
+        export_mode=payload.export_mode,
         subtotal=subtotal,
         igst_rate=igst_rate,
         igst_amount=igst_amount,
         total_amount=total_amount,
+        total_quantity=total_quantity,
+        total_amount_words=total_amount_words,
+        details_json=invoice_details.model_dump_json(),
         status='draft',
     )
     company_settings.invoice_next_number += 1
     db.add(invoice)
+    db.flush()
+    for row in line_item_rows:
+        row.invoice_id = invoice.id
+        db.add(row)
     log_audit(
         db,
         action='received_po.invoice.create',
         user_id=current_user.id,
         company_id=current_user.company_id,
-        metadata={'received_po_id': record.id, 'invoice_number': invoice.invoice_number},
+        metadata={
+            'received_po_id': record.id,
+            'invoice_number': invoice.invoice_number,
+            'number_of_cartons': payload.number_of_cartons,
+            'export_mode': payload.export_mode,
+            'details_overridden': payload.details is not None,
+        },
     )
     db.commit()
     db.refresh(invoice)
@@ -510,12 +729,23 @@ def update_invoice(
     _get_received_po_or_404(db, current_user.company_id, received_po_id)
     invoice = _get_invoice_or_404(db, current_user.company_id, received_po_id)
     invoice.gross_weight = payload.gross_weight
+    if payload.number_of_cartons is not None:
+        invoice.number_of_cartons = payload.number_of_cartons
+    if payload.export_mode is not None:
+        invoice.export_mode = payload.export_mode
+    if payload.details is not None:
+        invoice.details_json = payload.details.model_dump_json()
+        _apply_invoice_details_to_line_items(invoice.line_items, payload.details)
     log_audit(
         db,
         action='received_po.invoice.update',
         user_id=current_user.id,
         company_id=current_user.company_id,
-        metadata={'received_po_id': received_po_id, 'invoice_id': invoice.id},
+        metadata={
+            'received_po_id': received_po_id,
+            'invoice_id': invoice.id,
+            'details_overridden': payload.details is not None,
+        },
     )
     db.commit()
     db.refresh(invoice)
@@ -551,10 +781,22 @@ def create_packing_list(
     if record.status != 'confirmed':
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Confirm the received PO before creating a packing list.')
 
+    # Invoice must exist first — packing list is downstream of the invoice snapshot.
+    invoice = db.query(Invoice).filter(
+        Invoice.company_id == current_user.company_id,
+        Invoice.received_po_id == record.id,
+    ).first()
+    if invoice is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='Create an invoice draft before generating a packing list.',
+        )
+
     packing_list, total_cartons, total_pieces = assign_cartons_for_received_po(
         db,
         received_po=record,
         company_id=current_user.company_id,
+        invoice=invoice,
     )
     log_audit(
         db,

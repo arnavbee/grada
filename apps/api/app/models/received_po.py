@@ -44,6 +44,7 @@ class ReceivedPOLineItem(Base):
     option_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     sku_id: Mapped[str] = mapped_column(String(160), index=True, nullable=False)
     color: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    knitted_woven: Mapped[str | None] = mapped_column(String(64), nullable=True)
     size: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     po_price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)

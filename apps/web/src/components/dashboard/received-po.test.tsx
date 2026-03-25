@@ -8,7 +8,14 @@ import userEvent from "@testing-library/user-event";
 import { ReceivedPODocumentsView } from "@/src/components/dashboard/received-po-documents-view";
 import { ReceivedPOReviewView } from "@/src/components/dashboard/received-po-review-view";
 import { ReceivedPOUploadView } from "@/src/components/dashboard/received-po-upload-view";
-import type { BarcodeJob, Invoice, PackingList, ReceivedPO } from "@/src/lib/received-po";
+import type {
+  BarcodeJob,
+  Invoice,
+  InvoiceDetails,
+  PackingList,
+  ReceivedPO,
+} from "@/src/lib/received-po";
+import type { BrandProfile } from "@/src/lib/settings";
 
 const {
   pushMock,
@@ -29,6 +36,7 @@ const {
   generatePackingListPdfMock,
   resolveFileUrlMock,
   listStickerTemplatesMock,
+  getBrandProfileMock,
 } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   uploadReceivedPOMock: vi.fn(),
@@ -50,6 +58,7 @@ const {
     url ? `https://files.example.test${url}` : null,
   ),
   listStickerTemplatesMock: vi.fn(),
+  getBrandProfileMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -111,6 +120,74 @@ vi.mock("@/src/lib/sticker-templates", () => ({
   listStickerTemplates: listStickerTemplatesMock,
 }));
 
+vi.mock("@/src/lib/settings", () => ({
+  getBrandProfile: getBrandProfileMock,
+}));
+
+const DEFAULT_INVOICE_DETAILS: InvoiceDetails = {
+  marketplace_name: "Styli",
+  supplier_name: "Documents Co",
+  address: "123 Export Lane, Gurugram",
+  gst_number: "07ABCDE1234F1Z5",
+  pan_number: "ABCDE1234F",
+  fbs_name: "FBS-DOCUMENTS CO",
+  vendor_company_name: "Documents Co",
+  supplier_city: "Gurugram",
+  supplier_state: "Haryana",
+  supplier_pincode: "122004",
+  delivery_from_name: "Documents Co Warehouse",
+  delivery_from_address: "Warehouse 4, IMT Manesar",
+  delivery_from_city: "Gurugram",
+  delivery_from_pincode: "122004",
+  origin_country: "India",
+  origin_state: "Haryana",
+  origin_district: "Gurugram",
+  bill_to_name: "NEOM Trading",
+  bill_to_address: "New Delhi",
+  bill_to_gst: "07AAGCN3134K1ZF",
+  bill_to_pan: "AAGCN3134K",
+  ship_to_name: "NEOM Trading",
+  ship_to_address: "Bamnoli, New Delhi",
+  ship_to_gst: "07AAGCN3134K1ZF",
+  stamp_image_url: "",
+};
+
+function buildBrandProfile(): BrandProfile {
+  return {
+    company_id: "co_1",
+    supplier_name: DEFAULT_INVOICE_DETAILS.supplier_name,
+    address: DEFAULT_INVOICE_DETAILS.address,
+    gst_number: DEFAULT_INVOICE_DETAILS.gst_number,
+    pan_number: DEFAULT_INVOICE_DETAILS.pan_number,
+    fbs_name: DEFAULT_INVOICE_DETAILS.fbs_name,
+    vendor_company_name: DEFAULT_INVOICE_DETAILS.vendor_company_name,
+    supplier_city: DEFAULT_INVOICE_DETAILS.supplier_city,
+    supplier_state: DEFAULT_INVOICE_DETAILS.supplier_state,
+    supplier_pincode: DEFAULT_INVOICE_DETAILS.supplier_pincode,
+    delivery_from_name: DEFAULT_INVOICE_DETAILS.delivery_from_name,
+    delivery_from_address: DEFAULT_INVOICE_DETAILS.delivery_from_address,
+    delivery_from_city: DEFAULT_INVOICE_DETAILS.delivery_from_city,
+    delivery_from_pincode: DEFAULT_INVOICE_DETAILS.delivery_from_pincode,
+    origin_country: DEFAULT_INVOICE_DETAILS.origin_country,
+    origin_state: DEFAULT_INVOICE_DETAILS.origin_state,
+    origin_district: DEFAULT_INVOICE_DETAILS.origin_district,
+    bill_to_name: DEFAULT_INVOICE_DETAILS.bill_to_name,
+    bill_to_address: DEFAULT_INVOICE_DETAILS.bill_to_address,
+    bill_to_gst: DEFAULT_INVOICE_DETAILS.bill_to_gst,
+    bill_to_pan: DEFAULT_INVOICE_DETAILS.bill_to_pan,
+    ship_to_name: DEFAULT_INVOICE_DETAILS.ship_to_name,
+    ship_to_address: DEFAULT_INVOICE_DETAILS.ship_to_address,
+    ship_to_gst: DEFAULT_INVOICE_DETAILS.ship_to_gst,
+    stamp_image_url: DEFAULT_INVOICE_DETAILS.stamp_image_url,
+    instagram_handle: "",
+    website_url: "",
+    facebook_handle: "",
+    snapchat_handle: "",
+    invoice_prefix: "INV",
+    default_igst_rate: 5,
+  };
+}
+
 function buildReceivedPO(status: ReceivedPO["status"]): ReceivedPO {
   return {
     id: "po_1",
@@ -164,14 +241,20 @@ function buildInvoice(status: Invoice["status"], fileUrl: string | null = null):
     company_id: "co_1",
     invoice_number: "INV-2026-001",
     invoice_date: "2026-03-24T00:00:00+00:00",
+    number_of_cartons: 9,
+    export_mode: "Air",
     gross_weight: 12.5,
+    total_quantity: 10,
     subtotal: 4990,
     igst_rate: 5,
     igst_amount: 249.5,
     total_amount: 5239.5,
+    total_amount_words: "Five Thousand Two Hundred Thirty Nine and Fifty Paisa only",
     status,
     file_url: fileUrl,
     created_at: "2026-03-24T00:00:00+00:00",
+    updated_at: "2026-03-24T00:00:00+00:00",
+    details: DEFAULT_INVOICE_DETAILS,
   };
 }
 
@@ -246,6 +329,8 @@ describe("received PO dashboard flows", () => {
     resolveFileUrlMock.mockClear();
     listStickerTemplatesMock.mockReset();
     listStickerTemplatesMock.mockResolvedValue([]);
+    getBrandProfileMock.mockReset();
+    getBrandProfileMock.mockResolvedValue(buildBrandProfile());
   });
 
   afterEach(() => {
@@ -359,7 +444,11 @@ describe("received PO dashboard flows", () => {
     await userEvent.setup().click(screen.getByRole("button", { name: "Create invoice" }));
 
     await waitFor(() => {
-      expect(createInvoiceDraftMock).toHaveBeenCalledWith("po_1");
+      expect(createInvoiceDraftMock).toHaveBeenCalledWith("po_1", {
+        number_of_cartons: 0,
+        export_mode: "Air",
+        details: DEFAULT_INVOICE_DETAILS,
+      });
     });
     expect(screen.getByRole("button", { name: "Generate invoice PDF" })).toBeTruthy();
     expect(screen.getByText(/INV-2026-001/i)).toBeTruthy();
@@ -370,6 +459,43 @@ describe("received PO dashboard flows", () => {
       expect(generateInvoicePdfMock).toHaveBeenCalledWith("po_1");
     });
     expect(screen.getByText("Invoice PDF generation started.")).toBeTruthy();
+  });
+
+  it("lets users override invoice details from the documents page", async () => {
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock.mockResolvedValue(null);
+    getOptionalInvoiceMock.mockResolvedValue(buildInvoice("draft"));
+    getOptionalPackingListMock.mockResolvedValue(null);
+    updateInvoiceMock.mockResolvedValue({
+      ...buildInvoice("draft"),
+      details: {
+        ...DEFAULT_INVOICE_DETAILS,
+        vendor_company_name: "Modern Sanskriti",
+      },
+    });
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    await screen.findByRole("button", { name: "Change details" });
+    await userEvent.setup().click(screen.getByRole("button", { name: "Change details" }));
+
+    const dialog = await screen.findByRole("dialog");
+    const vendorCompanyInput = within(dialog).getByLabelText("Vendor company name");
+    await userEvent.setup().clear(vendorCompanyInput);
+    await userEvent.setup().type(vendorCompanyInput, "Modern Sanskriti");
+    await userEvent.setup().click(within(dialog).getByRole("button", { name: "Save details" }));
+
+    await waitFor(() => {
+      expect(updateInvoiceMock).toHaveBeenCalledWith("po_1", {
+        gross_weight: 12.5,
+        number_of_cartons: 9,
+        export_mode: "Air",
+        details: {
+          ...DEFAULT_INVOICE_DETAILS,
+          vendor_company_name: "Modern Sanskriti",
+        },
+      });
+    });
   });
 
   it("uses resolved file URLs from document cards when downloads are available", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveFileUrl } from "./received-po";
+import { type ReceivedPO, resolveFileUrl } from "./received-po";
 import {
   buildCartonDrafts,
   formatDocumentCurrency,
@@ -24,7 +24,7 @@ describe("received PO helpers", () => {
   });
 
   it("builds editable line item drafts and header drafts from a received PO", () => {
-    const record = {
+    const record: ReceivedPO = {
       id: "po_1",
       company_id: "co_1",
       file_url: "/static/uploads/received-pos/test.xlsx",
@@ -52,7 +52,7 @@ describe("received PO helpers", () => {
           updated_at: "2026-03-24T00:00:00+00:00",
         },
       ],
-    } as const;
+    };
 
     expect(toHeaderDraft(record)).toEqual({
       po_number: "STY-2026-001",

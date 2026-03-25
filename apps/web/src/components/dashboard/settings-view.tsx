@@ -15,6 +15,8 @@ import {
   getBrandProfile,
   getPOBuilderDefaults,
   listCartonRules,
+  resolveSettingsAssetUrl,
+  uploadBrandStamp,
   updateBrandProfile,
   updateCartonRule,
   updatePOBuilderDefaults,
@@ -31,8 +33,26 @@ const EMPTY_BRAND_PROFILE: BrandProfileInput = {
   address: "",
   gst_number: "",
   pan_number: "",
+  fbs_name: "",
+  vendor_company_name: "",
+  supplier_city: "",
+  supplier_state: "",
+  supplier_pincode: "",
+  delivery_from_name: "",
+  delivery_from_address: "",
+  delivery_from_city: "",
+  delivery_from_pincode: "",
+  origin_country: "India",
+  origin_state: "Haryana",
+  origin_district: "Gurugram",
+  bill_to_name: "NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED",
   bill_to_address: "",
+  bill_to_gst: "07AAGCN3134K1ZF",
+  bill_to_pan: "AAGCN3134K",
+  ship_to_name: "NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED",
   ship_to_address: "",
+  ship_to_gst: "07AAGCN3134K1ZF",
+  stamp_image_url: "",
   instagram_handle: "",
   website_url: "",
   facebook_handle: "",
@@ -82,6 +102,7 @@ export function SettingsView(): JSX.Element {
   const [savingBrandIdentity, setSavingBrandIdentity] = useState(false);
   const [savingInvoiceDefaults, setSavingInvoiceDefaults] = useState(false);
   const [savingPOBuilderDefaults, setSavingPOBuilderDefaults] = useState(false);
+  const [uploadingStamp, setUploadingStamp] = useState(false);
   const [savingRuleId, setSavingRuleId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -104,8 +125,26 @@ export function SettingsView(): JSX.Element {
           address: profile.address,
           gst_number: profile.gst_number,
           pan_number: profile.pan_number,
+          fbs_name: profile.fbs_name,
+          vendor_company_name: profile.vendor_company_name,
+          supplier_city: profile.supplier_city,
+          supplier_state: profile.supplier_state,
+          supplier_pincode: profile.supplier_pincode,
+          delivery_from_name: profile.delivery_from_name,
+          delivery_from_address: profile.delivery_from_address,
+          delivery_from_city: profile.delivery_from_city,
+          delivery_from_pincode: profile.delivery_from_pincode,
+          origin_country: profile.origin_country,
+          origin_state: profile.origin_state,
+          origin_district: profile.origin_district,
+          bill_to_name: profile.bill_to_name,
           bill_to_address: profile.bill_to_address,
+          bill_to_gst: profile.bill_to_gst,
+          bill_to_pan: profile.bill_to_pan,
+          ship_to_name: profile.ship_to_name,
           ship_to_address: profile.ship_to_address,
+          ship_to_gst: profile.ship_to_gst,
+          stamp_image_url: profile.stamp_image_url,
           instagram_handle: profile.instagram_handle,
           website_url: profile.website_url,
           facebook_handle: profile.facebook_handle,
@@ -152,8 +191,26 @@ export function SettingsView(): JSX.Element {
         address: saved.address,
         gst_number: saved.gst_number,
         pan_number: saved.pan_number,
+        fbs_name: saved.fbs_name,
+        vendor_company_name: saved.vendor_company_name,
+        supplier_city: saved.supplier_city,
+        supplier_state: saved.supplier_state,
+        supplier_pincode: saved.supplier_pincode,
+        delivery_from_name: saved.delivery_from_name,
+        delivery_from_address: saved.delivery_from_address,
+        delivery_from_city: saved.delivery_from_city,
+        delivery_from_pincode: saved.delivery_from_pincode,
+        origin_country: saved.origin_country,
+        origin_state: saved.origin_state,
+        origin_district: saved.origin_district,
+        bill_to_name: saved.bill_to_name,
         bill_to_address: saved.bill_to_address,
+        bill_to_gst: saved.bill_to_gst,
+        bill_to_pan: saved.bill_to_pan,
+        ship_to_name: saved.ship_to_name,
         ship_to_address: saved.ship_to_address,
+        ship_to_gst: saved.ship_to_gst,
+        stamp_image_url: saved.stamp_image_url,
         instagram_handle: saved.instagram_handle,
         website_url: saved.website_url,
         facebook_handle: saved.facebook_handle,
@@ -183,8 +240,30 @@ export function SettingsView(): JSX.Element {
         address: saved.address,
         gst_number: saved.gst_number,
         pan_number: saved.pan_number,
+        fbs_name: saved.fbs_name,
+        vendor_company_name: saved.vendor_company_name,
+        supplier_city: saved.supplier_city,
+        supplier_state: saved.supplier_state,
+        supplier_pincode: saved.supplier_pincode,
+        delivery_from_name: saved.delivery_from_name,
+        delivery_from_address: saved.delivery_from_address,
+        delivery_from_city: saved.delivery_from_city,
+        delivery_from_pincode: saved.delivery_from_pincode,
+        origin_country: saved.origin_country,
+        origin_state: saved.origin_state,
+        origin_district: saved.origin_district,
+        bill_to_name: saved.bill_to_name,
         bill_to_address: saved.bill_to_address,
+        bill_to_gst: saved.bill_to_gst,
+        bill_to_pan: saved.bill_to_pan,
+        ship_to_name: saved.ship_to_name,
         ship_to_address: saved.ship_to_address,
+        ship_to_gst: saved.ship_to_gst,
+        stamp_image_url: saved.stamp_image_url,
+        instagram_handle: saved.instagram_handle,
+        website_url: saved.website_url,
+        facebook_handle: saved.facebook_handle,
+        snapchat_handle: saved.snapchat_handle,
         invoice_prefix: saved.invoice_prefix,
         default_igst_rate: saved.default_igst_rate,
       });
@@ -193,6 +272,28 @@ export function SettingsView(): JSX.Element {
       setError(saveError instanceof Error ? saveError.message : "Failed to save invoice defaults.");
     } finally {
       setSavingInvoiceDefaults(false);
+    }
+  };
+
+  const handleStampUpload = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    try {
+      setUploadingStamp(true);
+      setError(null);
+      setMessage(null);
+      const uploaded = await uploadBrandStamp(file);
+      setBrandProfile((current) => ({ ...current, stamp_image_url: uploaded.url }));
+      setMessage("Stamp uploaded. Save invoice defaults to use it on invoice PDFs.");
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error ? uploadError.message : "Failed to upload stamp image.",
+      );
+    } finally {
+      setUploadingStamp(false);
+      event.target.value = "";
     }
   };
 
@@ -316,6 +417,25 @@ export function SettingsView(): JSX.Element {
           <div className="mt-6 grid gap-5 md:grid-cols-2">
             <InputField
               disabled={loading}
+              label="FBS name"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, fbs_name: event.target.value }))
+              }
+              value={brandProfile.fbs_name}
+            />
+            <InputField
+              disabled={loading}
+              label="Vendor company name"
+              onChange={(event) =>
+                setBrandProfile((current) => ({
+                  ...current,
+                  vendor_company_name: event.target.value,
+                }))
+              }
+              value={brandProfile.vendor_company_name}
+            />
+            <InputField
+              disabled={loading}
               label="Supplier name"
               onChange={(event) =>
                 setBrandProfile((current) => ({ ...current, supplier_name: event.target.value }))
@@ -337,6 +457,30 @@ export function SettingsView(): JSX.Element {
                 setBrandProfile((current) => ({ ...current, pan_number: event.target.value }))
               }
               value={brandProfile.pan_number}
+            />
+            <InputField
+              disabled={loading}
+              label="Supplier city"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, supplier_city: event.target.value }))
+              }
+              value={brandProfile.supplier_city}
+            />
+            <InputField
+              disabled={loading}
+              label="Supplier state"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, supplier_state: event.target.value }))
+              }
+              value={brandProfile.supplier_state}
+            />
+            <InputField
+              disabled={loading}
+              label="Supplier pincode"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, supplier_pincode: event.target.value }))
+              }
+              value={brandProfile.supplier_pincode}
             />
             <InputField
               disabled={loading}
@@ -523,6 +667,103 @@ export function SettingsView(): JSX.Element {
               type="number"
               value={brandProfile.default_igst_rate}
             />
+            <InputField
+              disabled={loading}
+              label="Bill To name"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, bill_to_name: event.target.value }))
+              }
+              value={brandProfile.bill_to_name}
+            />
+            <InputField
+              disabled={loading}
+              label="Bill To GST"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, bill_to_gst: event.target.value }))
+              }
+              value={brandProfile.bill_to_gst}
+            />
+            <InputField
+              disabled={loading}
+              label="Bill To PAN"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, bill_to_pan: event.target.value }))
+              }
+              value={brandProfile.bill_to_pan}
+            />
+            <InputField
+              disabled={loading}
+              label="Ship To name"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, ship_to_name: event.target.value }))
+              }
+              value={brandProfile.ship_to_name}
+            />
+            <InputField
+              disabled={loading}
+              label="Ship To GST"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, ship_to_gst: event.target.value }))
+              }
+              value={brandProfile.ship_to_gst}
+            />
+            <InputField
+              disabled={loading}
+              label="Delivery from name"
+              onChange={(event) =>
+                setBrandProfile((current) => ({
+                  ...current,
+                  delivery_from_name: event.target.value,
+                }))
+              }
+              value={brandProfile.delivery_from_name}
+            />
+            <InputField
+              disabled={loading}
+              label="Delivery from city"
+              onChange={(event) =>
+                setBrandProfile((current) => ({
+                  ...current,
+                  delivery_from_city: event.target.value,
+                }))
+              }
+              value={brandProfile.delivery_from_city}
+            />
+            <InputField
+              disabled={loading}
+              label="Delivery from pincode"
+              onChange={(event) =>
+                setBrandProfile((current) => ({
+                  ...current,
+                  delivery_from_pincode: event.target.value,
+                }))
+              }
+              value={brandProfile.delivery_from_pincode}
+            />
+            <InputField
+              disabled={loading}
+              label="Origin country"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, origin_country: event.target.value }))
+              }
+              value={brandProfile.origin_country}
+            />
+            <InputField
+              disabled={loading}
+              label="Origin state"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, origin_state: event.target.value }))
+              }
+              value={brandProfile.origin_state}
+            />
+            <InputField
+              disabled={loading}
+              label="Origin district"
+              onChange={(event) =>
+                setBrandProfile((current) => ({ ...current, origin_district: event.target.value }))
+              }
+              value={brandProfile.origin_district}
+            />
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-kira-darkgray">
                 Default Bill To address
@@ -555,6 +796,53 @@ export function SettingsView(): JSX.Element {
                 value={brandProfile.ship_to_address}
               />
             </label>
+            <label className="block md:col-span-2">
+              <span className="mb-1 block text-sm font-medium text-kira-darkgray">
+                Delivery from address
+              </span>
+              <textarea
+                className="kira-focus-ring min-h-24 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
+                disabled={loading}
+                onChange={(event) =>
+                  setBrandProfile((current) => ({
+                    ...current,
+                    delivery_from_address: event.target.value,
+                  }))
+                }
+                value={brandProfile.delivery_from_address}
+              />
+            </label>
+            <div className="md:col-span-2 rounded-2xl border border-kira-warmgray/35 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-kira-black">Stamp / signature</p>
+                  <p className="mt-1 text-xs text-kira-midgray">
+                    This image is placed in the invoice footer when available.
+                  </p>
+                </div>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-kira-darkgray px-3 py-2 text-sm text-kira-darkgray hover:bg-kira-warmgray/18">
+                  <input
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    className="hidden"
+                    onChange={(event) => {
+                      void handleStampUpload(event);
+                    }}
+                    type="file"
+                  />
+                  <span>{uploadingStamp ? "Uploading..." : "Upload stamp"}</span>
+                </label>
+              </div>
+              {brandProfile.stamp_image_url ? (
+                <div className="mt-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    alt="Invoice stamp preview"
+                    className="max-h-28 rounded-lg border border-kira-warmgray/35 bg-white object-contain p-2"
+                    src={resolveSettingsAssetUrl(brandProfile.stamp_image_url) ?? ""}
+                  />
+                </div>
+              ) : null}
+            </div>
           </div>
           <div className="mt-6 flex justify-end">
             <Button disabled={loading || savingInvoiceDefaults} onClick={handleSaveInvoiceDefaults}>

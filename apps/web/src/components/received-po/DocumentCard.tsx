@@ -22,10 +22,10 @@ export function DocumentCard({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.16em] text-kira-midgray">Document</p>
-          <h2 className="mt-2 text-xl font-semibold text-kira-black">{title}</h2>
-          <p className="mt-2 text-sm text-kira-darkgray">{description}</p>
+          <h2 className="mt-2 text-xl font-semibold text-kira-black dark:text-white">{title}</h2>
+          <p className="mt-2 text-sm text-kira-darkgray dark:text-gray-300">{description}</p>
         </div>
-        <span className="rounded-full bg-kira-warmgray/28 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-kira-darkgray">
+        <span className="rounded-full bg-kira-warmgray/28 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-kira-darkgray dark:bg-white/10 dark:text-gray-300">
           {status}
         </span>
       </div>

@@ -23,6 +23,14 @@ from app.schemas.settings import (
 
 router = APIRouter(prefix='/settings', tags=['settings'])
 
+DEFAULT_BILL_TO_NAME = 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
+DEFAULT_BILL_TO_ADDRESS = 'Near Pole No. 646, Khasra No. 36/1, V.P.O. Bamnoli, Main Bijwasan Road, New Delhi - 110077'
+DEFAULT_BILL_TO_GST = '07AAGCN3134K1ZF'
+DEFAULT_BILL_TO_PAN = 'AAGCN3134K'
+DEFAULT_SHIP_TO_NAME = 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
+DEFAULT_SHIP_TO_ADDRESS = 'Plot no 113, Village Bamnoli, District - South West Delhi, New Delhi - 110077'
+DEFAULT_SHIP_TO_GST = '07AAGCN3134K1ZF'
+
 
 def _json_loads(raw: str | None) -> dict[str, object]:
     if not raw:
@@ -60,8 +68,26 @@ def _to_brand_profile_response(company_id: str, company_settings: CompanySetting
         address=str(brand_profile_payload.get('address') or ''),
         gst_number=str(brand_profile_payload.get('gst_number') or ''),
         pan_number=str(brand_profile_payload.get('pan_number') or ''),
-        bill_to_address=str(brand_profile_payload.get('bill_to_address') or ''),
-        ship_to_address=str(brand_profile_payload.get('ship_to_address') or ''),
+        fbs_name=str(brand_profile_payload.get('fbs_name') or ''),
+        vendor_company_name=str(brand_profile_payload.get('vendor_company_name') or ''),
+        supplier_city=str(brand_profile_payload.get('supplier_city') or ''),
+        supplier_state=str(brand_profile_payload.get('supplier_state') or ''),
+        supplier_pincode=str(brand_profile_payload.get('supplier_pincode') or ''),
+        delivery_from_name=str(brand_profile_payload.get('delivery_from_name') or ''),
+        delivery_from_address=str(brand_profile_payload.get('delivery_from_address') or ''),
+        delivery_from_city=str(brand_profile_payload.get('delivery_from_city') or ''),
+        delivery_from_pincode=str(brand_profile_payload.get('delivery_from_pincode') or ''),
+        origin_country=str(brand_profile_payload.get('origin_country') or 'India'),
+        origin_state=str(brand_profile_payload.get('origin_state') or 'Haryana'),
+        origin_district=str(brand_profile_payload.get('origin_district') or 'Gurugram'),
+        bill_to_name=str(brand_profile_payload.get('bill_to_name') or DEFAULT_BILL_TO_NAME),
+        bill_to_address=str(brand_profile_payload.get('bill_to_address') or DEFAULT_BILL_TO_ADDRESS),
+        bill_to_gst=str(brand_profile_payload.get('bill_to_gst') or DEFAULT_BILL_TO_GST),
+        bill_to_pan=str(brand_profile_payload.get('bill_to_pan') or DEFAULT_BILL_TO_PAN),
+        ship_to_name=str(brand_profile_payload.get('ship_to_name') or DEFAULT_SHIP_TO_NAME),
+        ship_to_address=str(brand_profile_payload.get('ship_to_address') or DEFAULT_SHIP_TO_ADDRESS),
+        ship_to_gst=str(brand_profile_payload.get('ship_to_gst') or DEFAULT_SHIP_TO_GST),
+        stamp_image_url=str(brand_profile_payload.get('stamp_image_url') or ''),
         instagram_handle=str(brand_profile_payload.get('instagram_handle') or ''),
         website_url=str(brand_profile_payload.get('website_url') or ''),
         facebook_handle=str(brand_profile_payload.get('facebook_handle') or ''),
@@ -123,8 +149,26 @@ def update_brand_profile(
         'address': payload.address.strip(),
         'gst_number': payload.gst_number.strip(),
         'pan_number': payload.pan_number.strip(),
+        'fbs_name': payload.fbs_name.strip(),
+        'vendor_company_name': payload.vendor_company_name.strip(),
+        'supplier_city': payload.supplier_city.strip(),
+        'supplier_state': payload.supplier_state.strip(),
+        'supplier_pincode': payload.supplier_pincode.strip(),
+        'delivery_from_name': payload.delivery_from_name.strip(),
+        'delivery_from_address': payload.delivery_from_address.strip(),
+        'delivery_from_city': payload.delivery_from_city.strip(),
+        'delivery_from_pincode': payload.delivery_from_pincode.strip(),
+        'origin_country': payload.origin_country.strip(),
+        'origin_state': payload.origin_state.strip(),
+        'origin_district': payload.origin_district.strip(),
+        'bill_to_name': payload.bill_to_name.strip(),
         'bill_to_address': payload.bill_to_address.strip(),
+        'bill_to_gst': payload.bill_to_gst.strip(),
+        'bill_to_pan': payload.bill_to_pan.strip(),
+        'ship_to_name': payload.ship_to_name.strip(),
         'ship_to_address': payload.ship_to_address.strip(),
+        'ship_to_gst': payload.ship_to_gst.strip(),
+        'stamp_image_url': payload.stamp_image_url.strip(),
         'instagram_handle': payload.instagram_handle.strip(),
         'website_url': payload.website_url.strip(),
         'facebook_handle': payload.facebook_handle.strip(),

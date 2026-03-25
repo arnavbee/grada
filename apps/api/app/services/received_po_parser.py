@@ -31,6 +31,22 @@ LINE_ITEM_FIELD_ALIASES = {
     'option_id': {'option id', 'option_id', 'option', 'styli option id'},
     'sku_id': {'sku id', 'sku_id', 'sku', 'styli sku'},
     'color': {'color', 'colour'},
+    'knitted_woven': {
+        'knitted/woven',
+        'knitted woven',
+        'knitted_woven',
+        'woven/knits',
+        'woven / knits',
+        'woven_knits',
+        'woven knits',
+        'woven/knit',
+        'woven / knit',
+        'woven knit',
+        'knitted / woven',
+        'knitted / wovan',
+        'knitted / woven fabric',
+        'construction',
+    },
     'size': {'size'},
     'quantity': {'quantity', 'qty', 'pieces', 'total', 'unit quantity'},
     'po_price': {'po price', 'po_price', 'price', 'unit price', 'po rate'},
@@ -173,6 +189,18 @@ def _parse_int(value: str) -> int:
     cleaned = re.sub(r'[^0-9-]', '', value)
     if not cleaned:
         return 0
+
+
+def _normalize_knitted_woven(value: str) -> str | None:
+    cleaned = str(value or '').strip()
+    if not cleaned:
+        return None
+    normalized = re.sub(r'\s+', ' ', cleaned).strip().lower()
+    if 'knit' in normalized:
+        return 'Knitted'
+    if 'wov' in normalized:
+        return 'Woven'
+    return cleaned.title()
     try:
         return max(0, int(cleaned))
     except ValueError:
@@ -209,6 +237,7 @@ def _extract_line_items_from_rows(rows: list[list[str]]) -> list[dict[str, objec
                 'option_id': _value('option_id') or None,
                 'sku_id': sku_id,
                 'color': _value('color') or None,
+                'knitted_woven': _normalize_knitted_woven(_value('knitted_woven')),
                 'size': _value('size') or None,
                 'quantity': quantity,
                 'po_price': _parse_decimal(_value('po_price')),
@@ -328,6 +357,7 @@ def process_received_po_parse_job(received_po_id: str) -> None:
                     option_id=str(item.get('option_id') or '').strip() or None,
                     sku_id=str(item.get('sku_id') or '').strip(),
                     color=str(item.get('color') or '').strip() or None,
+                    knitted_woven=str(item.get('knitted_woven') or '').strip() or None,
                     size=str(item.get('size') or '').strip() or None,
                     quantity=max(0, int(item.get('quantity') or 0)),
                     po_price=float(item['po_price']) if item.get('po_price') is not None else None,

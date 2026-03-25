@@ -96,6 +96,10 @@ const BARCODE_FIELDS = [
 ] as const;
 
 const RESIZE_HANDLES = ["nw", "n", "ne", "e", "se", "s", "sw", "w"] as const;
+const BUILDER_FIELD_CLASS = "kira-field mt-1 w-full";
+const BUILDER_TEXTAREA_CLASS = "kira-textarea mt-1 w-full";
+const BUILDER_COLOR_CLASS = "kira-color-field mt-1";
+const BUILDER_PANEL_TEXT_CLASS = "text-sm text-kira-darkgray dark:text-gray-200";
 
 type ResizeHandle = (typeof RESIZE_HANDLES)[number];
 
@@ -105,6 +109,22 @@ interface ResizeState {
   startX: number;
   startY: number;
   origin: StickerElement;
+}
+
+async function loadTemplatesWithElements(): Promise<StickerTemplate[]> {
+  const templates = await listStickerTemplates();
+  return Promise.all(
+    templates.map(async (template) => {
+      if (template.elements && template.elements.length > 0) {
+        return template;
+      }
+      try {
+        return await getStickerTemplate(template.id);
+      } catch {
+        return template;
+      }
+    }),
+  );
 }
 
 function createId(): string {
@@ -522,25 +542,25 @@ function getSocialPreview(
   > = {
     instagram_handle: {
       label: "I",
-      text: SAMPLE_VALUES.instagram_handle,
+      text: SAMPLE_VALUES.instagram_handle ?? "",
       background: "#E1306C",
       foreground: "#FFFFFF",
     },
     website_url: {
       label: "W",
-      text: SAMPLE_VALUES.website_url,
+      text: SAMPLE_VALUES.website_url ?? "",
       background: "#3B3B3B",
       foreground: "#FFFFFF",
     },
     facebook_handle: {
       label: "F",
-      text: SAMPLE_VALUES.facebook_handle,
+      text: SAMPLE_VALUES.facebook_handle ?? "",
       background: "#1877F2",
       foreground: "#FFFFFF",
     },
     snapchat_handle: {
       label: "S",
-      text: SAMPLE_VALUES.snapchat_handle,
+      text: SAMPLE_VALUES.snapchat_handle ?? "",
       background: "#FFFC00",
       foreground: "#000000",
     },
@@ -567,7 +587,7 @@ function Handle({
   };
   return (
     <button
-      className={`absolute h-3 w-3 rounded-full border border-blue-600 bg-white ${positionClass[position]}`}
+      className={`absolute h-3 w-3 rounded-full border border-blue-600 bg-white shadow-sm dark:bg-slate-900 ${positionClass[position]}`}
       onPointerDown={(event) => onPointerDown(position, event)}
       type="button"
     />
@@ -618,11 +638,13 @@ function CanvasElement({
     >
       <div
         className={`flex h-full w-full overflow-hidden rounded-sm border ${
-          selected ? "border-dashed border-blue-600 bg-blue-50/40" : "border-transparent"
+          selected
+            ? "border-dashed border-blue-600 bg-blue-50/40 dark:bg-blue-500/15"
+            : "border-transparent"
         } ${isDragging ? "opacity-70" : "opacity-100"} ${alignClass}`}
       >
         {element.element_type === "barcode" ? (
-          <div className="flex h-full w-full flex-col items-center justify-center border border-dashed border-kira-midgray bg-kira-warmgray/10 text-[10px] text-kira-darkgray">
+          <div className="flex h-full w-full flex-col items-center justify-center border border-dashed border-kira-midgray bg-kira-warmgray/10 text-[10px] text-kira-darkgray dark:border-white/20 dark:bg-white/10 dark:text-gray-200">
             <div className="h-5 w-4/5 border-y border-kira-darkgray/50" />
             <span className="mt-1">{sampleTextForElement(element)}</span>
           </div>
@@ -636,7 +658,7 @@ function CanvasElement({
               src={resolveStickerAssetUrl(String(element.properties.asset_url ?? "")) ?? ""}
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center border border-dashed border-kira-midgray text-[10px] text-kira-midgray">
+            <div className="flex h-full w-full items-center justify-center border border-dashed border-kira-midgray text-[10px] text-kira-midgray dark:border-white/20 dark:text-gray-400">
               Image
             </div>
           )
@@ -672,7 +694,7 @@ function CanvasElement({
               if (socialPreview) {
                 const socialText = String(element.properties.social_value ?? "").trim();
                 return (
-                  <div className="flex h-full w-full min-w-0 items-center gap-1 px-1 py-0.5 text-kira-black">
+                  <div className="flex h-full w-full min-w-0 items-center gap-1 px-1 py-0.5 text-kira-black dark:text-white">
                     <span
                       className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold"
                       style={{
@@ -696,7 +718,7 @@ function CanvasElement({
               }
               return (
                 <div
-                  className="flex h-full w-full px-1 py-0.5 text-kira-black"
+                  className="flex h-full w-full px-1 py-0.5 text-kira-black dark:text-white"
                   style={{
                     fontSize: `${Math.max(6, fontSize)}px`,
                     fontWeight:
@@ -723,6 +745,145 @@ function CanvasElement({
           ))}
         </>
       ) : null}
+    </div>
+  );
+}
+
+function TemplatePreviewCard({ template }: { template: StickerTemplate }): JSX.Element {
+  const scale = Math.min(160 / template.width_mm, 210 / template.height_mm);
+  const width = template.width_mm * scale;
+  const height = template.height_mm * scale;
+
+  return (
+    <div className="flex justify-center rounded-xl border border-kira-warmgray/20 bg-kira-offwhite/50 p-3 dark:border-white/10 dark:bg-white/5">
+      <div
+        className="relative overflow-hidden shadow-sm"
+        style={{
+          width,
+          height,
+          backgroundColor: template.background_color,
+          border: `1px solid ${template.border_color ?? "#d7c9bc"}`,
+          borderRadius: `${template.border_radius_mm * scale}px`,
+        }}
+      >
+        {(template.elements ?? [])
+          .slice()
+          .sort((left, right) => left.z_index - right.z_index)
+          .map((element) => {
+            const commonStyle = {
+              left: `${element.x_mm * scale}px`,
+              top: `${element.y_mm * scale}px`,
+              width: `${element.width_mm * scale}px`,
+              height: `${element.height_mm * scale}px`,
+            };
+            const socialPreview =
+              element.element_type === "text_dynamic"
+                ? getSocialPreview(String(element.properties.field ?? ""))
+                : null;
+
+            if (element.element_type === "image") {
+              const assetUrl = resolveStickerAssetUrl(String(element.properties.asset_url ?? ""));
+              return assetUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt=""
+                  className="absolute object-contain"
+                  key={element.id}
+                  src={assetUrl}
+                  style={commonStyle}
+                />
+              ) : (
+                <div
+                  className="absolute flex items-center justify-center border border-dashed border-kira-midgray/60 text-[8px] text-kira-midgray"
+                  key={element.id}
+                  style={commonStyle}
+                >
+                  Logo
+                </div>
+              );
+            }
+
+            if (element.element_type === "barcode") {
+              return (
+                <div
+                  className="absolute flex flex-col items-center justify-center"
+                  key={element.id}
+                  style={commonStyle}
+                >
+                  <div
+                    className="h-[42%] w-[82%]"
+                    style={{
+                      background:
+                        "repeating-linear-gradient(90deg,#111 0 2px,#fff 2px 3px,#111 3px 4px,#fff 4px 6px)",
+                    }}
+                  />
+                  <span className="mt-1 text-[8px] font-medium text-kira-black">701507922803</span>
+                </div>
+              );
+            }
+
+            if (element.element_type === "line") {
+              return (
+                <div
+                  className="absolute bg-kira-black"
+                  key={element.id}
+                  style={
+                    String(element.properties.orientation ?? "horizontal") === "vertical"
+                      ? { ...commonStyle, width: "1px" }
+                      : {
+                          ...commonStyle,
+                          height: `${Math.max(1, Number(element.properties.thickness_pt ?? 1))}px`,
+                        }
+                  }
+                />
+              );
+            }
+
+            return socialPreview ? (
+              <div
+                className="absolute flex min-w-0 items-center gap-1 overflow-hidden px-1 py-0.5 text-kira-black"
+                key={element.id}
+                style={commonStyle}
+              >
+                <span
+                  className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full text-[7px] font-bold"
+                  style={{
+                    backgroundColor: socialPreview.background,
+                    color: socialPreview.foreground,
+                  }}
+                >
+                  {socialPreview.label}
+                </span>
+                <span className="truncate text-[7px] text-kira-black">
+                  {String(element.properties.social_value ?? "")}
+                </span>
+              </div>
+            ) : (
+              <div
+                className="absolute overflow-hidden text-kira-black"
+                key={element.id}
+                style={{
+                  ...commonStyle,
+                  fontSize: `${Math.max(8, Number(element.properties.font_size ?? 8) * scale * 0.42)}px`,
+                  fontWeight:
+                    String(
+                      element.properties.font_weight ?? element.properties.value_weight ?? "normal",
+                    ) === "bold"
+                      ? 700
+                      : 400,
+                  textAlign: String(element.properties.alignment ?? "center") as
+                    | "left"
+                    | "center"
+                    | "right",
+                  color: String(element.properties.color ?? "#111111"),
+                  lineHeight: 1.15,
+                }}
+              >
+                {sampleTextForElement(element)}
+              </div>
+            );
+          })}
+      </div>
     </div>
   );
 }
@@ -754,6 +915,7 @@ export function StickerBuilderView(): JSX.Element {
     setZoom,
   } = useStickerBuilderStore();
   const [templates, setTemplates] = useState<StickerTemplate[]>([]);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusLine, setStatusLine] = useState<string | null>(null);
@@ -770,7 +932,7 @@ export function StickerBuilderView(): JSX.Element {
   useEffect(() => {
     async function loadTemplates(): Promise<void> {
       try {
-        const nextTemplates = await listStickerTemplates();
+        const nextTemplates = await loadTemplatesWithElements();
         setTemplates(nextTemplates);
       } catch (loadError) {
         setError(
@@ -953,7 +1115,7 @@ export function StickerBuilderView(): JSX.Element {
         ? await updateStickerTemplate(template.id, payload)
         : await createStickerTemplate(payload);
       setTemplate(mapTemplateToDraft(savedTemplate), savedTemplate.elements);
-      setTemplates(await listStickerTemplates());
+      setTemplates(await loadTemplatesWithElements());
       setStatusLine(
         makeDefault
           ? `Saved "${savedTemplate.name}" and marked it as the default template.`
@@ -1010,7 +1172,7 @@ export function StickerBuilderView(): JSX.Element {
     }
     try {
       await deleteStickerTemplate(template.id);
-      setTemplates(await listStickerTemplates());
+      setTemplates(await loadTemplatesWithElements());
       const starter = createStarterState(preset);
       setTemplate(starter.template, starter.elements);
       setStatusLine(
@@ -1069,6 +1231,7 @@ export function StickerBuilderView(): JSX.Element {
 
   const canvasWidth = (template?.width_mm ?? DEFAULT_TEMPLATE.width_mm) * scale;
   const canvasHeight = (template?.height_mm ?? DEFAULT_TEMPLATE.height_mm) * scale;
+  const selectedTemplateName = template?.name ?? "New template";
 
   return (
     <DashboardShell
@@ -1077,48 +1240,34 @@ export function StickerBuilderView(): JSX.Element {
     >
       <div className="space-y-5">
         {returnTo ? (
-          <Card className="p-4 text-sm text-kira-darkgray">
+          <Card className="p-4 text-sm text-kira-darkgray dark:text-gray-200">
             You opened the builder from Barcode Sheet. Save the template and use `Use template` to
             go back with the new template selected.
           </Card>
         ) : null}
         {loading ? (
-          <Card className="p-4 text-sm text-kira-darkgray">Loading sticker templates...</Card>
+          <Card className="p-4 text-sm text-kira-darkgray dark:text-gray-200">
+            Loading sticker templates...
+          </Card>
         ) : null}
         {error ? <Card className="p-4 text-sm text-kira-warmgray">{error}</Card> : null}
-        {statusLine ? <Card className="p-4 text-sm text-kira-darkgray">{statusLine}</Card> : null}
+        {statusLine ? (
+          <Card className="p-4 text-sm text-kira-darkgray dark:text-gray-200">{statusLine}</Card>
+        ) : null}
 
         <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
           <div className="space-y-4">
             <Card className="space-y-3 p-4">
               <div className="space-y-2">
                 <p className="text-xs uppercase tracking-[0.12em] text-kira-midgray">Templates</p>
-                <select
-                  className="kira-focus-ring w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2 text-sm"
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    if (value === "__new__") {
-                      const starter = createStarterState(preset);
-                      setTemplate(starter.template, starter.elements);
-                      setStatusLine(
-                        preset === "styli"
-                          ? "Started a new Styli-like starter template."
-                          : "Started a fresh sticker template.",
-                      );
-                      return;
-                    }
-                    void handleLoadTemplate(value);
-                  }}
-                  value={template?.id ?? "__new__"}
+                <button
+                  className="kira-focus-ring flex w-full items-center justify-between rounded-md border border-kira-warmgray/35 bg-white px-3 py-2 text-left text-sm text-kira-black dark:border-white/15 dark:bg-white/5 dark:text-white"
+                  onClick={() => setTemplatePickerOpen(true)}
+                  type="button"
                 >
-                  <option value="__new__">New template</option>
-                  {templates.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                      {item.is_default ? " (Default)" : ""}
-                    </option>
-                  ))}
-                </select>
+                  <span>{selectedTemplateName}</span>
+                  <span className="text-xs text-kira-midgray">Choose</span>
+                </button>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -1158,10 +1307,10 @@ export function StickerBuilderView(): JSX.Element {
                 </Button>
               </div>
               <div className="space-y-2">
-                <label className="block text-sm text-kira-darkgray">
+                <label className="block text-sm text-kira-darkgray dark:text-gray-200">
                   Dynamic field
                   <select
-                    className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2 text-sm"
+                    className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2 text-sm text-kira-black dark:border-white/15 dark:bg-white/5 dark:text-white"
                     onChange={(event) => setDynamicField(event.target.value)}
                     value={dynamicField}
                   >
@@ -1181,9 +1330,7 @@ export function StickerBuilderView(): JSX.Element {
             <Card className="space-y-4 p-4">
               <p className="text-xs uppercase tracking-[0.12em] text-kira-midgray">Properties</p>
               {!selectedElement ? (
-                <p className="text-sm text-kira-darkgray">
-                  Select an element to edit its settings.
-                </p>
+                <p className={BUILDER_PANEL_TEXT_CLASS}>Select an element to edit its settings.</p>
               ) : (
                 <div className="space-y-3 text-sm">
                   {(selectedElement.element_type === "text_static" ||
@@ -1193,7 +1340,7 @@ export function StickerBuilderView(): JSX.Element {
                         <label className="block">
                           Content
                           <textarea
-                            className="kira-focus-ring mt-1 min-h-20 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                            className={BUILDER_TEXTAREA_CLASS}
                             onChange={(event) =>
                               handleSelectedPropertyUpdate("content", event.target.value)
                             }
@@ -1205,7 +1352,7 @@ export function StickerBuilderView(): JSX.Element {
                           <label className="block">
                             Field
                             <select
-                              className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                              className={BUILDER_FIELD_CLASS}
                               onChange={(event) => {
                                 const nextField = event.target.value;
                                 handleSelectedPropertyUpdate("field", nextField);
@@ -1235,7 +1382,7 @@ export function StickerBuilderView(): JSX.Element {
                             <label className="block">
                               Label prefix
                               <input
-                                className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                                className={BUILDER_FIELD_CLASS}
                                 onChange={(event) =>
                                   handleSelectedPropertyUpdate("label", event.target.value)
                                 }
@@ -1248,7 +1395,7 @@ export function StickerBuilderView(): JSX.Element {
                             <label className="block">
                               Handle / URL
                               <input
-                                className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                                className={BUILDER_FIELD_CLASS}
                                 onChange={(event) =>
                                   handleSelectedPropertyUpdate("social_value", event.target.value)
                                 }
@@ -1266,7 +1413,7 @@ export function StickerBuilderView(): JSX.Element {
                             <label className="block">
                               Custom formula
                               <input
-                                className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                                className={BUILDER_FIELD_CLASS}
                                 onChange={(event) =>
                                   handleSelectedPropertyUpdate("custom_formula", event.target.value)
                                 }
@@ -1281,7 +1428,7 @@ export function StickerBuilderView(): JSX.Element {
                         <label className="block">
                           Font size
                           <input
-                            className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                            className={BUILDER_FIELD_CLASS}
                             max={24}
                             min={6}
                             onChange={(event) =>
@@ -1294,7 +1441,7 @@ export function StickerBuilderView(): JSX.Element {
                         <label className="block">
                           Alignment
                           <select
-                            className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                            className={BUILDER_FIELD_CLASS}
                             onChange={(event) =>
                               handleSelectedPropertyUpdate("alignment", event.target.value)
                             }
@@ -1311,7 +1458,7 @@ export function StickerBuilderView(): JSX.Element {
                           <label className="block">
                             Font weight
                             <select
-                              className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                              className={BUILDER_FIELD_CLASS}
                               onChange={(event) =>
                                 handleSelectedPropertyUpdate("font_weight", event.target.value)
                               }
@@ -1326,7 +1473,7 @@ export function StickerBuilderView(): JSX.Element {
                             <label className="block">
                               Label weight
                               <select
-                                className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                                className={BUILDER_FIELD_CLASS}
                                 onChange={(event) =>
                                   handleSelectedPropertyUpdate("label_weight", event.target.value)
                                 }
@@ -1339,7 +1486,7 @@ export function StickerBuilderView(): JSX.Element {
                             <label className="block">
                               Value weight
                               <select
-                                className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                                className={BUILDER_FIELD_CLASS}
                                 onChange={(event) =>
                                   handleSelectedPropertyUpdate("value_weight", event.target.value)
                                 }
@@ -1354,7 +1501,7 @@ export function StickerBuilderView(): JSX.Element {
                         <label className="block">
                           Color
                           <input
-                            className="mt-1 h-10 w-full rounded-md border border-kira-warmgray/35 bg-white px-1 py-1"
+                            className={`${BUILDER_COLOR_CLASS} w-full`}
                             onChange={(event) =>
                               handleSelectedPropertyUpdate("color", event.target.value)
                             }
@@ -1371,7 +1518,7 @@ export function StickerBuilderView(): JSX.Element {
                       <label className="block">
                         Encode field
                         <select
-                          className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                          className={BUILDER_FIELD_CLASS}
                           onChange={(event) =>
                             handleSelectedPropertyUpdate("field", event.target.value)
                           }
@@ -1388,7 +1535,7 @@ export function StickerBuilderView(): JSX.Element {
                         <label className="block">
                           Custom formula
                           <input
-                            className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                            className={BUILDER_FIELD_CLASS}
                             onChange={(event) =>
                               handleSelectedPropertyUpdate("custom_formula", event.target.value)
                             }
@@ -1401,7 +1548,7 @@ export function StickerBuilderView(): JSX.Element {
                         <label className="block">
                           Barcode type
                           <select
-                            className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                            className={BUILDER_FIELD_CLASS}
                             onChange={(event) =>
                               handleSelectedPropertyUpdate("barcode_type", event.target.value)
                             }
@@ -1415,7 +1562,7 @@ export function StickerBuilderView(): JSX.Element {
                         <label className="block">
                           Number font size
                           <input
-                            className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                            className={BUILDER_FIELD_CLASS}
                             min={6}
                             onChange={(event) =>
                               handleSelectedPropertyUpdate(
@@ -1428,7 +1575,7 @@ export function StickerBuilderView(): JSX.Element {
                           />
                         </label>
                       </div>
-                      <label className="flex items-center gap-2 text-sm text-kira-darkgray">
+                      <label className="flex items-center gap-2 text-sm text-kira-darkgray dark:text-gray-200">
                         <input
                           checked={Boolean(selectedElement.properties.show_number ?? true)}
                           onChange={(event) =>
@@ -1446,7 +1593,7 @@ export function StickerBuilderView(): JSX.Element {
                       <label className="block">
                         Asset type
                         <select
-                          className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                          className={BUILDER_FIELD_CLASS}
                           onChange={(event) =>
                             handleSelectedPropertyUpdate("asset_type", event.target.value)
                           }
@@ -1459,7 +1606,7 @@ export function StickerBuilderView(): JSX.Element {
                       <label className="block">
                         Fit
                         <select
-                          className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                          className={BUILDER_FIELD_CLASS}
                           onChange={(event) =>
                             handleSelectedPropertyUpdate("fit", event.target.value)
                           }
@@ -1472,7 +1619,7 @@ export function StickerBuilderView(): JSX.Element {
                       <label className="block">
                         Upload image
                         <input
-                          className="mt-1 block w-full text-sm text-kira-darkgray"
+                          className="mt-1 block w-full text-sm text-kira-darkgray dark:text-gray-200"
                           onChange={(event) => void handleImageUpload(event)}
                           type="file"
                         />
@@ -1486,7 +1633,7 @@ export function StickerBuilderView(): JSX.Element {
                         <label className="block">
                           Orientation
                           <select
-                            className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                            className={BUILDER_FIELD_CLASS}
                             onChange={(event) =>
                               handleSelectedPropertyUpdate("orientation", event.target.value)
                             }
@@ -1499,7 +1646,7 @@ export function StickerBuilderView(): JSX.Element {
                         <label className="block">
                           Thickness
                           <select
-                            className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                            className={BUILDER_FIELD_CLASS}
                             onChange={(event) =>
                               handleSelectedPropertyUpdate(
                                 "thickness_pt",
@@ -1517,7 +1664,7 @@ export function StickerBuilderView(): JSX.Element {
                       <label className="block">
                         Color
                         <input
-                          className="mt-1 h-10 w-full rounded-md border border-kira-warmgray/35 bg-white px-1 py-1"
+                          className={`${BUILDER_COLOR_CLASS} w-full`}
                           onChange={(event) =>
                             handleSelectedPropertyUpdate("color", event.target.value)
                           }
@@ -1533,7 +1680,7 @@ export function StickerBuilderView(): JSX.Element {
                       <label className="block" key={field}>
                         {field.replace("_mm", "").toUpperCase()} (mm)
                         <input
-                          className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                          className={BUILDER_FIELD_CLASS}
                           onChange={(event) =>
                             handleSelectedElementUpdate({
                               [field]: Number(event.target.value),
@@ -1557,7 +1704,7 @@ export function StickerBuilderView(): JSX.Element {
                 <label className="block text-sm">
                   Sticker width (mm)
                   <input
-                    className="kira-focus-ring mt-1 w-28 rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                    className="kira-focus-ring mt-1 w-28 rounded-md border border-kira-warmgray/35 bg-white px-3 py-2 text-kira-black dark:border-white/15 dark:bg-white/5 dark:text-white"
                     onChange={(event) =>
                       handleTemplateField("width_mm", Number(event.target.value))
                     }
@@ -1569,7 +1716,7 @@ export function StickerBuilderView(): JSX.Element {
                 <label className="block text-sm">
                   Sticker height (mm)
                   <input
-                    className="kira-focus-ring mt-1 w-28 rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                    className="kira-focus-ring mt-1 w-28 rounded-md border border-kira-warmgray/35 bg-white px-3 py-2 text-kira-black dark:border-white/15 dark:bg-white/5 dark:text-white"
                     onChange={(event) =>
                       handleTemplateField("height_mm", Number(event.target.value))
                     }
@@ -1581,7 +1728,7 @@ export function StickerBuilderView(): JSX.Element {
                 <label className="block text-sm">
                   Border
                   <input
-                    className="mt-1 h-10 w-14 rounded-md border border-kira-warmgray/35 bg-white px-1 py-1"
+                    className={`${BUILDER_COLOR_CLASS} w-14`}
                     onChange={(event) => handleTemplateField("border_color", event.target.value)}
                     type="color"
                     value={template?.border_color ?? "#000000"}
@@ -1590,7 +1737,7 @@ export function StickerBuilderView(): JSX.Element {
                 <label className="block text-sm">
                   Radius
                   <input
-                    className="kira-focus-ring mt-1 w-24 rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                    className="kira-focus-ring mt-1 w-24 rounded-md border border-kira-warmgray/35 bg-white px-3 py-2 text-kira-black dark:border-white/15 dark:bg-white/5 dark:text-white"
                     onChange={(event) =>
                       handleTemplateField("border_radius_mm", Number(event.target.value))
                     }
@@ -1602,7 +1749,7 @@ export function StickerBuilderView(): JSX.Element {
                 <label className="block text-sm">
                   Background
                   <input
-                    className="mt-1 h-10 w-14 rounded-md border border-kira-warmgray/35 bg-white px-1 py-1"
+                    className={`${BUILDER_COLOR_CLASS} w-14`}
                     onChange={(event) =>
                       handleTemplateField("background_color", event.target.value)
                     }
@@ -1610,7 +1757,7 @@ export function StickerBuilderView(): JSX.Element {
                     value={template?.background_color ?? DEFAULT_TEMPLATE.background_color}
                   />
                 </label>
-                <label className="flex items-center gap-2 text-sm text-kira-darkgray">
+                <label className="flex items-center gap-2 text-sm text-kira-darkgray dark:text-gray-200">
                   <input checked={gridSnap} onChange={toggleGridSnap} type="checkbox" />
                   Grid snap
                 </label>
@@ -1633,7 +1780,7 @@ export function StickerBuilderView(): JSX.Element {
                 </Button>
               </div>
 
-              <div className="overflow-auto rounded-xl border border-kira-warmgray/30 bg-[radial-gradient(circle_at_top,#f4efe8,transparent_55%),linear-gradient(180deg,#fffdf8,#f8f2ea)] p-6">
+              <div className="overflow-auto rounded-xl border border-kira-warmgray/30 bg-[radial-gradient(circle_at_top,#f4efe8,transparent_55%),linear-gradient(180deg,#fffdf8,#f8f2ea)] p-6 dark:border-white/10 dark:bg-[radial-gradient(circle_at_top,rgba(64,72,68,0.45),transparent_55%),linear-gradient(180deg,rgba(18,24,22,0.96),rgba(12,17,15,0.98))]">
                 <div className="flex min-h-[520px] items-center justify-center">
                   <DndContext onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
                     <div
@@ -1682,7 +1829,7 @@ export function StickerBuilderView(): JSX.Element {
                 <label className="min-w-[240px] flex-1 text-sm">
                   Template name
                   <input
-                    className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-white px-3 py-2"
+                    className={BUILDER_FIELD_CLASS}
                     onChange={(event) => handleTemplateField("name", event.target.value)}
                     type="text"
                     value={template?.name ?? ""}
@@ -1714,6 +1861,87 @@ export function StickerBuilderView(): JSX.Element {
           </div>
         </div>
       </div>
+      {templatePickerOpen ? (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-kira-black/40 px-4 py-8">
+          <div
+            aria-modal="true"
+            className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl dark:border dark:border-white/10 dark:bg-[#12141B]"
+            role="dialog"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold text-kira-black dark:text-white">
+                  Choose template
+                </h2>
+                <p className="mt-1 text-sm text-kira-midgray dark:text-gray-400">
+                  Pick a template visually, or start a fresh one.
+                </p>
+              </div>
+              <Button onClick={() => setTemplatePickerOpen(false)} variant="secondary">
+                Close
+              </Button>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <button
+                className={`rounded-2xl border p-4 text-left transition ${
+                  !template?.id
+                    ? "border-kira-brown bg-kira-brown/10 dark:border-amber-300/40 dark:bg-amber-300/10"
+                    : "border-kira-warmgray/30 bg-transparent hover:border-kira-brown/50 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/25 dark:hover:bg-white/10"
+                }`}
+                onClick={() => {
+                  const starter = createStarterState(preset);
+                  setTemplate(starter.template, starter.elements);
+                  setTemplatePickerOpen(false);
+                  setStatusLine(
+                    preset === "styli"
+                      ? "Started a new Styli-like starter template."
+                      : "Started a fresh sticker template.",
+                  );
+                }}
+                type="button"
+              >
+                <div className="flex h-[240px] items-center justify-center rounded-xl border border-dashed border-kira-warmgray/30 bg-kira-offwhite/50 text-sm text-kira-midgray dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
+                  New template
+                </div>
+                <div className="mt-3">
+                  <p className="font-medium text-kira-black dark:text-white">New template</p>
+                  <p className="text-xs text-kira-midgray dark:text-gray-400">
+                    Start from a blank or preset layout
+                  </p>
+                </div>
+              </button>
+
+              {templates.map((item) => (
+                <button
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    template?.id === item.id
+                      ? "border-kira-brown bg-kira-brown/10 dark:border-amber-300/40 dark:bg-amber-300/10"
+                      : "border-kira-warmgray/30 bg-transparent hover:border-kira-brown/50 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/25 dark:hover:bg-white/10"
+                  }`}
+                  key={item.id}
+                  onClick={() => {
+                    void handleLoadTemplate(item.id);
+                    setTemplatePickerOpen(false);
+                  }}
+                  type="button"
+                >
+                  <TemplatePreviewCard template={item} />
+                  <div className="mt-3">
+                    <p className="font-medium text-kira-black dark:text-white">
+                      {item.name}
+                      {item.is_default ? " (Default)" : ""}
+                    </p>
+                    <p className="text-xs text-kira-midgray dark:text-gray-400">
+                      {item.width_mm.toFixed(2)} × {item.height_mm.toFixed(2)} mm
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </DashboardShell>
   );
 }

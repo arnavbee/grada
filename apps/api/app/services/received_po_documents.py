@@ -4,28 +4,35 @@ import re
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import timezone
+from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
 from urllib.request import urlopen
+from xml.sax.saxutils import escape
 
 from barcode import Code128, Code39, EAN13
 from barcode.writer import ImageWriter
 from PIL import Image
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
+from reportlab import rl_config
 from reportlab.pdfgen import canvas
+from reportlab.platypus import Image as PlatypusImage
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.models.barcode_job import BarcodeJob
 from app.models.company_settings import CompanySettings
-from app.models.invoice import Invoice
+from app.models.invoice import Invoice, InvoiceLineItem
 from app.models.packing_list import PackingList
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
 from app.models.sticker_template import StickerElement, StickerTemplate
 from app.services.object_storage import get_object_storage_service
+from app.utils.amount_words import convert_to_words
 
 object_storage = get_object_storage_service()
 GENERATED_DIR = Path('static/generated')
@@ -154,6 +161,24 @@ def _build_simple_pdf(pages: list[list[str]]) -> bytes:
         ).encode()
     )
     return bytes(pdf)
+
+
+def _uncompressed_canvas(*args, **kwargs):
+    kwargs.setdefault('pageCompression', 0)
+    return canvas.Canvas(*args, **kwargs)
+
+
+@contextmanager
+def _debug_friendly_pdf_streams():
+    previous_page_compression = getattr(rl_config, 'pageCompression', 1)
+    previous_use_a85 = getattr(rl_config, 'useA85', 1)
+    rl_config.pageCompression = 0
+    rl_config.useA85 = 0
+    try:
+        yield
+    finally:
+        rl_config.pageCompression = previous_page_compression
+        rl_config.useA85 = previous_use_a85
 
 
 def _write_generated_pdf(*, key: str, content: bytes) -> str:
@@ -1263,46 +1288,839 @@ def _invoice_pdf_lines(
     return lines
 
 
-def _packing_list_pdf_lines(
+def _build_packing_list_pdf(
     packing_list: PackingList,
     received_po: ReceivedPO,
+    invoice: Invoice | None,
     line_items_by_id: dict[str, ReceivedPOLineItem],
-) -> list[str]:
-    lines = [
-        'GRADA PACKING LIST',
-        f'PO Number: {received_po.po_number or "-"}',
-        f'Distributor: {received_po.distributor}',
-        '',
+    invoice_items_by_source_line_item: dict[str, InvoiceLineItem],
+    invoice_items_by_neom_sku: dict[str, InvoiceLineItem],
+    company_settings: CompanySettings | None,
+) -> bytes:
+    """Render a structured landscape A4 packing list PDF matching the sample format."""
+    profile = _invoice_profile(invoice, company_settings)
+    marketplace_name = profile['marketplace_name'] or str(received_po.distributor or '').strip() or 'Marketplace'
+    styles = _invoice_styles()
+    buffer = BytesIO()
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=10 * mm,
+        rightMargin=10 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
+    )
+    story: list[object] = []
+
+    # ---------- header ----------
+    supplier_city_line = ' '.join(
+        part for part in [profile['supplier_city'], profile['supplier_state'], profile['supplier_pincode']] if part
+    )
+    supplier_address_one, supplier_address_two = _invoice_address_pair(profile['address'], trailer=supplier_city_line)
+    delivery_city_line = ' '.join(
+        part for part in [profile['delivery_from_city'], profile['delivery_from_pincode']] if part
+    )
+    delivery_address_one, delivery_address_two = _invoice_address_pair(
+        profile['delivery_from_address'], trailer=delivery_city_line
+    )
+
+    supplier_block = _invoice_label_value_block(
+        [
+            ('Supplier Name:', profile['fbs_name'] or profile['vendor_company_name'] or '-'),
+            ('Vendor company name', profile['vendor_company_name'] or '-'),
+            ('Address line 1', supplier_address_one),
+            ('Address line 2', supplier_address_two),
+            ('Supplier GSTNO:', profile['gst_number'] or '-'),
+            ('Supplier PAN No:', profile['pan_number'] or '-'),
+        ],
+        total_width=75 * mm,
+        label_width=19 * mm,
+        style=styles['small'],
+    )
+    delivery_block = _invoice_label_value_block(
+        [
+            ('Delivery From:', profile['delivery_from_name'] or '-'),
+            ('Company name', profile['delivery_from_name'] or '-'),
+            ('Address line 1', delivery_address_one),
+            ('Address line 2', delivery_address_two),
+        ],
+        total_width=75 * mm,
+        label_width=19 * mm,
+        style=styles['small'],
+    )
+    bill_to_lines = [
+        'Bill To:',
+        profile['bill_to_name'] or '-',
+        *_invoice_address_lines(profile['bill_to_address']),
+        f'Billed To GST NO: {profile["bill_to_gst"] or "-"}',
+        f'Billed To PAN No: {profile["bill_to_pan"] or "-"}',
     ]
-    for carton in sorted(packing_list.cartons, key=lambda value: value.carton_number):
-        lines.extend(
+    ship_to_lines = [
+        'Ship To :',
+        profile['ship_to_name'] or '-',
+        *_invoice_address_lines(profile['ship_to_address']),
+        f'Ship To GST NO: {profile["ship_to_gst"] or "-"}',
+    ]
+    bill_to_block = _invoice_single_column_block(
+        bill_to_lines, width=125 * mm, style=styles['small'],
+        bold_rows={0, 1, len(bill_to_lines) - 2, len(bill_to_lines) - 1},
+        highlight_rows={len(bill_to_lines) - 2, len(bill_to_lines) - 1},
+    )
+    ship_to_block = _invoice_single_column_block(
+        ship_to_lines, width=125 * mm, style=styles['small'],
+        bold_rows={0, 1, len(ship_to_lines) - 1},
+        highlight_rows={len(ship_to_lines) - 1},
+    )
+
+    # Right meta panel reuses invoice fields when linked
+    inv_number = packing_list.invoice_number or (invoice.invoice_number if invoice else '-') or '-'
+    inv_date_str = '-'
+    if packing_list.invoice_date is not None:
+        inv_date_str = packing_list.invoice_date.astimezone(timezone.utc).strftime('%d/%m/%Y')
+    elif invoice is not None and invoice.invoice_date is not None:
+        inv_date_str = invoice.invoice_date.astimezone(timezone.utc).strftime('%d/%m/%Y')
+    carton_count_str = str(len(packing_list.cartons))
+    total_gross = sum(float(c.gross_weight or 0) for c in packing_list.cartons if c.gross_weight is not None)
+    gross_str = f'{total_gross:.2f} kg' if total_gross else '-'
+    export_mode = invoice.export_mode if invoice else 'Air'
+    meta_block = _invoice_label_value_block(
+        [
+            ('INVOICE NO', inv_number),
+            ('INVOICE DATE', inv_date_str),
+            ('PO NUMBER', str(received_po.po_number or '-')),
+            ('NO.OF.CARTONS', carton_count_str),
+            ('Gross weight', gross_str),
+            (f'Export Shipment Mode by {marketplace_name}', export_mode),
+        ],
+        total_width=67 * mm,
+        label_width=28 * mm,
+        style=styles['small'],
+    )
+
+    header_content = Table(
+        [[[
+            supplier_block, Spacer(1, 3 * mm), delivery_block
+        ], [
+            bill_to_block, Spacer(1, 3 * mm), ship_to_block
+        ], meta_block]],
+        colWidths=[75 * mm, 125 * mm, 67 * mm],
+    )
+    header_content.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    header_wrapper = Table(
+        [
+            [_rich_paragraph('PACKING LIST', styles['title'], bold=True)],
+            [header_content],
+        ],
+        colWidths=[267 * mm],
+    )
+    header_wrapper.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+        ('LINEBELOW', (0, 0), (-1, 0), 0.5, colors.black),
+        ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ]))
+    story.append(header_wrapper)
+    story.append(Spacer(1, 3 * mm))
+
+    # ---------- data table ----------
+    col_widths = [
+        10 * mm,  # Carton No
+        18 * mm,  # PO No
+        18 * mm,  # Option ID
+        14 * mm,  # L1
+        14 * mm,  # L4
+        14 * mm,  # Country
+        13 * mm,  # State
+        13 * mm,  # District
+        22 * mm,  # Fabric
+        19 * mm,  # Model Number
+        15 * mm,  # HSN
+        22 * mm,  # SKU ID
+        8 * mm,   # Size
+        8 * mm,   # Qty
+        13 * mm,  # Unit Rate
+        16 * mm,  # Dimensions
+        13 * mm,  # Net Wt
+        15 * mm,  # Gross Wt
+    ]
+    header_row = [
+        _paragraph('Carton_No', styles['small']),
+        _paragraph(f'{marketplace_name} PO No', styles['small']),
+        _paragraph(f'{marketplace_name} Option ID', styles['small']),
+        _paragraph('L1 (As in PO)', styles['small']),
+        _paragraph('L4 (As in PO)', styles['small']),
+        _paragraph('Country_Of_Origin', styles['small']),
+        _paragraph('State_Of_Origin', styles['small']),
+        _paragraph('District_Of_Origin', styles['small']),
+        _paragraph('Fabric composition', styles['small']),
+        _paragraph('Model Number', styles['small']),
+        _paragraph('HSN Code', styles['small']),
+        _paragraph(f'{marketplace_name} SKU ID', styles['small']),
+        _paragraph('Size', styles['small']),
+        _paragraph(f'{marketplace_name} Qty', styles['small']),
+        _paragraph('Unit_Rate (As Per PO)', styles['small']),
+        _paragraph('Carton_Dimn', styles['small']),
+        _paragraph('Carton_Net Weight (Kg)', styles['small']),
+        _paragraph('Carton_Gross Weight (Kg)', styles['small']),
+    ]
+    table_rows: list[list[object]] = [header_row]
+
+    sorted_cartons = sorted(packing_list.cartons, key=lambda c: c.carton_number)
+    for carton in sorted_cartons:
+        sorted_items = sorted(carton.items, key=lambda ci: (
+            str(line_items_by_id.get(ci.line_item_id, None) and line_items_by_id[ci.line_item_id].option_id or ''),
+            str(line_items_by_id.get(ci.line_item_id, None) and line_items_by_id[ci.line_item_id].size or ''),
+        ))
+        is_first_in_carton = True
+        for carton_item in sorted_items:
+            li = line_items_by_id.get(carton_item.line_item_id)
+            if li is None:
+                continue
+
+            # Build the neom_sku_id key the same way the invoice builder does
+            neom_sku = _build_styli_sku(li.option_id, li.size) or li.sku_id
+            inv_li = invoice_items_by_source_line_item.get(li.id)
+            if inv_li is None:
+                inv_li = invoice_items_by_neom_sku.get(neom_sku)
+
+            # Commercial fields come from InvoiceLineItem when available
+            fabric = str(inv_li.fabric_composition if inv_li else '') or '-'
+            hsn = str(inv_li.hsn_code if inv_li else '') or '-'
+            unit_rate = f'{float(inv_li.unit_price):.2f}' if inv_li else '-'
+            description = str(inv_li.product_description if inv_li else '').strip()
+            country = str(inv_li.country_of_origin if inv_li else 'India') or 'India'
+            state = str(inv_li.state_of_origin if inv_li else '') or '-'
+            district = str(inv_li.district_of_origin if inv_li else '') or '-'
+            sku_display = neom_sku or li.sku_id or '-'
+            description_words = [part for part in re.split(r'[\s/-]+', description) if part]
+            l1_value = description_words[0] if description_words else '-'
+            l4_value = '-'
+            for candidate in ['Midi', 'Maxi', 'Mini', 'Dress', 'Top', 'Tunic', 'Kurta', 'Set']:
+                if any(part.lower() == candidate.lower() for part in description_words):
+                    l4_value = candidate
+                    break
+            if l4_value == '-' and len(description_words) > 1:
+                l4_value = description_words[1]
+
+            # Carton-level cells only on first row per carton
+            if is_first_in_carton:
+                dims_val = carton.dimensions or '-'
+                net_wt_val = f'{float(carton.net_weight):.2f}' if carton.net_weight is not None else '-'
+                gross_wt_val = f'{float(carton.gross_weight):.2f}' if carton.gross_weight is not None else '-'
+                is_first_in_carton = False
+            else:
+                dims_val = ''
+                net_wt_val = ''
+                gross_wt_val = ''
+
+            table_rows.append([
+                _paragraph(str(carton.carton_number), styles['cell']),
+                _paragraph(str(received_po.po_number or '-'), styles['cell']),
+                _paragraph(str(li.option_id or '-'), styles['cell']),
+                _paragraph(l1_value, styles['cell']),
+                _paragraph(l4_value, styles['cell']),
+                _paragraph(country, styles['cell']),
+                _paragraph(state, styles['cell']),
+                _paragraph(district, styles['cell']),
+                _paragraph(fabric, styles['cell']),
+                _paragraph(str(inv_li.model_number if inv_li else li.model_number or li.brand_style_code or '-'), styles['cell']),
+                _paragraph(hsn, styles['cell']),
+                _paragraph(sku_display, styles['cell']),
+                _paragraph(str(li.size or '-'), styles['cell']),
+                _paragraph(str(carton_item.pieces_in_carton), styles['cell']),
+                _paragraph(unit_rate, styles['cell']),
+                _paragraph(dims_val, styles['cell']),
+                _paragraph(net_wt_val, styles['cell']),
+                _paragraph(gross_wt_val, styles['cell']),
+            ])
+
+    data_table = Table(table_rows, colWidths=col_widths, repeatRows=1)
+    table_style_rules: list[tuple] = [
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#E8E8E8')),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 6),
+        ('GRID', (0, 0), (-1, -1), 0.3, colors.HexColor('#AAAAAA')),
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 2),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ]
+    data_table.setStyle(TableStyle(table_style_rules))
+    story.append(data_table)
+    story.append(Spacer(1, 2 * mm))
+    summary_table = Table(
+        [[
+            _rich_paragraph(
+                f'Total cartons: {len(sorted_cartons)}    Total pieces: {sum(carton.total_pieces for carton in sorted_cartons)}',
+                styles['meta'],
+                bold=True,
+            )
+        ]],
+        colWidths=[265 * mm],
+    )
+    summary_table.setStyle(TableStyle([
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ]))
+    story.append(summary_table)
+
+    with _debug_friendly_pdf_streams():
+        document.build(story, canvasmaker=_uncompressed_canvas)
+    return buffer.getvalue()
+
+
+def _invoice_profile(invoice: Invoice | None, company_settings: CompanySettings | None) -> dict[str, str]:
+    profile = _brand_profile(company_settings)
+    invoice_details = _json_loads(invoice.details_json if invoice else '{}')
+    merged = {**profile, **invoice_details}
+    return {
+        'marketplace_name': str(merged.get('marketplace_name') or '').strip(),
+        'supplier_name': str(merged.get('supplier_name') or '').strip(),
+        'fbs_name': str(merged.get('fbs_name') or merged.get('supplier_name') or '').strip(),
+        'vendor_company_name': str(merged.get('vendor_company_name') or merged.get('supplier_name') or '').strip(),
+        'address': str(merged.get('address') or '').strip(),
+        'gst_number': str(merged.get('gst_number') or '').strip(),
+        'pan_number': str(merged.get('pan_number') or '').strip(),
+        'supplier_city': str(merged.get('supplier_city') or '').strip(),
+        'supplier_state': str(merged.get('supplier_state') or '').strip(),
+        'supplier_pincode': str(merged.get('supplier_pincode') or '').strip(),
+        'delivery_from_name': str(merged.get('delivery_from_name') or merged.get('supplier_name') or '').strip(),
+        'delivery_from_address': str(merged.get('delivery_from_address') or merged.get('address') or '').strip(),
+        'delivery_from_city': str(merged.get('delivery_from_city') or '').strip(),
+        'delivery_from_pincode': str(merged.get('delivery_from_pincode') or '').strip(),
+        'bill_to_name': str(
+            merged.get('bill_to_name') or 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
+        ).strip(),
+        'bill_to_address': str(
+            merged.get('bill_to_address')
+            or 'Near Pole No. 646, Khasra No. 36/1, V.P.O. Bamnoli, Main Bijwasan Road, New Delhi - 110077'
+        ).strip(),
+        'bill_to_gst': str(merged.get('bill_to_gst') or '07AAGCN3134K1ZF').strip(),
+        'bill_to_pan': str(merged.get('bill_to_pan') or 'AAGCN3134K').strip(),
+        'ship_to_name': str(
+            merged.get('ship_to_name') or 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
+        ).strip(),
+        'ship_to_address': str(
+            merged.get('ship_to_address')
+            or 'Plot no 113, Village Bamnoli, District - South West Delhi, New Delhi - 110077'
+        ).strip(),
+        'ship_to_gst': str(merged.get('ship_to_gst') or '07AAGCN3134K1ZF').strip(),
+        'stamp_image_url': str(merged.get('stamp_image_url') or '').strip(),
+    }
+
+
+def _invoice_currency(value: float, *, trim_zero_decimals: bool = False) -> str:
+    normalized = f'{float(value or 0):.2f}'
+    if trim_zero_decimals and normalized.endswith('.00'):
+        return normalized[:-3]
+    return normalized
+
+
+def _invoice_address_lines(value: str) -> list[str]:
+    if not value:
+        return ['-']
+    if '\n' in value:
+        return [line.strip() for line in value.splitlines() if line.strip()]
+    return [part.strip() for part in value.split(',') if part.strip()]
+
+
+def _invoice_styles() -> dict[str, ParagraphStyle]:
+    stylesheet = getSampleStyleSheet()
+    return {
+        'title': ParagraphStyle(
+            'InvoiceTitle',
+            parent=stylesheet['Heading2'],
+            fontName='Helvetica-Bold',
+            fontSize=11,
+            leading=13,
+            alignment=1,
+            spaceAfter=4,
+        ),
+        'meta': ParagraphStyle(
+            'InvoiceMeta',
+            parent=stylesheet['BodyText'],
+            fontName='Helvetica',
+            fontSize=7,
+            leading=8.5,
+        ),
+        'cell': ParagraphStyle(
+            'InvoiceCell',
+            parent=stylesheet['BodyText'],
+            fontName='Helvetica',
+            fontSize=7,
+            leading=8.5,
+        ),
+        'small': ParagraphStyle(
+            'InvoiceSmall',
+            parent=stylesheet['BodyText'],
+            fontName='Helvetica',
+            fontSize=6,
+            leading=7,
+        ),
+        'footer': ParagraphStyle(
+            'InvoiceFooter',
+            parent=stylesheet['BodyText'],
+            fontName='Helvetica-Oblique',
+            fontSize=7,
+            leading=8.5,
+        ),
+    }
+
+
+def _paragraph(text: str, style: ParagraphStyle) -> Paragraph:
+    return Paragraph(escape(text).replace('\n', '<br/>'), style)
+
+
+def _invoice_header_cell(lines: list[str], style: ParagraphStyle) -> Paragraph:
+    return _paragraph('\n'.join(lines), style)
+
+
+def _rich_paragraph(text: str, style: ParagraphStyle, *, bold: bool = False) -> Paragraph:
+    content = escape(text).replace('\n', '<br/>')
+    if bold:
+        content = f'<b>{content}</b>'
+    return Paragraph(content, style)
+
+
+def _invoice_address_pair(value: str, *, trailer: str = '') -> tuple[str, str]:
+    lines = _invoice_address_lines(value)
+    line_one = lines[0] if lines else '-'
+    remaining = ', '.join(line for line in lines[1:] if line)
+    line_two = ', '.join(part for part in [remaining, trailer] if part).strip()
+    return line_one or '-', line_two or '-'
+
+
+def _invoice_label_value_block(
+    rows: list[tuple[str, str]],
+    *,
+    total_width: float,
+    label_width: float,
+    style: ParagraphStyle,
+) -> Table:
+    data = [
+        [
+            _rich_paragraph(label, style, bold=True),
+            _rich_paragraph(value or '-', style, bold=True),
+        ]
+        for label, value in rows
+    ]
+    table = Table(data, colWidths=[label_width, total_width - label_width])
+    table.setStyle(
+        TableStyle(
             [
-                f'Carton {carton.carton_number}',
-                f'  Total Pieces: {carton.total_pieces}',
-                f'  Gross Weight: {float(carton.gross_weight):.2f} kg' if carton.gross_weight is not None else '  Gross Weight: -',
-                f'  Net Weight: {float(carton.net_weight):.2f} kg' if carton.net_weight is not None else '  Net Weight: -',
-                f'  Dimensions: {carton.dimensions or "-"}',
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 3),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
             ]
         )
-        for carton_item in carton.items:
-            line_item = line_items_by_id.get(carton_item.line_item_id)
-            if line_item is None:
-                continue
-            lines.append(
-                '  - '
-                + ' | '.join(
-                    [
-                        f'Option {line_item.option_id or "-"}',
-                        f'Style {line_item.brand_style_code}',
-                        f'Model {line_item.model_number or "-"}',
-                        f'Size {line_item.size or "-"}',
-                        f'Pieces {carton_item.pieces_in_carton}',
-                        'COO India',
-                    ]
+    )
+    return table
+
+
+def _invoice_single_column_block(
+    lines: list[str],
+    *,
+    width: float,
+    style: ParagraphStyle,
+    bold_rows: set[int] | None = None,
+    highlight_rows: set[int] | None = None,
+) -> Table:
+    bold_rows = bold_rows or set()
+    highlight_rows = highlight_rows or set()
+    data = [[_rich_paragraph(line or '-', style, bold=index in bold_rows)] for index, line in enumerate(lines)]
+    table = Table(data, colWidths=[width])
+    style_rules: list[tuple] = [
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 3),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ]
+    for row_index in highlight_rows:
+        style_rules.append(('BACKGROUND', (0, row_index), (0, row_index), colors.HexColor('#FFF86B')))
+    table.setStyle(TableStyle(style_rules))
+    return table
+
+
+def _stamp_flowable(stamp_image_url: str) -> PlatypusImage | Paragraph:
+    if not stamp_image_url:
+        return Paragraph('&nbsp;', _invoice_styles()['small'])
+
+    local_path = _local_static_path_from_url(stamp_image_url)
+    if local_path is not None and local_path.exists():
+        return PlatypusImage(str(local_path), width=34 * mm, height=16 * mm)
+
+    file_path = Path(stamp_image_url)
+    if file_path.is_absolute() and file_path.exists():
+        return PlatypusImage(str(file_path), width=34 * mm, height=16 * mm)
+
+    if stamp_image_url.startswith(('http://', 'https://')):
+        with urlopen(stamp_image_url, timeout=5) as response:  # noqa: S310
+            return PlatypusImage(BytesIO(response.read()), width=34 * mm, height=16 * mm)
+
+    return Paragraph('&nbsp;', _invoice_styles()['small'])
+
+
+def _build_invoice_pdf(
+    invoice: Invoice,
+    received_po: ReceivedPO,
+    line_items: list[InvoiceLineItem],
+    company_settings: CompanySettings | None,
+) -> bytes:
+    profile = _invoice_profile(invoice, company_settings)
+    marketplace_name = profile['marketplace_name'] or str(received_po.distributor or '').strip() or 'Marketplace'
+    styles = _invoice_styles()
+    buffer = BytesIO()
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=10 * mm,
+        rightMargin=10 * mm,
+        topMargin=10 * mm,
+        bottomMargin=10 * mm,
+    )
+    story: list[object] = []
+
+    supplier_city_line = ' '.join(
+        part
+        for part in [profile['supplier_city'], profile['supplier_state'], profile['supplier_pincode']]
+        if part
+    )
+    supplier_address_one, supplier_address_two = _invoice_address_pair(
+        profile['address'], trailer=supplier_city_line
+    )
+    delivery_city_line = ' '.join(
+        part for part in [profile['delivery_from_city'], profile['delivery_from_pincode']] if part
+    )
+    delivery_address_one, delivery_address_two = _invoice_address_pair(
+        profile['delivery_from_address'], trailer=delivery_city_line
+    )
+
+    supplier_block = _invoice_label_value_block(
+        [
+            ('Supplier Name:', profile['fbs_name'] or profile['vendor_company_name'] or '-'),
+            ('Vendor company name', profile['vendor_company_name'] or '-'),
+            ('Address line 1', supplier_address_one),
+            ('Address line 2', supplier_address_two),
+            ('Supplier GSTNO:', profile['gst_number'] or '-'),
+            ('Supplier PAN No:', profile['pan_number'] or '-'),
+        ],
+        total_width=75 * mm,
+        label_width=19 * mm,
+        style=styles['small'],
+    )
+    delivery_block = _invoice_label_value_block(
+        [
+            ('Delivery From:', profile['delivery_from_name'] or '-'),
+            ('Company name', profile['delivery_from_name'] or '-'),
+            ('Address line 1', delivery_address_one),
+            ('Address line 2', delivery_address_two),
+        ],
+        total_width=75 * mm,
+        label_width=19 * mm,
+        style=styles['small'],
+    )
+    bill_to_lines = [
+        'Bill To:',
+        profile['bill_to_name'] or '-',
+        *_invoice_address_lines(profile['bill_to_address']),
+        f'Billed To GST NO: {profile["bill_to_gst"] or "-"}',
+        f'Billed To PAN No: {profile["bill_to_pan"] or "-"}',
+    ]
+    ship_to_lines = [
+        'Ship To :',
+        profile['ship_to_name'] or '-',
+        *_invoice_address_lines(profile['ship_to_address']),
+        f'Ship To GST NO: {profile["ship_to_gst"] or "-"}',
+    ]
+    bill_to_block = _invoice_single_column_block(
+        bill_to_lines,
+        width=125 * mm,
+        style=styles['small'],
+        bold_rows={0, 1, len(bill_to_lines) - 2, len(bill_to_lines) - 1},
+        highlight_rows={len(bill_to_lines) - 2, len(bill_to_lines) - 1},
+    )
+    ship_to_block = _invoice_single_column_block(
+        ship_to_lines,
+        width=125 * mm,
+        style=styles['small'],
+        bold_rows={0, 1, len(ship_to_lines) - 1},
+        highlight_rows={len(ship_to_lines) - 1},
+    )
+    meta_block = _invoice_label_value_block(
+        [
+            ('INVOICE NO', invoice.invoice_number),
+            ('INVOICE DATE', invoice.invoice_date.astimezone(timezone.utc).strftime('%d/%m/%Y')),
+            ('NO.OF.CARTONS', str(invoice.number_of_cartons)),
+            (
+                'Gross weight',
+                _invoice_currency(float(invoice.gross_weight or 0)) if invoice.gross_weight is not None else '-',
+            ),
+            (f'Export Shipment Mode by {marketplace_name}', invoice.export_mode),
+        ],
+        total_width=67 * mm,
+        label_width=28 * mm,
+        style=styles['small'],
+    )
+    header_content = Table(
+        [[
+            [supplier_block, Spacer(1, 3 * mm), delivery_block],
+            [bill_to_block, Spacer(1, 3 * mm), ship_to_block],
+            meta_block,
+        ]],
+        colWidths=[75 * mm, 125 * mm, 67 * mm],
+    )
+    header_content.setStyle(
+        TableStyle(
+            [
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
+    header_wrapper = Table(
+        [
+            [_rich_paragraph('COMMERCIAL INVOICE', styles['title'], bold=True)],
+            [header_content],
+        ],
+        colWidths=[267 * mm],
+    )
+    header_wrapper.setStyle(
+        TableStyle(
+            [
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+                ('LINEBELOW', (0, 0), (-1, 0), 0.5, colors.black),
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ]
+        )
+    )
+    story.append(header_wrapper)
+    story.append(Spacer(1, 3 * mm))
+
+    column_widths = [
+        18 * mm,
+        20 * mm,
+        14 * mm,
+        20 * mm,
+        13 * mm,
+        15 * mm,
+        19 * mm,
+        10 * mm,
+        8 * mm,
+        10 * mm,
+        12 * mm,
+        12 * mm,
+        7 * mm,
+        12 * mm,
+        13 * mm,
+        8 * mm,
+        10 * mm,
+        10 * mm,
+        11 * mm,
+        12 * mm,
+    ]
+    table_rows: list[list[object]] = [[
+        _paragraph('Vendor Style #', styles['small']),
+        _paragraph(f'{marketplace_name} SKU ID', styles['small']),
+        _paragraph(f'{marketplace_name} PO Code', styles['small']),
+        _paragraph('Product Description', styles['small']),
+        _paragraph('HSN Code', styles['small']),
+        _paragraph('Model No.', styles['small']),
+        _paragraph('Fabric Composition', styles['small']),
+        _paragraph('Knitted/ Woven', styles['small']),
+        _paragraph('Size', styles['small']),
+        _paragraph('Country', styles['small']),
+        _paragraph('State', styles['small']),
+        _paragraph('District', styles['small']),
+        _paragraph('Qty', styles['small']),
+        _paragraph('Unit Price', styles['small']),
+        _paragraph('Net Taxable', styles['small']),
+        _paragraph('GST %', styles['small']),
+        _paragraph('IGST', styles['small']),
+        _paragraph('CGST/SGST', styles['small']),
+        _paragraph('Total GST', styles['small']),
+        _paragraph('Total Amount', styles['small']),
+    ]]
+    for row in line_items:
+        table_rows.append(
+            [
+                str(row.vendor_style_hash),
+                str(row.neom_sku_id),
+                str(row.neom_po_code),
+                str(row.product_description),
+                str(row.hsn_code),
+                str(row.model_number),
+                str(row.fabric_composition),
+                str(row.knitted_woven),
+                str(row.neom_size),
+                str(row.country_of_origin),
+                str(row.state_of_origin),
+                str(row.district_of_origin),
+                str(int(row.quantity)),
+                _invoice_currency(float(row.unit_price)),
+                _invoice_currency(float(row.net_taxable_amount)),
+                _invoice_currency(float(row.gst_rate), trim_zero_decimals=True),
+                _invoice_currency(float(row.igst_amount)),
+                _invoice_currency(float(row.cgst_amount + row.sgst_amount)),
+                _invoice_currency(float(row.total_gst_amount)),
+                _invoice_currency(float(row.total_amount)),
+            ]
+        )
+    table_rows.append(
+        [
+            '', '', '', '', '', '', '', '', '', '', '', 'TOTAL',
+            str(int(invoice.total_quantity)),
+            '',
+            _invoice_currency(float(invoice.subtotal), trim_zero_decimals=True),
+            '',
+            _invoice_currency(float(invoice.igst_amount), trim_zero_decimals=True),
+            '0',
+            _invoice_currency(float(invoice.igst_amount), trim_zero_decimals=True),
+            _invoice_currency(float(invoice.total_amount), trim_zero_decimals=True),
+        ]
+    )
+    line_table = Table(table_rows, colWidths=column_widths, repeatRows=1)
+    line_table_style = [
+        ('BOX', (0, 0), (-1, -1), 0.3, colors.black),
+        ('INNERGRID', (0, 0), (-1, -1), 0.3, colors.black),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 7),
+        ('FONTSIZE', (0, 1), (-1, -2), 6),
+        ('FONTSIZE', (0, -1), (-1, -1), 6.5),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 2),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('SPAN', (0, -1), (11, -1)),
+        ('ALIGN', (0, -1), (11, -1), 'RIGHT'),
+    ]
+    line_table.setStyle(TableStyle(line_table_style))
+    story.append(line_table)
+    story.append(Spacer(1, 1.5 * mm))
+    summary_table = Table(
+        [[
+            '',
+            _paragraph(
+                f'{invoice.total_quantity}  |  {_invoice_currency(float(invoice.subtotal), trim_zero_decimals=True)}  |  '
+                f'{_invoice_currency(float(invoice.total_amount), trim_zero_decimals=True)}',
+                styles['cell'],
+            ),
+        ]],
+        colWidths=[205 * mm, 62 * mm],
+    )
+    summary_table.setStyle(
+        TableStyle(
+            [
+                ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
+    story.append(summary_table)
+    story.append(Spacer(1, 3 * mm))
+
+    story.append(
+        Table(
+            [[
+                _paragraph(
+                    f'Net Amount in Words: {invoice.total_amount_words or convert_to_words(float(invoice.total_amount))}',
+                    styles['cell'],
                 )
-            )
-        lines.append('')
-    return lines
+            ]],
+            colWidths=[267 * mm],
+            style=TableStyle(
+                [
+                    ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ]
+            ),
+        )
+    )
+    story.append(
+        Table(
+            [[
+                _paragraph(
+                    'Certified that the particulars given above are true & correct and the amount indicated '
+                    'represents the price actually charged and that there is no flow of additional '
+                    'consideration directly or indirectly from the buyer.',
+                    styles['footer'],
+                )
+            ]],
+            colWidths=[267 * mm],
+            style=TableStyle(
+                [
+                    ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ]
+            ),
+        )
+    )
+    story.append(Spacer(1, 2 * mm))
+    footer_table = Table(
+        [[
+            _stamp_flowable(profile['stamp_image_url']),
+            _paragraph('', styles['cell']),
+            _paragraph('Receivers Signature and Date', styles['cell']),
+        ]],
+        colWidths=[90 * mm, 105 * mm, 72 * mm],
+    )
+    footer_table.setStyle(
+        TableStyle(
+            [
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.black),
+                ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
+                ('ALIGN', (2, 0), (2, 0), 'RIGHT'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ]
+        )
+    )
+    story.append(footer_table)
+    with _debug_friendly_pdf_streams():
+        document.build(story, canvasmaker=_uncompressed_canvas)
+    return buffer.getvalue()
 
 
 def generate_barcode_job_pdf(barcode_job_id: str) -> None:
@@ -1372,12 +2190,12 @@ def generate_invoice_pdf(invoice_id: str) -> None:
 
         company_settings = db.query(CompanySettings).filter(CompanySettings.company_id == invoice.company_id).first()
         line_items = (
-            db.query(ReceivedPOLineItem)
-            .filter(ReceivedPOLineItem.received_po_id == received_po.id)
-            .order_by(ReceivedPOLineItem.brand_style_code.asc(), ReceivedPOLineItem.sku_id.asc())
+            db.query(InvoiceLineItem)
+            .filter(InvoiceLineItem.invoice_id == invoice.id)
+            .order_by(InvoiceLineItem.sort_order.asc(), InvoiceLineItem.created_at.asc())
             .all()
         )
-        pdf_content = _build_simple_pdf(_chunk_lines(_invoice_pdf_lines(invoice, received_po, line_items, company_settings)))
+        pdf_content = _build_invoice_pdf(invoice, received_po, line_items, company_settings)
         key = f'invoices/{invoice.company_id}/{invoice.id}.pdf'
         invoice.file_url = _write_generated_pdf(key=key, content=pdf_content)
         invoice.status = 'final'
@@ -1397,6 +2215,36 @@ def generate_packing_list_pdf(packing_list_id: str) -> None:
         if received_po is None:
             return
 
+        company_settings = (
+            db.query(CompanySettings).filter(CompanySettings.company_id == packing_list.company_id).first()
+        )
+
+        # Load linked invoice and its line items for commercial row data
+        invoice: Invoice | None = None
+        invoice_items_by_source_line_item: dict[str, InvoiceLineItem] = {}
+        invoice_items_by_neom_sku: dict[str, InvoiceLineItem] = {}
+        if packing_list.invoice_id:
+            invoice = db.query(Invoice).filter(Invoice.id == packing_list.invoice_id).first()
+        if invoice is None and packing_list.received_po_id:
+            # Fall back to any invoice for this PO
+            invoice = (
+                db.query(Invoice)
+                .filter(Invoice.received_po_id == packing_list.received_po_id)
+                .first()
+            )
+        if invoice is not None:
+            inv_line_items = (
+                db.query(InvoiceLineItem)
+                .filter(InvoiceLineItem.invoice_id == invoice.id)
+                .order_by(InvoiceLineItem.sort_order.asc())
+                .all()
+            )
+            for ili in inv_line_items:
+                if ili.source_line_item_id:
+                    invoice_items_by_source_line_item[ili.source_line_item_id] = ili
+                invoice_items_by_neom_sku[ili.neom_sku_id] = ili
+
+        # Load received PO line items for carton item lookup
         cartons = sorted(packing_list.cartons, key=lambda item: item.carton_number)
         line_item_ids = [
             carton_item.line_item_id
@@ -1410,8 +2258,17 @@ def generate_packing_list_pdf(packing_list_id: str) -> None:
         )
         line_items_by_id = {item.id: item for item in line_items}
 
-        pdf_content = _build_simple_pdf(
-            _chunk_lines(_packing_list_pdf_lines(packing_list, received_po, line_items_by_id))
+        if not line_items_by_id:
+            raise ValueError('No line items found for packing list cartons.')
+
+        pdf_content = _build_packing_list_pdf(
+            packing_list,
+            received_po,
+            invoice,
+            line_items_by_id,
+            invoice_items_by_source_line_item,
+            invoice_items_by_neom_sku,
+            company_settings,
         )
         key = f'packing-lists/{packing_list.company_id}/{packing_list.id}.pdf'
         packing_list.file_url = _write_generated_pdf(key=key, content=pdf_content)

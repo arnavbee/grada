@@ -1,2 +1,12 @@
 #!/usr/bin/env sh
-pnpm lint-staged
+
+if command -v pnpm >/dev/null 2>&1; then
+  pnpm lint-staged
+elif [ -x /opt/homebrew/bin/pnpm ]; then
+  /opt/homebrew/bin/pnpm lint-staged
+elif command -v corepack >/dev/null 2>&1; then
+  corepack pnpm lint-staged
+else
+  echo "pnpm not found in PATH for Husky. Install pnpm or enable Corepack."
+  exit 1
+fi

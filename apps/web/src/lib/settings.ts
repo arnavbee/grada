@@ -1,4 +1,5 @@
 import { apiRequest } from "@/src/lib/api-client";
+import { getResolvedApiOriginUrl } from "@/src/lib/api-url";
 
 export interface BrandProfile {
   company_id: string;
@@ -6,8 +7,26 @@ export interface BrandProfile {
   address: string;
   gst_number: string;
   pan_number: string;
+  fbs_name: string;
+  vendor_company_name: string;
+  supplier_city: string;
+  supplier_state: string;
+  supplier_pincode: string;
+  delivery_from_name: string;
+  delivery_from_address: string;
+  delivery_from_city: string;
+  delivery_from_pincode: string;
+  origin_country: string;
+  origin_state: string;
+  origin_district: string;
+  bill_to_name: string;
   bill_to_address: string;
+  bill_to_gst: string;
+  bill_to_pan: string;
+  ship_to_name: string;
   ship_to_address: string;
+  ship_to_gst: string;
+  stamp_image_url: string;
   instagram_handle: string;
   website_url: string;
   facebook_handle: string;
@@ -21,8 +40,26 @@ export interface BrandProfileInput {
   address: string;
   gst_number: string;
   pan_number: string;
+  fbs_name: string;
+  vendor_company_name: string;
+  supplier_city: string;
+  supplier_state: string;
+  supplier_pincode: string;
+  delivery_from_name: string;
+  delivery_from_address: string;
+  delivery_from_city: string;
+  delivery_from_pincode: string;
+  origin_country: string;
+  origin_state: string;
+  origin_district: string;
+  bill_to_name: string;
   bill_to_address: string;
+  bill_to_gst: string;
+  bill_to_pan: string;
+  ship_to_name: string;
   ship_to_address: string;
+  ship_to_gst: string;
+  stamp_image_url: string;
   instagram_handle: string;
   website_url: string;
   facebook_handle: string;
@@ -117,4 +154,23 @@ export async function deleteCartonRule(ruleId: string): Promise<void> {
   return apiRequest<void>(`/settings/carton-rules/${ruleId}`, {
     method: "DELETE",
   });
+}
+
+export async function uploadBrandStamp(file: File): Promise<{ url: string; filename: string }> {
+  const body = new FormData();
+  body.append("file", file);
+  return apiRequest<{ url: string; filename: string }>("/uploads/", {
+    method: "POST",
+    body,
+  });
+}
+
+export function resolveSettingsAssetUrl(url: string | null | undefined): string | null {
+  if (!url) {
+    return null;
+  }
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+  return `${getResolvedApiOriginUrl()}${url}`;
 }

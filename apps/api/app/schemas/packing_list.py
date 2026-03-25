@@ -55,7 +55,28 @@ class PackingListResponse(BaseModel):
     id: str
     received_po_id: str
     company_id: str
+    invoice_id: str | None = None
+    invoice_number: str | None = None
+    invoice_date: datetime | None = None
     status: PackingListStatus
     file_url: str | None
     created_at: datetime
     cartons: list[PackingListCartonResponse] = Field(default_factory=list)
+
+
+class PackingListListItem(BaseModel):
+    id: str
+    received_po_id: str
+    po_number: str | None
+    invoice_number: str | None
+    invoice_date: datetime | None = None
+    carton_count: int
+    total_pieces: int
+    status: PackingListStatus
+    file_url: str | None
+    created_at: datetime
+
+
+class PackingListListResponse(BaseModel):
+    items: list[PackingListListItem]
+    total: int

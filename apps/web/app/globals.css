@@ -135,6 +135,22 @@ small {
   outline-offset: 2px;
 }
 
+.kira-field {
+  @apply kira-focus-ring rounded-md border border-kira-warmgray/35 bg-white px-3 py-2 text-kira-black dark:border-white/15 dark:bg-white/5 dark:text-white dark:placeholder:text-gray-500;
+}
+
+.kira-textarea {
+  @apply kira-field min-h-20;
+}
+
+.kira-color-field {
+  @apply h-10 rounded-md border border-kira-warmgray/35 bg-white px-1 py-1 dark:border-white/15 dark:bg-white/5;
+}
+
+.kira-muted-panel {
+  @apply rounded-xl border border-kira-warmgray/20 bg-kira-offwhite/50 p-3 dark:border-white/10 dark:bg-white/5;
+}
+
 @keyframes modal-open {
   0% {
     opacity: 0;

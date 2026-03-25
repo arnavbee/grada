@@ -6,6 +6,35 @@ export type ReceivedPOStatus = "uploaded" | "parsing" | "parsed" | "confirmed" |
 export type BarcodeJobStatus = "pending" | "generating" | "done" | "failed";
 export type InvoiceStatus = "draft" | "final";
 export type PackingListStatus = "draft" | "final";
+export type ExportMode = "Air" | "Sea" | "Road";
+
+export interface InvoiceDetails {
+  marketplace_name: string;
+  supplier_name: string;
+  address: string;
+  gst_number: string;
+  pan_number: string;
+  fbs_name: string;
+  vendor_company_name: string;
+  supplier_city: string;
+  supplier_state: string;
+  supplier_pincode: string;
+  delivery_from_name: string;
+  delivery_from_address: string;
+  delivery_from_city: string;
+  delivery_from_pincode: string;
+  origin_country: string;
+  origin_state: string;
+  origin_district: string;
+  bill_to_name: string;
+  bill_to_address: string;
+  bill_to_gst: string;
+  bill_to_pan: string;
+  ship_to_name: string;
+  ship_to_address: string;
+  ship_to_gst: string;
+  stamp_image_url: string;
+}
 
 export interface ReceivedPOLineItem {
   id: string;
@@ -75,14 +104,20 @@ export interface Invoice {
   company_id: string;
   invoice_number: string;
   invoice_date: string;
+  number_of_cartons: number;
+  export_mode: ExportMode;
   gross_weight: number | null;
+  total_quantity: number;
   subtotal: number;
   igst_rate: number;
   igst_amount: number;
   total_amount: number;
+  total_amount_words: string | null;
   status: InvoiceStatus;
   file_url: string | null;
   created_at: string;
+  updated_at: string;
+  details: InvoiceDetails;
 }
 
 interface InvoiceGeneratePdfResponse {
@@ -116,6 +151,9 @@ export interface PackingList {
   id: string;
   received_po_id: string;
   company_id: string;
+  invoice_id: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null;
   status: PackingListStatus;
   file_url: string | null;
   created_at: string;
@@ -234,15 +272,28 @@ export async function getInvoice(receivedPoId: string): Promise<Invoice> {
   return apiRequest<Invoice>(`/received-pos/${receivedPoId}/invoice`);
 }
 
-export async function createInvoiceDraft(receivedPoId: string): Promise<Invoice> {
+export async function createInvoiceDraft(
+  receivedPoId: string,
+  payload?: {
+    number_of_cartons?: number;
+    export_mode?: ExportMode;
+    details?: InvoiceDetails;
+  },
+): Promise<Invoice> {
   return apiRequest<Invoice>(`/received-pos/${receivedPoId}/invoice`, {
     method: "POST",
+    body: JSON.stringify(payload ?? {}),
   });
 }
 
 export async function updateInvoice(
   receivedPoId: string,
-  payload: { gross_weight: number | null },
+  payload: {
+    gross_weight?: number | null;
+    number_of_cartons?: number | null;
+    export_mode?: ExportMode | null;
+    details?: InvoiceDetails;
+  },
 ): Promise<Invoice> {
   return apiRequest<Invoice>(`/received-pos/${receivedPoId}/invoice`, {
     method: "PATCH",

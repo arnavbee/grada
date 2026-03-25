@@ -4,6 +4,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from app.models.carton_capacity_rule import CartonCapacityRule
+from app.models.invoice import Invoice
 from app.models.packing_list import PackingList, PackingListCarton, PackingListCartonItem
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
 
@@ -51,6 +52,7 @@ def assign_cartons_for_received_po(
     *,
     received_po: ReceivedPO,
     company_id: str,
+    invoice: Invoice | None = None,
 ) -> tuple[PackingList, int, int]:
     line_items = sorted(
         list(received_po.items),
@@ -70,7 +72,15 @@ def assign_cartons_for_received_po(
         db.flush()
 
     capacity, _ = resolve_carton_capacity(db, company_id, line_items)
-    packing_list = PackingList(id=str(uuid4()), received_po_id=received_po.id, company_id=company_id, status='draft')
+    packing_list = PackingList(
+        id=str(uuid4()),
+        received_po_id=received_po.id,
+        company_id=company_id,
+        status='draft',
+        invoice_id=invoice.id if invoice else None,
+        invoice_number=invoice.invoice_number if invoice else None,
+        invoice_date=invoice.invoice_date if invoice else None,
+    )
     db.add(packing_list)
     db.flush()
 
