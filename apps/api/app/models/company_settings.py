@@ -12,7 +12,7 @@ class CompanySettings(Base):
 
     sku_format: Mapped[str] = mapped_column(String(128), default='{BRAND}-{CATEGORY}-{COLOR}-{SIZE}', nullable=False)
     default_margin_percent: Mapped[float] = mapped_column(Numeric(10, 2), default=25.0, nullable=False)
-    invoice_prefix: Mapped[str] = mapped_column(String(24), default='INV', nullable=False)
+    invoice_prefix: Mapped[str] = mapped_column(String(24), default='', nullable=False)
     invoice_next_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     email_notifications_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     low_stock_threshold: Mapped[int] = mapped_column(Integer, default=10, nullable=False)

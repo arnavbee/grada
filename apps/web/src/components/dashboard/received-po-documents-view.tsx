@@ -63,7 +63,7 @@ const EMPTY_INVOICE_DETAILS: InvoiceDetails = {
   delivery_from_address: "",
   delivery_from_city: "",
   delivery_from_pincode: "",
-  origin_country: "India",
+  origin_country: "",
   origin_state: "",
   origin_district: "",
   bill_to_name: "",
@@ -1499,7 +1499,6 @@ export function ReceivedPODocumentsView({
                       onChange={(event) =>
                         updateInvoiceDetailsField("marketplace_name", event.target.value)
                       }
-                      placeholder="Styli"
                       value={invoiceDetailsDraft.marketplace_name}
                     />
                   </label>
@@ -1596,7 +1595,6 @@ export function ReceivedPODocumentsView({
                       onChange={(event) =>
                         updateInvoiceDetailsField("stamp_image_url", event.target.value)
                       }
-                      placeholder="Use Settings upload for the default stamp, or override the URL here"
                       value={invoiceDetailsDraft.stamp_image_url}
                     />
                   </label>

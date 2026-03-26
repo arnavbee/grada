@@ -42,23 +42,23 @@ const EMPTY_BRAND_PROFILE: BrandProfileInput = {
   delivery_from_address: "",
   delivery_from_city: "",
   delivery_from_pincode: "",
-  origin_country: "India",
-  origin_state: "Haryana",
-  origin_district: "Gurugram",
-  bill_to_name: "NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED",
+  origin_country: "",
+  origin_state: "",
+  origin_district: "",
+  bill_to_name: "",
   bill_to_address: "",
-  bill_to_gst: "07AAGCN3134K1ZF",
-  bill_to_pan: "AAGCN3134K",
-  ship_to_name: "NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED",
+  bill_to_gst: "",
+  bill_to_pan: "",
+  ship_to_name: "",
   ship_to_address: "",
-  ship_to_gst: "07AAGCN3134K1ZF",
+  ship_to_gst: "",
   stamp_image_url: "",
   instagram_handle: "",
   website_url: "",
   facebook_handle: "",
   snapchat_handle: "",
-  invoice_prefix: "INV",
-  default_igst_rate: 5,
+  invoice_prefix: "",
+  default_igst_rate: 0,
 };
 
 const EMPTY_PO_BUILDER_DEFAULTS: POBuilderDefaultsInput = {
@@ -87,7 +87,9 @@ function SectionHeader({ eyebrow, title, description }: SectionHeaderProps): JSX
     <div>
       <p className="text-xs uppercase tracking-[0.16em] text-kira-midgray">{eyebrow}</p>
       <h2 className="mt-2 text-2xl font-semibold text-kira-black">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-kira-darkgray">{description}</p>
+      {description ? (
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-kira-darkgray">{description}</p>
+      ) : null}
     </div>
   );
 }
@@ -639,11 +641,7 @@ export function SettingsView(): JSX.Element {
         </Card>
 
         <Card className="p-5 md:p-6">
-          <SectionHeader
-            description="These fields drive invoice generation and the defaults used across received-PO document flows."
-            eyebrow="Invoice"
-            title="Invoice defaults"
-          />
+          <SectionHeader description="" eyebrow="Invoice" title="Invoice defaults" />
           <div className="mt-6 grid gap-5 md:grid-cols-2">
             <InputField
               disabled={loading}

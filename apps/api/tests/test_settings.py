@@ -29,7 +29,7 @@ def test_brand_profile_po_builder_defaults_and_carton_rule_crud() -> None:
 
     brand_get = client.get('/api/v1/settings/brand', headers=headers)
     assert brand_get.status_code == 200
-    assert brand_get.json()['invoice_prefix'] == 'INV'
+    assert brand_get.json()['invoice_prefix'] == ''
 
     po_builder_get = client.get('/api/v1/settings/po-builder', headers=headers)
     assert po_builder_get.status_code == 200

@@ -1308,7 +1308,7 @@ def _build_packing_list_pdf(
 ) -> bytes:
     """Render a structured landscape A4 packing list PDF matching the sample format."""
     profile = _invoice_profile(invoice, company_settings)
-    marketplace_name = profile['marketplace_name'] or str(received_po.distributor or '').strip() or 'Marketplace'
+    marketplace_name = profile['marketplace_name'] or str(received_po.distributor or '').strip()
     styles = _invoice_styles()
     buffer = BytesIO()
     document = SimpleDocTemplate(
@@ -1507,7 +1507,7 @@ def _build_packing_list_pdf(
             hsn = str(inv_li.hsn_code if inv_li else '') or '-'
             unit_rate = f'{float(inv_li.unit_price):.2f}' if inv_li else '-'
             description = str(inv_li.product_description if inv_li else '').strip()
-            country = str(inv_li.country_of_origin if inv_li else 'India') or 'India'
+            country = str(inv_li.country_of_origin if inv_li else '').strip() or '-'
             state = str(inv_li.state_of_origin if inv_li else '') or '-'
             district = str(inv_li.district_of_origin if inv_li else '') or '-'
             sku_display = neom_sku or li.sku_id or '-'
@@ -1612,23 +1612,13 @@ def _invoice_profile(invoice: Invoice | None, company_settings: CompanySettings 
         'delivery_from_address': str(merged.get('delivery_from_address') or merged.get('address') or '').strip(),
         'delivery_from_city': str(merged.get('delivery_from_city') or '').strip(),
         'delivery_from_pincode': str(merged.get('delivery_from_pincode') or '').strip(),
-        'bill_to_name': str(
-            merged.get('bill_to_name') or 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
-        ).strip(),
-        'bill_to_address': str(
-            merged.get('bill_to_address')
-            or 'Near Pole No. 646, Khasra No. 36/1, V.P.O. Bamnoli, Main Bijwasan Road, New Delhi - 110077'
-        ).strip(),
-        'bill_to_gst': str(merged.get('bill_to_gst') or '07AAGCN3134K1ZF').strip(),
-        'bill_to_pan': str(merged.get('bill_to_pan') or 'AAGCN3134K').strip(),
-        'ship_to_name': str(
-            merged.get('ship_to_name') or 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
-        ).strip(),
-        'ship_to_address': str(
-            merged.get('ship_to_address')
-            or 'Plot no 113, Village Bamnoli, District - South West Delhi, New Delhi - 110077'
-        ).strip(),
-        'ship_to_gst': str(merged.get('ship_to_gst') or '07AAGCN3134K1ZF').strip(),
+        'bill_to_name': str(merged.get('bill_to_name') or '').strip(),
+        'bill_to_address': str(merged.get('bill_to_address') or '').strip(),
+        'bill_to_gst': str(merged.get('bill_to_gst') or '').strip(),
+        'bill_to_pan': str(merged.get('bill_to_pan') or '').strip(),
+        'ship_to_name': str(merged.get('ship_to_name') or '').strip(),
+        'ship_to_address': str(merged.get('ship_to_address') or '').strip(),
+        'ship_to_gst': str(merged.get('ship_to_gst') or '').strip(),
         'stamp_image_url': str(merged.get('stamp_image_url') or '').strip(),
     }
 
@@ -1799,7 +1789,7 @@ def _build_invoice_pdf(
     company_settings: CompanySettings | None,
 ) -> bytes:
     profile = _invoice_profile(invoice, company_settings)
-    marketplace_name = profile['marketplace_name'] or str(received_po.distributor or '').strip() or 'Marketplace'
+    marketplace_name = profile['marketplace_name'] or str(received_po.distributor or '').strip()
     styles = _invoice_styles()
     buffer = BytesIO()
     document = SimpleDocTemplate(

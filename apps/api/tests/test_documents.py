@@ -156,7 +156,7 @@ def test_invoice_creation_and_update() -> None:
     assert body['status'] == 'draft'
     assert body['details']['marketplace_name'] == 'Styli'
     assert body['details']['supplier_name'] == 'Documents Co'
-    assert body['details']['bill_to_gst'] == '07AAGCN3134K1ZF'
+    assert body['details']['bill_to_gst'] == ''
 
     invoice_update = client.patch(
         f'/api/v1/received-pos/{received_po_id}/invoice',

@@ -15,23 +15,23 @@ class BrandProfileSettings(BaseModel):
     delivery_from_address: str = Field(default='', max_length=1000)
     delivery_from_city: str = Field(default='', max_length=128)
     delivery_from_pincode: str = Field(default='', max_length=32)
-    origin_country: str = Field(default='India', max_length=128)
-    origin_state: str = Field(default='Haryana', max_length=128)
-    origin_district: str = Field(default='Gurugram', max_length=128)
+    origin_country: str = Field(default='', max_length=128)
+    origin_state: str = Field(default='', max_length=128)
+    origin_district: str = Field(default='', max_length=128)
     bill_to_name: str = Field(default='', max_length=255)
-    bill_to_address: str = Field(min_length=5, max_length=1000)
+    bill_to_address: str = Field(default='', max_length=1000)
     bill_to_gst: str = Field(default='', max_length=32)
     bill_to_pan: str = Field(default='', max_length=32)
     ship_to_name: str = Field(default='', max_length=255)
-    ship_to_address: str = Field(min_length=5, max_length=1000)
+    ship_to_address: str = Field(default='', max_length=1000)
     ship_to_gst: str = Field(default='', max_length=32)
     stamp_image_url: str = Field(default='', max_length=512)
     instagram_handle: str = Field(default='', max_length=255)
     website_url: str = Field(default='', max_length=255)
     facebook_handle: str = Field(default='', max_length=255)
     snapchat_handle: str = Field(default='', max_length=255)
-    invoice_prefix: str = Field(default='INV', min_length=1, max_length=24)
-    default_igst_rate: float = Field(default=5, ge=0, le=100)
+    invoice_prefix: str = Field(default='', max_length=24)
+    default_igst_rate: float = Field(default=0, ge=0, le=100)
 
 
 class BrandProfileResponse(BaseModel):
@@ -49,9 +49,9 @@ class BrandProfileResponse(BaseModel):
     delivery_from_address: str = ''
     delivery_from_city: str = ''
     delivery_from_pincode: str = ''
-    origin_country: str = 'India'
-    origin_state: str = 'Haryana'
-    origin_district: str = 'Gurugram'
+    origin_country: str = ''
+    origin_state: str = ''
+    origin_district: str = ''
     bill_to_name: str = ''
     bill_to_address: str = ''
     bill_to_gst: str = ''
@@ -64,8 +64,8 @@ class BrandProfileResponse(BaseModel):
     website_url: str = ''
     facebook_handle: str = ''
     snapchat_handle: str = ''
-    invoice_prefix: str = 'INV'
-    default_igst_rate: float = 5
+    invoice_prefix: str = ''
+    default_igst_rate: float = 0
 
 
 class POBuilderDefaultsSettings(BaseModel):

@@ -23,14 +23,6 @@ from app.schemas.settings import (
 
 router = APIRouter(prefix='/settings', tags=['settings'])
 
-DEFAULT_BILL_TO_NAME = 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
-DEFAULT_BILL_TO_ADDRESS = 'Near Pole No. 646, Khasra No. 36/1, V.P.O. Bamnoli, Main Bijwasan Road, New Delhi - 110077'
-DEFAULT_BILL_TO_GST = '07AAGCN3134K1ZF'
-DEFAULT_BILL_TO_PAN = 'AAGCN3134K'
-DEFAULT_SHIP_TO_NAME = 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
-DEFAULT_SHIP_TO_ADDRESS = 'Plot no 113, Village Bamnoli, District - South West Delhi, New Delhi - 110077'
-DEFAULT_SHIP_TO_GST = '07AAGCN3134K1ZF'
-
 
 def _json_loads(raw: str | None) -> dict[str, object]:
     if not raw:
@@ -62,6 +54,11 @@ def _to_brand_profile_response(company_id: str, company_settings: CompanySetting
     brand_profile = settings_payload.get('brand_profile')
     brand_profile_payload = brand_profile if isinstance(brand_profile, dict) else {}
 
+    legacy_default_invoice_prefix = (
+        str(company_settings.invoice_prefix or '').strip() == 'INV' and not brand_profile_payload
+    )
+    resolved_invoice_prefix = '' if legacy_default_invoice_prefix else str(company_settings.invoice_prefix or '')
+
     return BrandProfileResponse(
         company_id=company_id,
         supplier_name=str(brand_profile_payload.get('supplier_name') or ''),
@@ -77,23 +74,23 @@ def _to_brand_profile_response(company_id: str, company_settings: CompanySetting
         delivery_from_address=str(brand_profile_payload.get('delivery_from_address') or ''),
         delivery_from_city=str(brand_profile_payload.get('delivery_from_city') or ''),
         delivery_from_pincode=str(brand_profile_payload.get('delivery_from_pincode') or ''),
-        origin_country=str(brand_profile_payload.get('origin_country') or 'India'),
-        origin_state=str(brand_profile_payload.get('origin_state') or 'Haryana'),
-        origin_district=str(brand_profile_payload.get('origin_district') or 'Gurugram'),
-        bill_to_name=str(brand_profile_payload.get('bill_to_name') or DEFAULT_BILL_TO_NAME),
-        bill_to_address=str(brand_profile_payload.get('bill_to_address') or DEFAULT_BILL_TO_ADDRESS),
-        bill_to_gst=str(brand_profile_payload.get('bill_to_gst') or DEFAULT_BILL_TO_GST),
-        bill_to_pan=str(brand_profile_payload.get('bill_to_pan') or DEFAULT_BILL_TO_PAN),
-        ship_to_name=str(brand_profile_payload.get('ship_to_name') or DEFAULT_SHIP_TO_NAME),
-        ship_to_address=str(brand_profile_payload.get('ship_to_address') or DEFAULT_SHIP_TO_ADDRESS),
-        ship_to_gst=str(brand_profile_payload.get('ship_to_gst') or DEFAULT_SHIP_TO_GST),
+        origin_country=str(brand_profile_payload.get('origin_country') or ''),
+        origin_state=str(brand_profile_payload.get('origin_state') or ''),
+        origin_district=str(brand_profile_payload.get('origin_district') or ''),
+        bill_to_name=str(brand_profile_payload.get('bill_to_name') or ''),
+        bill_to_address=str(brand_profile_payload.get('bill_to_address') or ''),
+        bill_to_gst=str(brand_profile_payload.get('bill_to_gst') or ''),
+        bill_to_pan=str(brand_profile_payload.get('bill_to_pan') or ''),
+        ship_to_name=str(brand_profile_payload.get('ship_to_name') or ''),
+        ship_to_address=str(brand_profile_payload.get('ship_to_address') or ''),
+        ship_to_gst=str(brand_profile_payload.get('ship_to_gst') or ''),
         stamp_image_url=str(brand_profile_payload.get('stamp_image_url') or ''),
         instagram_handle=str(brand_profile_payload.get('instagram_handle') or ''),
         website_url=str(brand_profile_payload.get('website_url') or ''),
         facebook_handle=str(brand_profile_payload.get('facebook_handle') or ''),
         snapchat_handle=str(brand_profile_payload.get('snapchat_handle') or ''),
-        invoice_prefix=company_settings.invoice_prefix or 'INV',
-        default_igst_rate=float(brand_profile_payload.get('default_igst_rate') or 5),
+        invoice_prefix=resolved_invoice_prefix,
+        default_igst_rate=float(brand_profile_payload.get('default_igst_rate') or 0),
     )
 
 

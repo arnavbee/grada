@@ -32,7 +32,7 @@ class InvoiceDetails(BaseModel):
     delivery_from_address: str = ''
     delivery_from_city: str = ''
     delivery_from_pincode: str = ''
-    origin_country: str = 'India'
+    origin_country: str = ''
     origin_state: str = ''
     origin_district: str = ''
     bill_to_name: str = ''

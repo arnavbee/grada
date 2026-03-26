@@ -142,8 +142,8 @@ def _get_default_igst_rate(company_settings: CompanySettings) -> float:
             try:
                 return float(value)
             except ValueError:
-                return 5.0
-    return 5.0
+                return 0.0
+    return 0.0
 
 
 def _brand_profile(company_settings: CompanySettings | None) -> dict[str, object]:
@@ -165,7 +165,7 @@ def _default_invoice_details(
     supplier_name = str(profile.get('supplier_name') or '').strip()
     address = str(profile.get('address') or '').strip()
     return InvoiceDetails(
-        marketplace_name=str(received_po.distributor if received_po else '') or 'Marketplace',
+        marketplace_name=str(received_po.distributor if received_po else '').strip(),
         supplier_name=supplier_name,
         address=address,
         gst_number=str(profile.get('gst_number') or '').strip(),
@@ -179,26 +179,16 @@ def _default_invoice_details(
         delivery_from_address=str(profile.get('delivery_from_address') or address).strip(),
         delivery_from_city=str(profile.get('delivery_from_city') or '').strip(),
         delivery_from_pincode=str(profile.get('delivery_from_pincode') or '').strip(),
-        origin_country=str(profile.get('origin_country') or 'India').strip() or 'India',
+        origin_country=str(profile.get('origin_country') or '').strip(),
         origin_state=str(profile.get('origin_state') or '').strip(),
         origin_district=str(profile.get('origin_district') or '').strip(),
-        bill_to_name=str(
-            profile.get('bill_to_name') or 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
-        ).strip(),
-        bill_to_address=str(
-            profile.get('bill_to_address')
-            or 'Near Pole No. 646, Khasra No. 36/1, V.P.O. Bamnoli, Main Bijwasan Road, New Delhi - 110077'
-        ).strip(),
-        bill_to_gst=str(profile.get('bill_to_gst') or '07AAGCN3134K1ZF').strip(),
-        bill_to_pan=str(profile.get('bill_to_pan') or 'AAGCN3134K').strip(),
-        ship_to_name=str(
-            profile.get('ship_to_name') or 'NEOM TRADING AND TECHNOLOGY SERVICES PRIVATE LIMITED'
-        ).strip(),
-        ship_to_address=str(
-            profile.get('ship_to_address')
-            or 'Plot no 113, Village Bamnoli, District - South West Delhi, New Delhi - 110077'
-        ).strip(),
-        ship_to_gst=str(profile.get('ship_to_gst') or '07AAGCN3134K1ZF').strip(),
+        bill_to_name=str(profile.get('bill_to_name') or '').strip(),
+        bill_to_address=str(profile.get('bill_to_address') or '').strip(),
+        bill_to_gst=str(profile.get('bill_to_gst') or '').strip(),
+        bill_to_pan=str(profile.get('bill_to_pan') or '').strip(),
+        ship_to_name=str(profile.get('ship_to_name') or '').strip(),
+        ship_to_address=str(profile.get('ship_to_address') or '').strip(),
+        ship_to_gst=str(profile.get('ship_to_gst') or '').strip(),
         stamp_image_url=str(profile.get('stamp_image_url') or '').strip(),
     )
 
@@ -217,7 +207,7 @@ def _apply_invoice_details_to_line_items(
     line_items: list[InvoiceLineItem], details: InvoiceDetails
 ) -> None:
     for row in line_items:
-        row.country_of_origin = details.origin_country or 'India'
+        row.country_of_origin = details.origin_country or row.country_of_origin
         row.state_of_origin = details.origin_state or row.state_of_origin
         row.district_of_origin = details.origin_district or row.district_of_origin
 
@@ -234,7 +224,11 @@ def _current_financial_year(now: datetime | None = None) -> str:
 
 
 def _format_invoice_number(prefix: str, next_number: int, now: datetime | None = None) -> str:
-    return f'{prefix}/{_current_financial_year(now)}/{next_number:04d}'
+    normalized_prefix = str(prefix or '').strip()
+    financial_year = _current_financial_year(now)
+    if normalized_prefix:
+        return f'{normalized_prefix}/{financial_year}/{next_number:04d}'
+    return f'{financial_year}/{next_number:04d}'
 
 
 def _derive_vendor_style_hash(sku_id: str, size: str | None) -> str:
@@ -279,9 +273,9 @@ def _invoice_line_item_rows(
     brand_profile = _brand_profile(company_settings)
     po_defaults = _po_builder_defaults(company_settings)
     default_fabric = str(po_defaults.get('default_fabric_composition') or '100% Polyester').strip()
-    origin_country = str(brand_profile.get('origin_country') or 'India').strip() or 'India'
-    origin_state = str(brand_profile.get('origin_state') or 'Haryana').strip() or 'Haryana'
-    origin_district = str(brand_profile.get('origin_district') or 'Gurugram').strip() or 'Gurugram'
+    origin_country = str(brand_profile.get('origin_country') or '').strip()
+    origin_state = str(brand_profile.get('origin_state') or '').strip()
+    origin_district = str(brand_profile.get('origin_district') or '').strip()
     rows: list[InvoiceLineItem] = []
     total_quantity = 0
     subtotal = 0.0
@@ -733,7 +727,10 @@ def create_invoice_draft(
 
     invoice_details = _resolve_invoice_details(payload.details, company_settings, record)
     _apply_invoice_details_to_line_items(line_item_rows, invoice_details)
-    invoice_number = _format_invoice_number(company_settings.invoice_prefix or 'INV', company_settings.invoice_next_number)
+    invoice_prefix = str(company_settings.invoice_prefix or '').strip()
+    if invoice_prefix == 'INV' and not _brand_profile(company_settings):
+        invoice_prefix = ''
+    invoice_number = _format_invoice_number(invoice_prefix, company_settings.invoice_next_number)
     invoice = Invoice(
         id=str(uuid4()),
         received_po_id=record.id,
