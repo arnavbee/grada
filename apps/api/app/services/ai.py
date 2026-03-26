@@ -141,6 +141,18 @@ class AIService:
     def _is_prompt_token_limit_error(exc: Exception) -> bool:
         return 'prompt tokens limit exceeded' in str(exc).lower()
 
+    @staticmethod
+    def _is_credit_limited_error(exc: Exception) -> bool:
+        if isinstance(exc, APIStatusError) and exc.status_code == 402:
+            return True
+        message = str(exc).lower()
+        return (
+            'error code: 402' in message
+            or 'requires more credits' in message
+            or 'fewer max_tokens' in message
+            or 'can only afford' in message
+        )
+
     def _build_po_attribute_prompt(self, category: str, *, compact: bool) -> str:
         if compact:
             enum_block = '; '.join(
@@ -235,36 +247,51 @@ Format strictly as:
 }}
 """
 
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": image_url,
-                                    "detail": "high"
+        attempt_max_tokens = (500, 320, 220, 140)
+        last_error: Exception | None = None
+
+        for index, max_tokens in enumerate(attempt_max_tokens):
+            has_more_attempts = index < len(attempt_max_tokens) - 1
+            try:
+                response = self.client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": prompt},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": image_url,
+                                        "detail": "high"
+                                    },
                                 },
-                            },
-                        ],
-                    }
-                ],
-                max_tokens=500,
-                response_format={"type": "json_object"}
-            )
-            
-            content = response.choices[0].message.content
-            if not content:
-                return {}
-            
-            return json.loads(content)
-        except Exception as e:
-            logger.exception('AI analysis failed')
-            return {"error": str(e)}
+                            ],
+                        }
+                    ],
+                    max_tokens=max_tokens,
+                    response_format={"type": "json_object"}
+                )
+
+                content = response.choices[0].message.content
+                if not content:
+                    return {}
+
+                return json.loads(content)
+            except Exception as exc:
+                last_error = exc
+                if self._is_credit_limited_error(exc) and has_more_attempts:
+                    logger.warning(
+                        '[Catalog AI] Credit-limited at max_tokens=%s, retrying with a smaller budget.',
+                        max_tokens,
+                    )
+                    continue
+                logger.exception('AI analysis failed')
+                return {"error": str(exc)}
+
+        logger.exception('AI analysis failed')
+        return {"error": str(last_error) if last_error else "Unknown AI analysis failure."}
 
     def extract_po_attributes(self, image_url: str, category: str) -> dict[str, Any]:
         """
