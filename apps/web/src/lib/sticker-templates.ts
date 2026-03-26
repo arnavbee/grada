@@ -131,7 +131,7 @@ export async function reorderStickerTemplateElements(
 export async function uploadStickerImage(file: File): Promise<{ url: string; filename: string }> {
   const body = new FormData();
   body.append("file", file);
-  return apiRequest<{ url: string; filename: string }>("/uploads/", {
+  return apiRequest<{ url: string; filename: string }>("/uploads", {
     method: "POST",
     body,
   });

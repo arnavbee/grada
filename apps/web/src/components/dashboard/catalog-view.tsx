@@ -450,7 +450,7 @@ async function uploadCatalogImage(file: File): Promise<UploadedImageAsset> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const uploadData = await apiRequest<{ url: string; filename: string }>("/uploads/", {
+  const uploadData = await apiRequest<{ url: string; filename: string }>("/uploads", {
     method: "POST",
     body: formData,
   });

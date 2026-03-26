@@ -159,7 +159,7 @@ export async function deleteCartonRule(ruleId: string): Promise<void> {
 export async function uploadBrandStamp(file: File): Promise<{ url: string; filename: string }> {
   const body = new FormData();
   body.append("file", file);
-  return apiRequest<{ url: string; filename: string }>("/uploads/", {
+  return apiRequest<{ url: string; filename: string }>("/uploads", {
     method: "POST",
     body,
   });
