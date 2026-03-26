@@ -4,16 +4,29 @@ from urllib.parse import quote
 from app.core.config import get_settings
 
 
+def _clean_secret(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.replace('\r', '').replace('\n', '').strip()
+    return cleaned or None
+
+
 class ObjectStorageService:
     def __init__(self) -> None:
         self.settings = get_settings()
         self._client = None
+        self._r2_endpoint = _clean_secret(self.settings.R2_ENDPOINT)
+        self._r2_access_key_id = _clean_secret(self.settings.R2_ACCESS_KEY_ID)
+        self._r2_secret_access_key = _clean_secret(self.settings.R2_SECRET_ACCESS_KEY)
+        self._r2_bucket = _clean_secret(self.settings.R2_BUCKET)
+        self._r2_public_base_url = _clean_secret(self.settings.R2_PUBLIC_BASE_URL)
+        self._r2_region = _clean_secret(self.settings.R2_REGION) or 'auto'
         self._enabled = all(
             (
-                self.settings.R2_ENDPOINT,
-                self.settings.R2_ACCESS_KEY_ID,
-                self.settings.R2_SECRET_ACCESS_KEY,
-                self.settings.R2_BUCKET,
+                self._r2_endpoint,
+                self._r2_access_key_id,
+                self._r2_secret_access_key,
+                self._r2_bucket,
             )
         )
 
@@ -32,10 +45,10 @@ class ObjectStorageService:
             return None
         self._client = boto3.client(
             's3',
-            endpoint_url=self.settings.R2_ENDPOINT,
-            aws_access_key_id=self.settings.R2_ACCESS_KEY_ID,
-            aws_secret_access_key=self.settings.R2_SECRET_ACCESS_KEY,
-            region_name=self.settings.R2_REGION,
+            endpoint_url=self._r2_endpoint,
+            aws_access_key_id=self._r2_access_key_id,
+            aws_secret_access_key=self._r2_secret_access_key,
+            region_name=self._r2_region,
         )
         return self._client
 
@@ -45,7 +58,7 @@ class ObjectStorageService:
             return None
 
         client.put_object(
-            Bucket=self.settings.R2_BUCKET,
+            Bucket=self._r2_bucket,
             Key=key,
             Body=content,
             ContentType=content_type,
@@ -56,16 +69,15 @@ class ObjectStorageService:
     def build_public_url(self, key: str) -> str:
         encoded_key = quote(key)
 
-        if self.settings.R2_PUBLIC_BASE_URL:
-            base = self.settings.R2_PUBLIC_BASE_URL.rstrip('/')
+        if self._r2_public_base_url:
+            base = self._r2_public_base_url.rstrip('/')
             return f'{base}/{encoded_key}'
 
-        endpoint = (self.settings.R2_ENDPOINT or '').rstrip('/')
-        bucket = self.settings.R2_BUCKET or ''
+        endpoint = (self._r2_endpoint or '').rstrip('/')
+        bucket = self._r2_bucket or ''
         return f'{endpoint}/{bucket}/{encoded_key}'
 
 
 @lru_cache
 def get_object_storage_service() -> ObjectStorageService:
     return ObjectStorageService()
-

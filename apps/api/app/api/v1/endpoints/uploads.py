@@ -17,6 +17,7 @@ TECHPACK_UPLOAD_DIR = UPLOAD_DIR / 'techpacks'
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 TECHPACK_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+@router.post('', status_code=201, include_in_schema=False)
 @router.post("/", status_code=201)
 async def upload_file(
     file: UploadFile = File(...),
@@ -54,6 +55,7 @@ async def upload_file(
 
 
 @router.post('/tech-pack', status_code=201)
+@router.post('/tech-pack/', status_code=201, include_in_schema=False)
 async def upload_tech_pack(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
