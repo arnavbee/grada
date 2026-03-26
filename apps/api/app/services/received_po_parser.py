@@ -48,7 +48,18 @@ LINE_ITEM_FIELD_ALIASES = {
         'construction',
     },
     'size': {'size'},
-    'quantity': {'quantity', 'qty', 'pieces', 'total', 'unit quantity'},
+    'quantity': {
+        'quantity',
+        'qty',
+        'qty.',
+        'qnty',
+        'pieces',
+        'unit quantity',
+        'total qty',
+        'total quantity',
+        'po qty',
+        'po qnty',
+    },
     'po_price': {'po price', 'po_price', 'price', 'unit price', 'po rate'},
 }
 
@@ -189,6 +200,10 @@ def _parse_int(value: str) -> int:
     cleaned = re.sub(r'[^0-9-]', '', value)
     if not cleaned:
         return 0
+    try:
+        return max(0, int(cleaned))
+    except ValueError:
+        return 0
 
 
 def _normalize_knitted_woven(value: str) -> str | None:
@@ -201,10 +216,6 @@ def _normalize_knitted_woven(value: str) -> str | None:
     if 'wov' in normalized:
         return 'Woven'
     return cleaned.title()
-    try:
-        return max(0, int(cleaned))
-    except ValueError:
-        return 0
 
 
 def _extract_line_items_from_rows(rows: list[list[str]]) -> list[dict[str, object]]:
