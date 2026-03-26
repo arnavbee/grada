@@ -15,6 +15,7 @@ import {
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
 import { Button } from "@/src/components/ui/button";
 import { apiRequest } from "@/src/lib/api-client";
+import { resolveAssetUrl } from "@/src/lib/asset-url";
 import { getResolvedApiOriginUrl } from "@/src/lib/api-url";
 import { cn } from "@/src/lib/cn";
 
@@ -437,37 +438,7 @@ function hasAccessToken(): boolean {
 }
 
 function getImageUrl(imageUrl: string | null | undefined): string | null {
-  if (!imageUrl) return null;
-
-  const apiOrigin = getResolvedApiOriginUrl();
-  const hasAbsoluteApiOrigin = apiOrigin.startsWith("http://") || apiOrigin.startsWith("https://");
-
-  // Rewrite legacy/static absolute URLs to API origin when possible.
-  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-    try {
-      const parsed = new URL(imageUrl);
-      if (parsed.pathname.startsWith("/static/") && hasAbsoluteApiOrigin) {
-        const normalizedApiOrigin = apiOrigin.replace(/\/+$/, "");
-        if (parsed.origin !== normalizedApiOrigin) {
-          return `${normalizedApiOrigin}${parsed.pathname}${parsed.search}${parsed.hash}`;
-        }
-      }
-    } catch {
-      // Fall through and return original URL.
-    }
-    return imageUrl;
-  }
-
-  // If it's a relative static path, prepend API origin when absolute API origin is configured.
-  if (imageUrl.startsWith("/static")) {
-    if (hasAbsoluteApiOrigin) {
-      return `${apiOrigin.replace(/\/+$/, "")}${imageUrl}`;
-    }
-    return imageUrl;
-  }
-
-  // For other relative paths or data URLs, return as-is
-  return imageUrl;
+  return resolveAssetUrl(imageUrl);
 }
 
 interface UploadedImageAsset {

@@ -7,7 +7,8 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
 import { Button } from "@/src/components/ui/button";
 import { apiRequest } from "@/src/lib/api-client";
-import { getResolvedApiBaseUrl, getResolvedApiOriginUrl } from "@/src/lib/api-url";
+import { resolveAssetUrl } from "@/src/lib/asset-url";
+import { getResolvedApiBaseUrl } from "@/src/lib/api-url";
 import { getPOBuilderDefaults, type POBuilderDefaults } from "@/src/lib/settings";
 import {
   ATTRIBUTE_LABELS,
@@ -202,34 +203,7 @@ function getStepForStatus(status: PORequestResponse["status"]): number {
 }
 
 function getProductImageUrl(imageUrl: string | null | undefined): string | null {
-  if (!imageUrl) {
-    return null;
-  }
-
-  const apiOrigin = getResolvedApiOriginUrl();
-  const hasAbsoluteApiOrigin = apiOrigin.startsWith("http://") || apiOrigin.startsWith("https://");
-
-  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-    try {
-      const parsed = new URL(imageUrl);
-      if (parsed.pathname.startsWith("/static/") && hasAbsoluteApiOrigin) {
-        const normalizedApiOrigin = apiOrigin.replace(/\/+$/, "");
-        if (parsed.origin !== normalizedApiOrigin) {
-          return `${normalizedApiOrigin}${parsed.pathname}${parsed.search}${parsed.hash}`;
-        }
-      }
-    } catch {
-      // Fall through and return original URL.
-    }
-    return imageUrl;
-  }
-  if (imageUrl.startsWith("/static")) {
-    if (hasAbsoluteApiOrigin) {
-      return `${apiOrigin.replace(/\/+$/, "")}${imageUrl}`;
-    }
-    return imageUrl;
-  }
-  return imageUrl;
+  return resolveAssetUrl(imageUrl);
 }
 
 export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.Element {

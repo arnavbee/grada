@@ -1,5 +1,5 @@
 import { apiRequest } from "@/src/lib/api-client";
-import { getResolvedApiOriginUrl } from "@/src/lib/api-url";
+import { resolveAssetUrl } from "@/src/lib/asset-url";
 
 export interface BrandProfile {
   company_id: string;
@@ -166,11 +166,5 @@ export async function uploadBrandStamp(file: File): Promise<{ url: string; filen
 }
 
 export function resolveSettingsAssetUrl(url: string | null | undefined): string | null {
-  if (!url) {
-    return null;
-  }
-  if (/^https?:\/\//i.test(url)) {
-    return url;
-  }
-  return `${getResolvedApiOriginUrl()}${url}`;
+  return resolveAssetUrl(url);
 }
