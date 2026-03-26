@@ -22,6 +22,7 @@ from app.core.audit import log_audit
 from app.db.session import get_db
 from app.models.ai_correction import AICorrection
 from app.models.catalog_template import CatalogTemplate
+from app.models.company import Company
 from app.models.company_settings import CompanySettings
 from app.models.image_label import ImageLabel
 from app.models.marketplace_export import MarketplaceExport
@@ -863,23 +864,28 @@ def _find_unique_sku(db: Session, company_id: str, base_sku: str, current_produc
 
 
 def _get_brand_initials(brand: str | None, fallback: str = 'GN') -> str:
-    if not brand: return fallback
+    fallback_clean = re.sub(r'[^A-Za-z0-9]+', '', fallback).upper() or 'GN'
+    if not brand:
+        return (fallback_clean + 'XX')[:2]
+
     words = [w for w in re.split(r'[^A-Za-z0-9]+', brand) if w]
+    code = ''
     if len(words) == 1:
-        return words[0][:2].upper()
+        code = words[0][:2].upper()
     elif len(words) >= 2:
-        return ''.join(w[0] for w in words)[:2].upper()
-    return fallback
+        code = ''.join(w[0] for w in words)[:2].upper()
+    return (code + fallback_clean)[:2]
 
 def _get_category_abbr(category: str | None, fallback: str = 'XX') -> str:
+    fallback_clean = re.sub(r'[^A-Za-z0-9]+', '', fallback).upper() or 'XX'
     if not category:
-        return fallback
+        return (fallback_clean + 'XX')[:2]
     clean = re.sub(r'[^A-Za-z0-9]+', '', category).upper()
     if 'DRESS' in clean: return 'DS'
     if 'CORD' in clean or 'SET' in clean: return 'CS'
     if 'TOP' in clean: return 'TP'
     if len(clean) >= 2: return clean[:2]
-    return clean or fallback
+    return (clean + fallback_clean)[:2]
 
 def _find_formatted_unique_sku(db: Session, company_id: str, base_sku: str, current_product_id: str | None = None) -> str:
     suffix = 1
@@ -892,29 +898,44 @@ def _find_formatted_unique_sku(db: Session, company_id: str, base_sku: str, curr
             return candidate
         suffix += 1
 
-def _generate_sku(db: Session, company_id: str, company_settings: CompanySettings | None, payload: ProductCreateRequest) -> str:
-    from app.models.company import Company
 
+def _generate_default_catalog_style_no(db: Session, company_id: str, category: str | None) -> str:
     company = db.query(Company).filter(Company.id == company_id).first()
-    company_name = company.name if company else 'Generic'
+    company_name = company.name if company else None
+    brand_code = _get_brand_initials(company_name, fallback='GN')
+    category_code = _get_category_abbr(category, fallback='XX')
+    current_year_short = datetime.now(timezone.utc).strftime('%y')
+    base_sku = f'{brand_code}{category_code}{current_year_short}'
+    return _find_formatted_unique_sku(db, company_id, base_sku)
 
-    brand_val = payload.brand
-    if not brand_val or brand_val.strip().lower() == 'generic':
-        brand_val = company_name
 
+def _generate_sku(db: Session, company_id: str, company_settings: CompanySettings | None, payload: ProductCreateRequest) -> str:
+    default_format = '{BRAND}-{CATEGORY}-{COLOR}-{SIZE}'
     configured_format = (
         company_settings.sku_format.strip()
         if company_settings and company_settings.sku_format and company_settings.sku_format.strip()
-        else '{BRAND}-{CATEGORY}-{COLOR}-{SIZE}'
+        else default_format
     )
-    base_sku = _render_sku_from_format(
-        sku_format=configured_format,
-        brand=brand_val,
-        category=payload.category,
-        color=payload.color,
-        size=payload.size,
-    )
-    return _find_unique_sku(db, company_id, base_sku)
+
+    # Backward compatibility: if tenant explicitly configured a non-default format,
+    # keep honoring it.
+    if configured_format != default_format:
+        company = db.query(Company).filter(Company.id == company_id).first()
+        company_name = company.name if company else 'Generic'
+        brand_val = payload.brand
+        if not brand_val or brand_val.strip().lower() == 'generic':
+            brand_val = company_name
+
+        base_sku = _render_sku_from_format(
+            sku_format=configured_format,
+            brand=brand_val,
+            category=payload.category,
+            color=payload.color,
+            size=payload.size,
+        )
+        return _find_unique_sku(db, company_id, base_sku)
+
+    return _generate_default_catalog_style_no(db, company_id, payload.category)
 
 
 def _to_product_response(product: Product) -> ProductResponse:
@@ -1562,20 +1583,7 @@ def generate_style_code(
         sku = _render_pattern_sku(db, current_user.company_id, pattern, payload)
         return GenerateStyleCodeResponse(style_code=sku)
 
-    company_settings = (
-        db.query(CompanySettings).filter(CompanySettings.company_id == current_user.company_id).first()
-    )
-    
-    # We can reuse the _generate_sku logic but pass a dummy ProductCreateRequest
-    # to format the SKU.
-    dummy_payload = ProductCreateRequest(
-        title='Dummy',
-        brand=payload.brand,
-        category=payload.category,
-        color='NA',
-        size='OS',
-    )
-    sku = _generate_sku(db, current_user.company_id, company_settings, dummy_payload)
+    sku = _generate_default_catalog_style_no(db, current_user.company_id, payload.category)
     return GenerateStyleCodeResponse(style_code=sku)
 
 

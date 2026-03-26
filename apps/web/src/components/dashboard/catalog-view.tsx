@@ -439,15 +439,31 @@ function hasAccessToken(): boolean {
 function getImageUrl(imageUrl: string | null | undefined): string | null {
   if (!imageUrl) return null;
 
-  // If it's already an absolute URL (http:// or https://), return as-is
+  const apiOrigin = getResolvedApiOriginUrl();
+  const hasAbsoluteApiOrigin = apiOrigin.startsWith("http://") || apiOrigin.startsWith("https://");
+
+  // Rewrite legacy/static absolute URLs to API origin when possible.
   if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    try {
+      const parsed = new URL(imageUrl);
+      if (parsed.pathname.startsWith("/static/") && hasAbsoluteApiOrigin) {
+        const normalizedApiOrigin = apiOrigin.replace(/\/+$/, "");
+        if (parsed.origin !== normalizedApiOrigin) {
+          return `${normalizedApiOrigin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+        }
+      }
+    } catch {
+      // Fall through and return original URL.
+    }
     return imageUrl;
   }
 
-  // If it's a relative path starting with /static, prepend the API base URL
+  // If it's a relative static path, prepend API origin when absolute API origin is configured.
   if (imageUrl.startsWith("/static")) {
-    const baseUrl = getResolvedApiOriginUrl();
-    return `${baseUrl}${imageUrl}`;
+    if (hasAbsoluteApiOrigin) {
+      return `${apiOrigin.replace(/\/+$/, "")}${imageUrl}`;
+    }
+    return imageUrl;
   }
 
   // For other relative paths or data URLs, return as-is
@@ -468,13 +484,9 @@ async function uploadCatalogImage(file: File): Promise<UploadedImageAsset> {
     body: formData,
   });
 
-  const baseUrl = getResolvedApiOriginUrl();
-  const resolvedUrl = uploadData.url.startsWith("/static")
-    ? `${baseUrl}${uploadData.url}`
-    : uploadData.url;
-
   return {
-    url: resolvedUrl,
+    // Keep `/static/...` as canonical to avoid hardcoding a web-domain URL in DB records.
+    url: uploadData.url,
     filename: uploadData.filename,
   };
 }

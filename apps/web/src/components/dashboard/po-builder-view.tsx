@@ -205,11 +205,29 @@ function getProductImageUrl(imageUrl: string | null | undefined): string | null 
   if (!imageUrl) {
     return null;
   }
+
+  const apiOrigin = getResolvedApiOriginUrl();
+  const hasAbsoluteApiOrigin = apiOrigin.startsWith("http://") || apiOrigin.startsWith("https://");
+
   if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+    try {
+      const parsed = new URL(imageUrl);
+      if (parsed.pathname.startsWith("/static/") && hasAbsoluteApiOrigin) {
+        const normalizedApiOrigin = apiOrigin.replace(/\/+$/, "");
+        if (parsed.origin !== normalizedApiOrigin) {
+          return `${normalizedApiOrigin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+        }
+      }
+    } catch {
+      // Fall through and return original URL.
+    }
     return imageUrl;
   }
   if (imageUrl.startsWith("/static")) {
-    return `${getResolvedApiOriginUrl()}${imageUrl}`;
+    if (hasAbsoluteApiOrigin) {
+      return `${apiOrigin.replace(/\/+$/, "")}${imageUrl}`;
+    }
+    return imageUrl;
   }
   return imageUrl;
 }
