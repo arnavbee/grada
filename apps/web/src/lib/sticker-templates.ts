@@ -60,14 +60,26 @@ function getCookieValue(name: string): string | null {
   if (typeof document === "undefined") {
     return null;
   }
-  const cookie = document.cookie
+
+  const prefix = `${name}=`;
+  const matches = document.cookie
     .split(";")
     .map((entry) => entry.trim())
-    .find((entry) => entry.startsWith(`${name}=`));
-  if (!cookie) {
+    .filter((entry) => entry.startsWith(prefix));
+  if (matches.length === 0) {
     return null;
   }
-  return decodeURIComponent(cookie.split("=")[1] ?? "");
+  for (let idx = matches.length - 1; idx >= 0; idx -= 1) {
+    const rawValue = matches[idx].slice(prefix.length);
+    if (!rawValue) continue;
+    try {
+      const decoded = decodeURIComponent(rawValue).trim();
+      if (decoded) return decoded;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 export async function listStickerTemplates(): Promise<StickerTemplate[]> {

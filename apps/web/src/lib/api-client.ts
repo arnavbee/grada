@@ -1,5 +1,5 @@
-import { getResolvedApiBaseUrl } from '@/src/lib/api-url';
-import { setAuthCookies, type AuthTokens } from '@/src/lib/auth-cookie';
+import { getResolvedApiBaseUrl } from "@/src/lib/api-url";
+import { setAuthCookies, type AuthTokens } from "@/src/lib/auth-cookie";
 
 let refreshTokenRequestInFlight: Promise<string | null> | null = null;
 
@@ -8,16 +8,29 @@ function getCookieValue(name: string): string | null {
     return null;
   }
 
-  const cookie = document.cookie
+  const prefix = `${name}=`;
+  const matches = document.cookie
     .split(";")
     .map((entry) => entry.trim())
-    .find((entry) => entry.startsWith(`${name}=`));
+    .filter((entry) => entry.startsWith(prefix));
 
-  if (!cookie) {
+  if (matches.length === 0) {
     return null;
   }
 
-  return decodeURIComponent(cookie.split("=")[1] ?? "");
+  // Prefer the latest non-empty value when duplicate cookies exist.
+  for (let idx = matches.length - 1; idx >= 0; idx -= 1) {
+    const rawValue = matches[idx].slice(prefix.length);
+    if (!rawValue) continue;
+    try {
+      const decoded = decodeURIComponent(rawValue).trim();
+      if (decoded) return decoded;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
 }
 
 function getAccessTokenFromCookie(): string | null {
@@ -69,7 +82,9 @@ async function refreshAccessToken(baseUrl: string): Promise<string | null> {
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const resolvedBase = getResolvedApiBaseUrl();
   const hasFormDataBody =
-    typeof FormData !== "undefined" && typeof init?.body !== "undefined" && init.body instanceof FormData;
+    typeof FormData !== "undefined" &&
+    typeof init?.body !== "undefined" &&
+    init.body instanceof FormData;
 
   const applyHeaders = async (): Promise<Headers> => {
     const headers = new Headers(init?.headers ?? {});

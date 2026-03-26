@@ -418,12 +418,20 @@ function hasAccessToken(): boolean {
     return false;
   }
 
-  const cookieEntries = document.cookie.split(";").map((entry) => entry.trim());
+  const hasNonEmptyCookie = (name: string): boolean => {
+    const prefix = `${name}=`;
+    const cookieEntries = document.cookie
+      .split(";")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.startsWith(prefix));
+    for (let idx = cookieEntries.length - 1; idx >= 0; idx -= 1) {
+      const value = cookieEntries[idx].slice(prefix.length).trim();
+      if (value) return true;
+    }
+    return false;
+  };
 
-  return (
-    cookieEntries.some((entry) => entry.startsWith("kira_access_token=")) ||
-    cookieEntries.some((entry) => entry.startsWith("kira_refresh_token="))
-  );
+  return hasNonEmptyCookie("kira_access_token") || hasNonEmptyCookie("kira_refresh_token");
 }
 
 function getImageUrl(imageUrl: string | null | undefined): string | null {
