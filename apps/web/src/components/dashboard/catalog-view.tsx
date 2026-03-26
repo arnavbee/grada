@@ -15,7 +15,7 @@ import {
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
 import { Button } from "@/src/components/ui/button";
 import { apiRequest } from "@/src/lib/api-client";
-import { getResolvedApiBaseUrl, getResolvedApiOriginUrl } from "@/src/lib/api-url";
+import { getResolvedApiOriginUrl } from "@/src/lib/api-url";
 import { cn } from "@/src/lib/cn";
 
 type CatalogStatus = "draft" | "processing" | "needs_review" | "ready" | "archived";
@@ -442,6 +442,31 @@ function getImageUrl(imageUrl: string | null | undefined): string | null {
 
   // For other relative paths or data URLs, return as-is
   return imageUrl;
+}
+
+interface UploadedImageAsset {
+  url: string;
+  filename: string;
+}
+
+async function uploadCatalogImage(file: File): Promise<UploadedImageAsset> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const uploadData = await apiRequest<{ url: string; filename: string }>("/uploads/", {
+    method: "POST",
+    body: formData,
+  });
+
+  const baseUrl = getResolvedApiOriginUrl();
+  const resolvedUrl = uploadData.url.startsWith("/static")
+    ? `${baseUrl}${uploadData.url}`
+    : uploadData.url;
+
+  return {
+    url: resolvedUrl,
+    filename: uploadData.filename,
+  };
 }
 
 function normalizeCategory(value: string | null | undefined): (typeof CATEGORY_OPTIONS)[number] {
@@ -2280,29 +2305,8 @@ export function CatalogView(): JSX.Element {
             error: undefined,
           }));
 
-          const formData = new FormData();
-          formData.append("file", item.file);
-
-          const normalizedApiUrl = getResolvedApiBaseUrl();
-          const baseUrl = getResolvedApiOriginUrl();
-          const headers: HeadersInit = {};
-          const accessToken = document.cookie
-            .split(";")
-            .map((entry) => entry.trim())
-            .find((entry) => entry.startsWith("kira_access_token="))
-            ?.split("=")[1];
-          if (accessToken) headers.Authorization = `Bearer ${decodeURIComponent(accessToken)}`;
-          const uploadRes = await fetch(`${normalizedApiUrl}/uploads/`, {
-            method: "POST",
-            headers,
-            body: formData,
-          });
-
-          if (!uploadRes.ok) throw new Error("Image upload failed.");
-          const uploadData = (await uploadRes.json()) as { url: string; filename: string };
-          const uploadedUrl = uploadData.url.startsWith("/static")
-            ? `${baseUrl}${uploadData.url}`
-            : uploadData.url;
+          const uploadedImage = await uploadCatalogImage(item.file);
+          const uploadedUrl = uploadedImage.url;
 
           const created = await apiRequest<ProductResponse>("/catalog/products", {
             method: "POST",
@@ -2326,7 +2330,7 @@ export function CatalogView(): JSX.Element {
           await apiRequest(`/catalog/products/${created.id}/images`, {
             method: "POST",
             body: JSON.stringify({
-              file_name: uploadData.filename,
+              file_name: uploadedImage.filename,
               file_url: uploadedUrl,
               mime_type: item.type,
               file_size_bytes: item.size,
@@ -3626,37 +3630,13 @@ export function CatalogView(): JSX.Element {
       if (selectedFile) {
         // 1a. New file selected: upload and analyze that file.
         setAnalysisStage("Uploading image...");
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-
-        const normalizedApiUrl = getResolvedApiBaseUrl();
-
-        const headers: HeadersInit = {};
-        const accessToken = document.cookie
-          .split(";")
-          .map((entry) => entry.trim())
-          .find((entry) => entry.startsWith("kira_access_token="))
-          ?.split("=")[1];
-
-        if (accessToken) {
-          headers["Authorization"] = `Bearer ${decodeURIComponent(accessToken)}`;
+        try {
+          const uploadedImage = await uploadCatalogImage(selectedFile);
+          imageSourceForLabel = uploadedImage.url;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Image upload failed.";
+          throw new Error(`Failed to upload image before analysis: ${message}`);
         }
-
-        const uploadRes = await fetch(`${normalizedApiUrl}/uploads/`, {
-          method: "POST",
-          headers,
-          body: formData,
-        });
-
-        if (!uploadRes.ok) {
-          throw new Error("Failed to upload image before analysis.");
-        }
-
-        const uploadData = (await uploadRes.json()) as { url: string; filename: string };
-        const baseUrl = getResolvedApiOriginUrl();
-        imageSourceForLabel = uploadData.url.startsWith("/static")
-          ? `${baseUrl}${uploadData.url}`
-          : uploadData.url;
         setAnalysisStage("Running AI vision analysis...");
         base64DataUrl = await fileToDataUrl(selectedFile);
       } else {
@@ -4043,55 +4023,28 @@ export function CatalogView(): JSX.Element {
       let imageUrl: string | undefined = undefined;
       if (selectedImageFileRef.current) {
         try {
-          const formData = new FormData();
-          formData.append("file", selectedImageFileRef.current);
+          const uploadedImage = await uploadCatalogImage(selectedImageFileRef.current);
+          imageUrl = uploadedImage.url;
 
-          const normalizedApiUrl = getResolvedApiBaseUrl();
-
-          const headers: HeadersInit = {};
-          const accessToken = document.cookie
-            .split(";")
-            .map((entry) => entry.trim())
-            .find((entry) => entry.startsWith("kira_access_token="))
-            ?.split("=")[1];
-
-          if (accessToken) {
-            headers["Authorization"] = `Bearer ${decodeURIComponent(accessToken)}`;
-          }
-
-          const uploadRes = await fetch(`${normalizedApiUrl}/uploads/`, {
+          // Create ProductImage record
+          const analysisPayload =
+            aiSuggestions || lastAnalyzedImageHash
+              ? {
+                  image_hash: aiSuggestions?.imageHash ?? lastAnalyzedImageHash ?? undefined,
+                  suggestions: aiSuggestions?.values ?? undefined,
+                  confidence: aiSuggestions?.confidence ?? undefined,
+                  source_context: aiSuggestions?.context ?? undefined,
+                }
+              : undefined;
+          await apiRequest<ProductImageResponse>(`/catalog/products/${response.id}/images`, {
             method: "POST",
-            headers,
-            body: formData,
+            body: JSON.stringify({
+              file_name: uploadedImage.filename,
+              file_url: imageUrl,
+              processing_status: "uploaded",
+              analysis: analysisPayload,
+            }),
           });
-
-          if (uploadRes.ok) {
-            const uploadData = (await uploadRes.json()) as { url: string; filename: string };
-            const baseUrl = getResolvedApiOriginUrl();
-            imageUrl = uploadData.url.startsWith("/static")
-              ? `${baseUrl}${uploadData.url}`
-              : uploadData.url;
-
-            // Create ProductImage record
-            const analysisPayload =
-              aiSuggestions || lastAnalyzedImageHash
-                ? {
-                    image_hash: aiSuggestions?.imageHash ?? lastAnalyzedImageHash ?? undefined,
-                    suggestions: aiSuggestions?.values ?? undefined,
-                    confidence: aiSuggestions?.confidence ?? undefined,
-                    source_context: aiSuggestions?.context ?? undefined,
-                  }
-                : undefined;
-            await apiRequest<ProductImageResponse>(`/catalog/products/${response.id}/images`, {
-              method: "POST",
-              body: JSON.stringify({
-                file_name: uploadData.filename,
-                file_url: imageUrl,
-                processing_status: "uploaded",
-                analysis: analysisPayload,
-              }),
-            });
-          }
         } catch (uploadError) {
           // Don't fail the whole save if image upload fails
           console.warn("Failed to upload image:", uploadError);
