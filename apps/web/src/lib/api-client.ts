@@ -1,7 +1,31 @@
 import { getResolvedApiBaseUrl } from "@/src/lib/api-url";
-import { setAuthCookies, type AuthTokens } from "@/src/lib/auth-cookie";
+import {
+  getStoredAccessToken,
+  getStoredRefreshToken,
+  setAuthCookies,
+  type AuthTokens,
+} from "@/src/lib/auth-cookie";
 
 let refreshTokenRequestInFlight: Promise<string | null> | null = null;
+
+function looksLikeJwt(value: string): boolean {
+  const parts = value.split(".");
+  return parts.length === 3 && parts.every((part) => part.length > 0);
+}
+
+function normalizeToken(value: string | null | undefined): string | null {
+  if (!value) return null;
+  let token = value.trim();
+  if (!token) return null;
+  if (token.startsWith('"') && token.endsWith('"') && token.length > 1) {
+    token = token.slice(1, -1).trim();
+  }
+  if (token.toLowerCase().startsWith("bearer ")) {
+    token = token.slice("bearer ".length).trim();
+  }
+  if (!token || token === "undefined" || token === "null") return null;
+  return token;
+}
 
 function getCookieValue(name: string): string | null {
   if (typeof document === "undefined") {
@@ -18,15 +42,31 @@ function getCookieValue(name: string): string | null {
     return null;
   }
 
-  // Prefer the latest non-empty value when duplicate cookies exist.
+  // Prefer JWT-like values first when duplicate cookies exist.
   for (let idx = matches.length - 1; idx >= 0; idx -= 1) {
     const entry = matches[idx];
     if (!entry) continue;
     const rawValue = entry.slice(prefix.length);
     if (!rawValue) continue;
     try {
-      const decoded = decodeURIComponent(rawValue).trim();
-      if (decoded) return decoded;
+      const decoded = decodeURIComponent(rawValue);
+      const normalized = normalizeToken(decoded);
+      if (normalized && looksLikeJwt(normalized)) return normalized;
+    } catch {
+      continue;
+    }
+  }
+
+  // Fallback: return any non-empty normalized value.
+  for (let idx = matches.length - 1; idx >= 0; idx -= 1) {
+    const entry = matches[idx];
+    if (!entry) continue;
+    const rawValue = entry.slice(prefix.length);
+    if (!rawValue) continue;
+    try {
+      const decoded = decodeURIComponent(rawValue);
+      const normalized = normalizeToken(decoded);
+      if (normalized) return normalized;
     } catch {
       continue;
     }
@@ -36,11 +76,11 @@ function getCookieValue(name: string): string | null {
 }
 
 function getAccessTokenFromCookie(): string | null {
-  return getCookieValue("kira_access_token");
+  return getCookieValue("kira_access_token") ?? normalizeToken(getStoredAccessToken());
 }
 
 function getRefreshTokenFromCookie(): string | null {
-  return getCookieValue("kira_refresh_token");
+  return getCookieValue("kira_refresh_token") ?? normalizeToken(getStoredRefreshToken());
 }
 
 async function refreshAccessToken(baseUrl: string): Promise<string | null> {
