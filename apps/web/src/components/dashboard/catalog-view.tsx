@@ -664,33 +664,6 @@ function pickOptionValue<T extends readonly string[]>(
   return match as T[number] | undefined;
 }
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const fileReader = new FileReader();
-    fileReader.readAsDataURL(file);
-    fileReader.onload = () => resolve(fileReader.result as string);
-    fileReader.onerror = () => reject(new Error("Could not read image file."));
-  });
-}
-
-async function imageUrlToDataUrl(imageUrl: string): Promise<string> {
-  const resolvedUrl = getImageUrl(imageUrl) ?? imageUrl;
-  if (resolvedUrl.startsWith("data:")) return resolvedUrl;
-
-  const response = await fetch(resolvedUrl);
-  if (!response.ok) {
-    throw new Error("Failed to load existing image for analysis.");
-  }
-
-  const blob = await response.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("Failed to process existing image for analysis."));
-  });
-}
-
 function UploadIcon(): JSX.Element {
   return (
     <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -2112,10 +2085,10 @@ export function CatalogView(): JSX.Element {
             error: undefined,
           }));
 
-          const base64DataUrl = await fileToDataUrl(item.file);
+          const uploadedImage = await uploadCatalogImage(item.file);
           const analysisRes = await apiRequest<AnalyzeImageApiResult>("/catalog/analyze-image", {
             method: "POST",
-            body: JSON.stringify(buildAnalyzeImageRequestPayload(base64DataUrl)),
+            body: JSON.stringify(buildAnalyzeImageRequestPayload(uploadedImage.url)),
           });
 
           const resolvedCategory = normalizeCategory(normalizeAiValue(analysisRes.category?.value));
@@ -3625,7 +3598,7 @@ export function CatalogView(): JSX.Element {
         throw new Error("You must be signed in to use AI analysis.");
       }
 
-      let base64DataUrl: string;
+      let analysisImageInput: string;
       let imageSourceForLabel = existingImageSource ?? "";
       if (selectedFile) {
         // 1a. New file selected: upload and analyze that file.
@@ -3633,28 +3606,23 @@ export function CatalogView(): JSX.Element {
         try {
           const uploadedImage = await uploadCatalogImage(selectedFile);
           imageSourceForLabel = uploadedImage.url;
+          analysisImageInput = uploadedImage.url;
         } catch (error) {
           const message = error instanceof Error ? error.message : "Image upload failed.";
           throw new Error(`Failed to upload image before analysis: ${message}`);
         }
         setAnalysisStage("Running AI vision analysis...");
-        base64DataUrl = await fileToDataUrl(selectedFile);
       } else {
         // 1b. Edit mode existing image: analyze currently displayed image.
         setAnalysisStage("Preparing existing image...");
-        try {
-          base64DataUrl = await imageUrlToDataUrl(existingImageSource as string);
-        } catch {
-          // Some existing image URLs can be blocked by browser fetch/CORS; fall back to URL input.
-          base64DataUrl = existingImageSource as string;
-        }
+        analysisImageInput = existingImageSource as string;
         setAnalysisStage("Running AI vision analysis...");
       }
 
       // 3. Call synchronous analyze-image endpoint
       const result = await apiRequest<AnalyzeImageApiResult>("/catalog/analyze-image", {
         method: "POST",
-        body: JSON.stringify(buildAnalyzeImageRequestPayload(base64DataUrl)),
+        body: JSON.stringify(buildAnalyzeImageRequestPayload(analysisImageInput)),
       });
 
       // 3. Populate form fields and confidence

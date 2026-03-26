@@ -199,21 +199,25 @@ Rules:
 4. Do not include explanations or markdown.
 """
 
-    def analyze_image(
+    def _build_catalog_analysis_prompt(
         self,
-        image_url: str,
         *,
-        allowed_options: dict[str, list[str]] | None = None,
-        correction_hints: list[dict[str, str]] | None = None,
-    ) -> dict[str, Any]:
-        """
-        Analyze a product image to extract structured data using GPT-4o.
-        Returns a dictionary with keys: category, style_name, color, fabric, composition, woven_knits
-        and optionally a confidence_score for each.
-        """
-        allowed_options_block = self._build_allowed_options_block(allowed_options)
-        correction_hints_block = self._build_correction_hints_block(correction_hints)
-        prompt = f"""
+        allowed_options_block: str,
+        correction_hints_block: str,
+        compact: bool,
+    ) -> str:
+        if compact:
+            return (
+                'Analyze this fashion product image and return JSON only. '
+                'Fields: category, style_name, color, fabric, composition, woven_knits. '
+                'Each field must be {"value":"", "confidence":0-100}. '
+                'Prefer runtime allowed options when visually plausible. '
+                f'Allowed options: {allowed_options_block}. '
+                f'Recent correction hints: {correction_hints_block}. '
+                'For woven_knits use "Knits" or "Woven".'
+            )
+
+        return f"""
 Analyze this fashion product image and extract structured data in JSON format.
 
 Fields:
@@ -247,11 +251,35 @@ Format strictly as:
 }}
 """
 
-        attempt_max_tokens = (500, 320, 220, 140)
+    def analyze_image(
+        self,
+        image_url: str,
+        *,
+        allowed_options: dict[str, list[str]] | None = None,
+        correction_hints: list[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Analyze a product image to extract structured data using GPT-4o.
+        Returns a dictionary with keys: category, style_name, color, fabric, composition, woven_knits
+        and optionally a confidence_score for each.
+        """
+        allowed_options_block = self._build_allowed_options_block(allowed_options)
+        correction_hints_block = self._build_correction_hints_block(correction_hints)
+        attempt_configs = (
+            {'max_tokens': 500, 'compact_prompt': False, 'image_detail': 'high'},
+            {'max_tokens': 320, 'compact_prompt': False, 'image_detail': 'low'},
+            {'max_tokens': 220, 'compact_prompt': True, 'image_detail': 'low'},
+            {'max_tokens': 140, 'compact_prompt': True, 'image_detail': 'low'},
+        )
         last_error: Exception | None = None
 
-        for index, max_tokens in enumerate(attempt_max_tokens):
-            has_more_attempts = index < len(attempt_max_tokens) - 1
+        for attempt_config in attempt_configs:
+            prompt = self._build_catalog_analysis_prompt(
+                allowed_options_block=allowed_options_block,
+                correction_hints_block=correction_hints_block,
+                compact=attempt_config['compact_prompt'],
+            )
+            has_more_attempts = attempt_config != attempt_configs[-1]
             try:
                 response = self.client.chat.completions.create(
                     model="gpt-4o",
@@ -264,13 +292,13 @@ Format strictly as:
                                     "type": "image_url",
                                     "image_url": {
                                         "url": image_url,
-                                        "detail": "high"
+                                        "detail": attempt_config['image_detail']
                                     },
                                 },
                             ],
                         }
                     ],
-                    max_tokens=max_tokens,
+                    max_tokens=attempt_config['max_tokens'],
                     response_format={"type": "json_object"}
                 )
 
@@ -281,10 +309,15 @@ Format strictly as:
                 return json.loads(content)
             except Exception as exc:
                 last_error = exc
-                if self._is_credit_limited_error(exc) and has_more_attempts:
+                prompt_too_large = self._is_prompt_token_limit_error(exc)
+                if (self._is_credit_limited_error(exc) or prompt_too_large) and has_more_attempts:
                     logger.warning(
-                        '[Catalog AI] Credit-limited at max_tokens=%s, retrying with a smaller budget.',
-                        max_tokens,
+                        '[Catalog AI] Retrying with compact prompt/low detail. '
+                        'reason=%s max_tokens=%s detail=%s compact=%s',
+                        'prompt_too_large' if prompt_too_large else 'credit_limited',
+                        attempt_config['max_tokens'],
+                        attempt_config['image_detail'],
+                        attempt_config['compact_prompt'],
                     )
                     continue
                 logger.exception('AI analysis failed')
