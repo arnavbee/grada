@@ -351,10 +351,43 @@ export function resolveFileUrl(fileUrl: string | null | undefined): string | nul
   if (!fileUrl) {
     return null;
   }
-  if (/^https?:\/\//i.test(fileUrl)) {
-    return fileUrl;
+
+  const raw = String(fileUrl).trim();
+  if (!raw) {
+    return null;
   }
-  return `${getResolvedApiOriginUrl()}${fileUrl}`;
+
+  const normalizeStaticPath = (pathValue: string): string => {
+    let normalized = pathValue.trim();
+    if (normalized.startsWith("/api/v1/static/")) {
+      normalized = normalized.replace(/^\/api\/v1/, "");
+    } else if (normalized.startsWith("api/v1/static/")) {
+      normalized = `/${normalized.replace(/^api\/v1/, "")}`;
+    } else if (normalized.startsWith("static/")) {
+      normalized = `/${normalized}`;
+    }
+    if (!normalized.startsWith("/")) {
+      normalized = `/${normalized}`;
+    }
+    return normalized;
+  };
+
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const parsed = new URL(raw);
+      const normalizedPath = normalizeStaticPath(parsed.pathname);
+      if (normalizedPath !== parsed.pathname) {
+        return `${parsed.origin}${normalizedPath}${parsed.search}${parsed.hash}`;
+      }
+    } catch {
+      // Fall through and return original URL.
+    }
+    return raw;
+  }
+
+  const normalizedPath = normalizeStaticPath(raw);
+  const apiOrigin = getResolvedApiOriginUrl().replace(/\/+$/, "");
+  return `${apiOrigin}${normalizedPath}`;
 }
 
 export async function getOptionalInvoice(receivedPoId: string): Promise<Invoice | null> {
