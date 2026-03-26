@@ -7,6 +7,7 @@ from datetime import timezone
 from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
+from urllib.parse import urlparse
 from urllib.request import urlopen
 from xml.sax.saxutils import escape
 
@@ -213,6 +214,14 @@ def _local_static_path_from_url(asset_url: str) -> Path | None:
         return STATIC_DIR / Path(asset_url.removeprefix('/static/'))
     if asset_url.startswith('static/'):
         return Path(asset_url)
+    try:
+        parsed = urlparse(asset_url)
+        if parsed.path.startswith('/static/'):
+            return STATIC_DIR / Path(parsed.path.removeprefix('/static/'))
+        if parsed.path.startswith('static/'):
+            return Path(parsed.path)
+    except Exception:
+        return None
     return None
 
 
@@ -1774,8 +1783,11 @@ def _stamp_flowable(stamp_image_url: str) -> PlatypusImage | Paragraph:
         return PlatypusImage(str(file_path), width=34 * mm, height=16 * mm)
 
     if stamp_image_url.startswith(('http://', 'https://')):
-        with urlopen(stamp_image_url, timeout=5) as response:  # noqa: S310
-            return PlatypusImage(BytesIO(response.read()), width=34 * mm, height=16 * mm)
+        try:
+            with urlopen(stamp_image_url, timeout=5) as response:  # noqa: S310
+                return PlatypusImage(BytesIO(response.read()), width=34 * mm, height=16 * mm)
+        except Exception:
+            return Paragraph('&nbsp;', _invoice_styles()['small'])
 
     return Paragraph('&nbsp;', _invoice_styles()['small'])
 

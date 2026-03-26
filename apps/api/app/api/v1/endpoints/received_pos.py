@@ -327,6 +327,52 @@ def _invoice_line_item_rows(
     return rows, total_quantity, subtotal, invoice_igst_amount, total_amount, total_amount_words
 
 
+def _invoice_details_from_record(
+    invoice: Invoice,
+    company_settings: CompanySettings | None,
+    received_po: ReceivedPO | None = None,
+) -> InvoiceDetails:
+    try:
+        return InvoiceDetails(**_json_loads(invoice.details_json))
+    except Exception:
+        return _default_invoice_details(company_settings, received_po)
+
+
+def _refresh_invoice_snapshot(
+    db: Session,
+    invoice: Invoice,
+    received_po: ReceivedPO,
+    company_settings: CompanySettings,
+    *,
+    details_override: InvoiceDetails | None = None,
+) -> None:
+    igst_rate = float(invoice.igst_rate or _get_default_igst_rate(company_settings))
+    invoice_details = details_override or _invoice_details_from_record(invoice, company_settings, received_po)
+    line_item_rows, total_quantity, subtotal, igst_amount, total_amount, total_amount_words = _invoice_line_item_rows(
+        received_po,
+        list(received_po.items),
+        company_settings,
+        igst_rate=igst_rate,
+    )
+    _apply_invoice_details_to_line_items(line_item_rows, invoice_details)
+
+    for existing_row in list(invoice.line_items):
+        db.delete(existing_row)
+    db.flush()
+
+    for row in line_item_rows:
+        row.invoice_id = invoice.id
+        db.add(row)
+
+    invoice.igst_rate = igst_rate
+    invoice.subtotal = subtotal
+    invoice.igst_amount = igst_amount
+    invoice.total_amount = total_amount
+    invoice.total_quantity = total_quantity
+    invoice.total_amount_words = total_amount_words
+    invoice.details_json = invoice_details.model_dump_json()
+
+
 def _get_invoice_or_404(db: Session, company_id: str, received_po_id: str) -> Invoice:
     record = db.query(Invoice).filter(
         Invoice.company_id == company_id,
@@ -653,6 +699,27 @@ def create_invoice_draft(
         Invoice.received_po_id == record.id,
     ).first()
     if existing is not None:
+        company_settings = _get_company_settings(db, current_user.company_id)
+        existing.number_of_cartons = payload.number_of_cartons
+        existing.export_mode = payload.export_mode
+        _refresh_invoice_snapshot(
+            db,
+            existing,
+            record,
+            company_settings,
+            details_override=payload.details,
+        )
+        if existing.status == 'final':
+            existing.status = 'draft'
+        log_audit(
+            db,
+            action='received_po.invoice.refresh',
+            user_id=current_user.id,
+            company_id=current_user.company_id,
+            metadata={'received_po_id': record.id, 'invoice_id': existing.id},
+        )
+        db.commit()
+        db.refresh(existing)
         return _to_invoice_response(existing)
 
     company_settings = _get_company_settings(db, current_user.company_id)
@@ -758,8 +825,11 @@ def generate_invoice_pdf_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles('admin', 'manager', 'operator')),
 ) -> InvoiceGeneratePdfResponse:
-    _get_received_po_or_404(db, current_user.company_id, received_po_id)
+    received_po = _get_received_po_or_404(db, current_user.company_id, received_po_id)
     invoice = _get_invoice_or_404(db, current_user.company_id, received_po_id)
+    company_settings = _get_company_settings(db, current_user.company_id)
+    _refresh_invoice_snapshot(db, invoice, received_po, company_settings)
+    invoice.status = 'draft'
     enqueue_processing_job(
         db,
         company_id=current_user.company_id,
