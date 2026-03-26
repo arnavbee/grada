@@ -44,7 +44,10 @@ def _get_po_request_or_404(db: Session, company_id: str, po_request_id: str) -> 
     return po_request
 
 
-@router.post('/', response_model=PORequestResponse, status_code=status.HTTP_201_CREATED)
+# Accept both `/po-requests` and `/po-requests/` because the web proxy can
+# normalize away the trailing slash.
+@router.post('', response_model=PORequestResponse, status_code=status.HTTP_201_CREATED)
+@router.post('/', response_model=PORequestResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 def create_po_request(
     *,
     db: Session = Depends(get_db),

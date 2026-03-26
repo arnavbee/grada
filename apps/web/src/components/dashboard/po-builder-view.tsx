@@ -363,7 +363,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
     setIsCreating(true);
     setErrorMessage(null);
     try {
-      const response = await apiRequest<PORequestResponse>("/po-requests/", {
+      const response = await apiRequest<PORequestResponse>("/po-requests", {
         method: "POST",
         body: JSON.stringify({ product_ids: Array.from(selectedProductIds) }),
       });

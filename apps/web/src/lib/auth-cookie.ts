@@ -7,8 +7,8 @@ export interface AuthTokens {
 const ACCESS_TOKEN_STORAGE_KEY = "kira_access_token";
 const REFRESH_TOKEN_STORAGE_KEY = "kira_refresh_token";
 
-function getCookieAttributes(maxAge: number): string {
-  const attributes = [`Path=/`, `Max-Age=${maxAge}`, `SameSite=Lax`];
+function getCookieAttributes(maxAge: number, extraAttributes: string[] = []): string {
+  const attributes = [`Path=/`, `Max-Age=${maxAge}`, `SameSite=Lax`, ...extraAttributes];
   if (typeof window !== "undefined" && window.location.protocol === "https:") {
     attributes.push("Secure");
   }
@@ -33,8 +33,22 @@ export function setAuthCookies(tokens: AuthTokens, rememberMe: boolean): void {
 }
 
 export function clearAuthCookies(): void {
-  document.cookie = `kira_access_token=; ${getCookieAttributes(0)}`;
-  document.cookie = `kira_refresh_token=; ${getCookieAttributes(0)}`;
+  const clearCookieEverywhere = (name: string): void => {
+    document.cookie = `${name}=; ${getCookieAttributes(0)}`;
+    document.cookie = `${name}=; ${getCookieAttributes(0, ["Path=/dashboard"])}`;
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      if (host) {
+        document.cookie = `${name}=; ${getCookieAttributes(0, [`Domain=${host}`])}`;
+        if (host.includes(".")) {
+          document.cookie = `${name}=; ${getCookieAttributes(0, [`Domain=.${host}`])}`;
+        }
+      }
+    }
+  };
+
+  clearCookieEverywhere("kira_access_token");
+  clearCookieEverywhere("kira_refresh_token");
 
   if (canUseStorage()) {
     window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
