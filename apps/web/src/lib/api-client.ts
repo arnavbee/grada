@@ -20,7 +20,9 @@ function getCookieValue(name: string): string | null {
 
   // Prefer the latest non-empty value when duplicate cookies exist.
   for (let idx = matches.length - 1; idx >= 0; idx -= 1) {
-    const rawValue = matches[idx].slice(prefix.length);
+    const entry = matches[idx];
+    if (!entry) continue;
+    const rawValue = entry.slice(prefix.length);
     if (!rawValue) continue;
     try {
       const decoded = decodeURIComponent(rawValue).trim();

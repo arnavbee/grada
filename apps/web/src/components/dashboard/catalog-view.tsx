@@ -425,7 +425,9 @@ function hasAccessToken(): boolean {
       .map((entry) => entry.trim())
       .filter((entry) => entry.startsWith(prefix));
     for (let idx = cookieEntries.length - 1; idx >= 0; idx -= 1) {
-      const value = cookieEntries[idx].slice(prefix.length).trim();
+      const entry = cookieEntries[idx];
+      if (!entry) continue;
+      const value = entry.slice(prefix.length).trim();
       if (value) return true;
     }
     return false;
