@@ -43,8 +43,13 @@ app.add_middleware(
 async def attach_auth_payload(request: Request, call_next):
     request.state.auth_payload = None
     auth_header = request.headers.get('Authorization', '')
+    fallback_header = request.headers.get('x-access-token', '')
+    token = ''
     if auth_header.startswith('Bearer '):
         token = auth_header.removeprefix('Bearer ').strip()
+    elif fallback_header:
+        token = fallback_header.removeprefix('Bearer ').strip() if fallback_header.startswith('Bearer ') else fallback_header.strip()
+    if token:
         try:
             request.state.auth_payload = decode_access_token(token)
         except TokenError:

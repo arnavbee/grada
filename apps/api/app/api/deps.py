@@ -18,13 +18,23 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 
 def get_current_user(
+    request: Request,
     db: DbSession,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security_scheme)],
 ) -> User:
-    if credentials is None:
+    token: str | None = None
+    if credentials is not None:
+        token = credentials.credentials.strip() if credentials.credentials else None
+
+    if not token:
+        fallback_header = request.headers.get('x-access-token', '').strip()
+        if fallback_header.lower().startswith('bearer '):
+            fallback_header = fallback_header.removeprefix('Bearer ').strip()
+        token = fallback_header or None
+
+    if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Authentication required.')
 
-    token = credentials.credentials
     try:
         payload = decode_access_token(token)
     except TokenError as exc:

@@ -141,6 +141,9 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
       }
       if (accessToken) {
         headers.set("Authorization", `Bearer ${accessToken}`);
+        if (!headers.has("X-Access-Token")) {
+          headers.set("X-Access-Token", accessToken);
+        }
       }
     }
 
@@ -170,6 +173,9 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
         retryHeaders.set("Content-Type", "application/json");
       }
       retryHeaders.set("Authorization", `Bearer ${refreshedAccessToken}`);
+      if (!retryHeaders.has("X-Access-Token")) {
+        retryHeaders.set("X-Access-Token", refreshedAccessToken);
+      }
       response = await fetch(`${resolvedBase}${path}`, {
         ...init,
         headers: retryHeaders,
