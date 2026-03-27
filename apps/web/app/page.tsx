@@ -7,40 +7,40 @@ import { FooterBrand } from "@/src/components/FooterBrand";
 
 const modules = [
   {
-    title: "Catalog System",
+    title: "Build Your Catalog",
     detail:
-      "Build clean style records with imagery, measurements, templates, and AI-assisted attributes that feed every downstream workflow.",
+      "Keep style data, imagery, measurements, and defaults in one place so your team stops rebuilding the same product details in every file.",
   },
   {
-    title: "PO Workbook Builder",
+    title: "Create Buyer-Ready POs",
     detail:
-      "Turn approved catalog styles into channel-ready colorway x size workbooks with reviewed attributes, ratios, and export-ready rows.",
+      "Turn approved styles into clean colorway x size workbooks faster, with less manual cleanup before you send them out.",
   },
   {
     title: "Received PO Review",
     detail:
-      "Upload the returned PO, review extracted line items, and lock the confirmed record before downstream document work starts.",
+      "Upload the PO you get back, review extracted line items once, and lock a clean source of truth before the rest of ops starts.",
   },
   {
-    title: "Documents + Templates",
+    title: "Generate Shipping Docs",
     detail:
-      "Generate barcode sheets, invoices, and packing lists from the same confirmed PO, with reusable sticker templates, brand defaults, and carton rules.",
+      "Create barcode sheets, invoices, packing lists, and sticker outputs from the same confirmed PO instead of retyping order data again.",
   },
 ];
 
 const metrics = [
-  { label: "Operating Layer", value: "Catalog → Builder → Review → Docs" },
-  { label: "Current Fit", value: "Apparel marketplace ops" },
-  { label: "Outputs", value: "Barcode / Invoice / Packing / Stickers" },
+  { label: "Less Rework", value: "One PO, reused everywhere" },
+  { label: "Fewer Mistakes", value: "Review before docs go out" },
+  { label: "Faster Output", value: "Barcode / Invoice / Packing" },
 ];
 
 const challengeAreas = [
-  "Catalog data scattered across chats, folders, and spreadsheets",
-  "Marketplace workbook rows still assembled manually in Excel",
-  "Colorway, size-ratio, and attribute mistakes slip into submission files",
-  "Returned POs get re-keyed before barcode, invoice, and packing work starts",
-  "Sticker layouts and barcode formats are rebuilt order by order",
-  "Brand defaults, carton rules, and document settings live in team memory",
+  "Style details live across chats, folders, and spreadsheets",
+  "PO sheets still get assembled by hand in Excel",
+  "Submission mistakes show up too late",
+  "Returned POs get typed again for every next step",
+  "Barcode, invoice, and packing files are made separately",
+  "Templates and defaults live in someone’s memory",
 ];
 
 const workflowSteps = [
@@ -52,17 +52,17 @@ const workflowSteps = [
   {
     title: "Build PO Workbook",
     detail:
-      "Expand approved styles into colorways and sizes, review attributes, and export the submission-ready workbook.",
+      "Expand approved styles into colorways and sizes, review key attributes, and get to a clean workbook faster.",
   },
   {
     title: "Review Received PO",
     detail:
-      "Upload the returned PO, review extracted line items, and confirm the approved source of truth.",
+      "Upload the returned PO, review the extracted lines, and confirm the version your team will use everywhere else.",
   },
   {
     title: "Generate Docs Fast",
     detail:
-      "Produce barcode sheets, invoices, packing lists, and sticker outputs from the same confirmed PO record.",
+      "Turn the same confirmed PO into barcode sheets, invoices, packing lists, and sticker outputs without duplicate work.",
   },
 ];
 
@@ -80,27 +80,29 @@ const contactChannels = [
 ];
 
 const tickerItems = [
-  "Catalog Templates",
-  "Workbook Export",
+  "Less Spreadsheet Rework",
+  "Cleaner PO Submission",
   "Received PO Review",
-  "Barcode & Sticker Templates",
+  "Barcode & Sticker Output",
   "Invoice & Packing Docs",
-  "Brand Defaults & Carton Rules",
+  "Shared Defaults & Templates",
 ];
 
 const coverageBlocks = [
   {
-    title: "Catalog foundation",
-    detail: "Styles, imagery, template controls, and review queues live in one place.",
-  },
-  {
-    title: "Builder workflow",
-    detail: "Colorways, size ratios, reviewed attributes, and export-ready rows stay connected.",
-  },
-  {
-    title: "Post-PO operations",
+    title: "Save time on every PO",
     detail:
-      "Confirmed POs drive barcodes, invoices, packing lists, sticker templates, and settings-backed defaults.",
+      "Set styles up once, then carry the same product data forward instead of rebuilding the sheet from scratch.",
+  },
+  {
+    title: "Catch issues earlier",
+    detail:
+      "Review returned PO data before it reaches barcode, invoice, and packing, when mistakes are cheaper to fix.",
+  },
+  {
+    title: "Keep ops in one place",
+    detail:
+      "Templates, carton rules, sticker layouts, and brand defaults stop living across random files and messages.",
   },
 ];
 
@@ -142,16 +144,16 @@ export default function LandingPage(): JSX.Element {
               className="mt-6 max-w-3xl text-3xl leading-tight md:text-5xl animate-fade-in-up"
               style={{ animationDelay: "800ms" }}
             >
-              One operating layer for catalog prep, PO workbooks, received-PO review, and downstream
-              documents.
+              Turn style data into buyer-ready POs and shipping docs, without rebuilding the same
+              spreadsheet twice.
             </p>
             <p
               className="mt-6 max-w-2xl text-kira-darkgray md:text-lg animate-fade-in-up"
               style={{ animationDelay: "1000ms" }}
             >
-              Grada helps fashion brands move from catalog style setup to workbook prep, then into
-              received-PO confirmation, barcode sheets, invoices, packing lists, and reusable
-              sticker workflows after the PO comes back.
+              Grada helps apparel teams move from catalog styles to clean PO workbooks, then from
+              returned POs to barcodes, invoices, packing lists, and sticker outputs from one
+              confirmed source.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link href="/dashboard">
@@ -178,8 +180,8 @@ export default function LandingPage(): JSX.Element {
               className="mt-6 text-sm text-kira-midgray animate-fade-in-up"
               style={{ animationDelay: "1200ms" }}
             >
-              Built for apparel teams running marketplace workflows, not generic back-office
-              software.
+              Built for brands that are tired of chasing details across Excel, chats, and shared
+              drives.
             </p>
           </div>
 
@@ -232,11 +234,10 @@ export default function LandingPage(): JSX.Element {
             <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
               Fashion Ops Focus
             </p>
-            <h2 className="mt-1 text-2xl">Built for Apparel Supply Workflows</h2>
+            <h2 className="mt-1 text-2xl">Made for the Messy Middle</h2>
           </div>
           <p className="text-sm text-kira-midgray">
-            Structured around how brands actually work with marketplace buyers and post-PO
-            operations
+            The part between product setup and shipping docs is where most teams still lose time
           </p>
         </div>
         <div className="mt-4 space-y-3">
@@ -275,13 +276,11 @@ export default function LandingPage(): JSX.Element {
       >
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-              Operational Coverage
-            </p>
-            <h2 className="mt-2 text-3xl">What Runs in Grada Today</h2>
+            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Why Teams Care</p>
+            <h2 className="mt-2 text-3xl">Less Copying. Fewer Fire Drills.</h2>
           </div>
           <p className="text-sm text-kira-midgray">
-            Current product surface, without filler metrics
+            The payoff is speed, clarity, and less avoidable cleanup
           </p>
         </div>
         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -303,10 +302,10 @@ export default function LandingPage(): JSX.Element {
           style={{ animationDelay: "260ms" }}
         >
           <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Common Challenges</p>
-          <h2 className="mt-2 text-3xl">Where Fashion Ops Break Down</h2>
+          <h2 className="mt-2 text-3xl">What Teams Are Trying to Escape</h2>
           <p className="mt-2 text-kira-darkgray">
-            Grada is designed around the work brands still do manually between catalog setup, PO
-            submission prep, and post-PO document generation.
+            Grada is built for the repeated manual work that slows teams down between catalog setup,
+            PO prep, and post-PO documentation.
           </p>
           <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {challengeAreas.map((challenge) => (
@@ -325,7 +324,7 @@ export default function LandingPage(): JSX.Element {
           style={{ animationDelay: "320ms" }}
         >
           <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Get Started</p>
-          <h2 className="mt-2 text-3xl">See If Grada Fits Your Workflow</h2>
+          <h2 className="mt-2 text-3xl">See Where Grada Saves Time First</h2>
           <p className="mt-2 text-kira-darkgray">
             Walk through your current catalog, workbook, and post-PO process with us and we&apos;ll
             show you where Grada fits fastest.
@@ -385,8 +384,8 @@ export default function LandingPage(): JSX.Element {
           <div>
             <h2>See grada in Action</h2>
             <p className="mt-1 text-kira-darkgray">
-              Open the live dashboard and move directly through catalog, workbook prep, received-PO
-              review, and document workflows.
+              Open the product and see how quickly your team can move from style setup to PO prep to
+              final documents.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -412,7 +411,7 @@ export default function LandingPage(): JSX.Element {
           <div>
             <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">grada</p>
             <p className="mt-1 text-kira-darkgray">
-              Catalog, PO prep, received-PO review, and downstream docs in one operating layer.
+              Less spreadsheet cleanup between catalog, PO prep, and shipping docs.
             </p>
           </div>
           <p className="text-sm text-kira-midgray">© 2026 grada. All rights reserved.</p>
