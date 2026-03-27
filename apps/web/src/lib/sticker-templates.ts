@@ -1,4 +1,5 @@
 import { apiRequest } from "@/src/lib/api-client";
+import { resolveAssetUrl } from "@/src/lib/asset-url";
 import { getResolvedApiBaseUrl, getResolvedApiOriginUrl } from "@/src/lib/api-url";
 
 export type StickerTemplateKind = "styli" | "custom";
@@ -154,11 +155,5 @@ export async function previewStickerTemplatePdf(templateId: string): Promise<Blo
 }
 
 export function resolveStickerAssetUrl(url: string | null | undefined): string | null {
-  if (!url) {
-    return null;
-  }
-  if (/^https?:\/\//i.test(url)) {
-    return url;
-  }
-  return `${getResolvedApiOriginUrl()}${url}`;
+  return resolveAssetUrl(url) ?? (url ? `${getResolvedApiOriginUrl()}${url}` : null);
 }

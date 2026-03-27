@@ -1,6 +1,4 @@
 "use client";
-
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -536,12 +534,11 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                   >
                     <div className="relative aspect-[4/5] bg-kira-warmgray/25">
                       {getProductImageUrl(product.primary_image_url) ? (
-                        <Image
+                        <img
                           alt={product.title}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                          fill
+                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                          loading="lazy"
                           src={getProductImageUrl(product.primary_image_url) ?? ""}
-                          unoptimized
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.2em] text-kira-darkgray/40">
@@ -629,12 +626,11 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                   <div className="flex gap-4">
                     <div className="relative h-28 w-24 overflow-hidden rounded-2xl bg-kira-warmgray/25">
                       {getProductImageUrl(item.product?.primary_image_url) ? (
-                        <Image
+                        <img
                           alt={item.product?.title || "Catalog style"}
-                          className="h-full w-full object-cover"
-                          fill
+                          className="absolute inset-0 h-full w-full object-cover"
+                          loading="lazy"
                           src={getProductImageUrl(item.product?.primary_image_url) ?? ""}
-                          unoptimized
                         />
                       ) : null}
                     </div>
@@ -916,12 +912,11 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                         <div className="space-y-4">
                           <div className="relative aspect-[4/5] overflow-hidden rounded-[24px] border border-kira-warmgray/70 bg-kira-warmgray/20">
                             {getProductImageUrl(item.product?.primary_image_url) ? (
-                              <Image
+                              <img
                                 alt={item.product?.title || "Catalog style"}
-                                className="h-full w-full object-cover"
-                                fill
+                                className="absolute inset-0 h-full w-full object-cover"
+                                loading="lazy"
                                 src={getProductImageUrl(item.product?.primary_image_url) ?? ""}
-                                unoptimized
                               />
                             ) : (
                               <div className="flex h-full items-center justify-center px-6 text-center text-xs uppercase tracking-[0.2em] text-kira-darkgray/45">

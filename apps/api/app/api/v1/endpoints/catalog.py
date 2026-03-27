@@ -3,7 +3,6 @@ import hashlib
 import io
 import json
 import re
-import zipfile
 from base64 import b64decode, b64encode
 from datetime import datetime, timezone
 from mimetypes import guess_type
@@ -14,6 +13,11 @@ from urllib.request import Request, urlopen
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from openpyxl import Workbook
+from openpyxl.drawing.image import Image as OpenpyxlImage
+from openpyxl.utils import get_column_letter
+from PIL import Image as PILImage
+from PIL import UnidentifiedImageError
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -66,7 +70,11 @@ from app.schemas.catalog import (
     ProductStatus,
     ProductUpdateRequest,
 )
-from app.services.ai import process_ai_correction_retraining, process_image_analysis_job, process_techpack_ocr_job
+from app.services.ai import (
+    process_ai_correction_retraining,
+    process_image_analysis_job,
+    process_techpack_ocr_job,
+)
 
 router = APIRouter(prefix='/catalog', tags=['catalog'])
 
@@ -709,95 +717,120 @@ def _generate_csv_bytes(headers: list[str], rows: list[list[str]]) -> bytes:
     return output.getvalue().encode('utf-8')
 
 
-def _excel_column_name(column_index: int) -> str:
-    result = ''
-    index = column_index
-    while index > 0:
-        index, remainder = divmod(index - 1, 26)
-        result = chr(65 + remainder) + result
-    return result
+def _resolve_export_image_path(image_url: str) -> Path | None:
+    normalized = image_url.strip()
+    if not normalized:
+        return None
+
+    for prefix in ('/api/v1/static/', 'api/v1/static/'):
+        if normalized.startswith(prefix):
+            suffix = normalized.split('/static/', 1)[-1]
+            candidate = API_STATIC_DIR / suffix
+            return candidate if candidate.exists() else None
+
+    for prefix in ('/static/', 'static/'):
+        if normalized.startswith(prefix):
+            suffix = normalized.split('static/', 1)[-1]
+            candidate = API_STATIC_DIR / suffix
+            return candidate if candidate.exists() else None
+
+    return None
 
 
-def _xml_escape(value: str) -> str:
-    return (
-        value.replace('&', '&amp;')
-        .replace('<', '&lt;')
-        .replace('>', '&gt;')
-        .replace('"', '&quot;')
-        .replace("'", '&apos;')
-    )
+def _load_export_image_bytes(image_url: str) -> bytes | None:
+    normalized = image_url.strip()
+    if not normalized:
+        return None
+
+    if normalized.startswith('data:'):
+        try:
+            _, payload = normalized.split(',', 1)
+        except ValueError:
+            return None
+        try:
+            return b64decode(payload.encode('utf-8'), validate=False)
+        except ValueError:
+            try:
+                return unquote_to_bytes(payload)
+            except Exception:
+                return None
+
+    local_path = _resolve_export_image_path(normalized)
+    if local_path is not None:
+        try:
+            return local_path.read_bytes()
+        except OSError:
+            return None
+
+    parsed = urlparse(normalized)
+    if parsed.scheme in {'http', 'https'}:
+        try:
+            request = Request(normalized, headers={'User-Agent': 'kira-export/1.0'})
+            with urlopen(request, timeout=10) as response:
+                return response.read()
+        except Exception:
+            return None
+
+    return None
 
 
-def _generate_xlsx_bytes(
-    headers: list[str],
-    rows: list[list[str]],
-    formula_cells: dict[tuple[int, int], str] | None = None,
-) -> bytes:
-    formulas = formula_cells or {}
-    all_rows = [headers, *rows]
-    sheet_rows: list[str] = []
-    for row_index, row in enumerate(all_rows, start=1):
-        cells: list[str] = []
-        for column_index, value in enumerate(row, start=1):
-            cell_ref = f'{_excel_column_name(column_index)}{row_index}'
-            formula = formulas.get((row_index, column_index))
-            if formula:
-                cells.append(f'<c r="{cell_ref}"><f>{_xml_escape(formula)}</f></c>')
-            else:
-                escaped = _xml_escape(value)
-                cells.append(
-                    f'<c r="{cell_ref}" t="inlineStr"><is><t xml:space="preserve">{escaped}</t></is></c>'
-                )
-        sheet_rows.append(f'<row r="{row_index}">{"".join(cells)}</row>')
+def _build_export_workbook_image(image_url: str) -> OpenpyxlImage | None:
+    raw_bytes = _load_export_image_bytes(image_url)
+    if not raw_bytes:
+        return None
+    try:
+        with PILImage.open(io.BytesIO(raw_bytes)) as source:
+            source.load()
+            prepared = source.convert('RGBA') if source.mode not in {'RGB', 'RGBA'} else source.copy()
+            prepared.thumbnail((96, 96))
+            output = io.BytesIO()
+            prepared.save(output, format='PNG')
+    except (OSError, UnidentifiedImageError, ValueError):
+        return None
 
-    sheet_xml = (
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-        f'<sheetData>{"".join(sheet_rows)}</sheetData>'
-        '</worksheet>'
-    )
-    workbook_xml = (
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
-        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-        '<sheets><sheet name="Export" sheetId="1" r:id="rId1"/></sheets>'
-        '</workbook>'
-    )
-    content_types_xml = (
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
-        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
-        '<Default Extension="xml" ContentType="application/xml"/>'
-        '<Override PartName="/xl/workbook.xml" '
-        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-        '<Override PartName="/xl/worksheets/sheet1.xml" '
-        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
-        '</Types>'
-    )
-    root_rels_xml = (
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-        '<Relationship Id="rId1" '
-        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
-        'Target="xl/workbook.xml"/>'
-        '</Relationships>'
-    )
-    workbook_rels_xml = (
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-        '<Relationship Id="rId1" '
-        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
-        'Target="worksheets/sheet1.xml"/>'
-        '</Relationships>'
-    )
+    output.seek(0)
+    image = OpenpyxlImage(output)
+    image.width = min(image.width, 96)
+    image.height = min(image.height, 96)
+    image._data_stream = output  # keep stream alive until workbook save
+    return image
+
+
+def _generate_xlsx_bytes(headers: list[str], rows: list[list[str]]) -> bytes:
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = 'Export'
+    sheet.append(headers)
+
+    image_preview_column: int | None = None
+    for column_index, header in enumerate(headers, start=1):
+        normalized_header = header.strip().lower()
+        if normalized_header in {'image preview', 'image-preview'}:
+            image_preview_column = column_index
+        width = 20 if normalized_header in {'image preview', 'image-preview'} else 28
+        if normalized_header in {'primary image url', 'main-image-url'}:
+            width = 42
+        sheet.column_dimensions[get_column_letter(column_index)].width = width
+
+    for row_index, row in enumerate(rows, start=2):
+        sheet.append(row)
+        if image_preview_column is None:
+            continue
+        image_url = row[image_preview_column - 1]
+        if not image_url:
+            continue
+        embedded_image = _build_export_workbook_image(image_url)
+        if embedded_image is None:
+            continue
+        cell_ref = f'{get_column_letter(image_preview_column)}{row_index}'
+        sheet.row_dimensions[row_index].height = 76
+        sheet.add_image(embedded_image, cell_ref)
+
+    sheet.freeze_panes = 'A2'
+    sheet.auto_filter.ref = f'A1:{get_column_letter(len(headers))}{sheet.max_row}'
 
     buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, mode='w', compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr('[Content_Types].xml', content_types_xml)
-        archive.writestr('_rels/.rels', root_rels_xml)
-        archive.writestr('xl/workbook.xml', workbook_xml)
-        archive.writestr('xl/_rels/workbook.xml.rels', workbook_rels_xml)
-        archive.writestr('xl/worksheets/sheet1.xml', sheet_xml)
+    workbook.save(buffer)
     return buffer.getvalue()
 
 
@@ -808,27 +841,14 @@ def _build_export_file(
     columns: tuple[tuple[str, str], ...] = template['columns']
     headers = [column[0] for column in columns]
     rows: list[list[str]] = []
-    formula_cells: dict[tuple[int, int], str] = {}
     for product in products:
         fields = _extract_export_fields(product, primary_image_map.get(product.id, ''))
         data_row = [fields.get(column_key, '') for _, column_key in columns]
         rows.append(data_row)
 
-    if export_format == 'xlsx':
-        for data_row_index, data_row in enumerate(rows):
-            excel_row_index = data_row_index + 2  # +1 for 1-indexing, +1 for header row
-            for column_index, (_, column_key) in enumerate(columns, start=1):
-                if column_key != 'image_preview':
-                    continue
-                image_url = data_row[column_index - 1]
-                if not image_url:
-                    continue
-                escaped_url = image_url.replace('"', '""')
-                formula_cells[(excel_row_index, column_index)] = f'IMAGE("{escaped_url}")'
-
     if export_format == 'csv':
         return _generate_csv_bytes(headers, rows), len(rows)
-    return _generate_xlsx_bytes(headers, rows, formula_cells), len(rows)
+    return _generate_xlsx_bytes(headers, rows), len(rows)
 
 
 def _write_export_file(content: bytes, marketplace_key: str, export_format: str) -> str:

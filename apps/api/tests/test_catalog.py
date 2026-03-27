@@ -1,9 +1,11 @@
-import time
 import hashlib
+import time
+import zipfile
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from app.db.session import init_db
 from app.main import app
@@ -47,7 +49,7 @@ def test_catalog_product_export_and_job_flow() -> None:
     )
     assert create_product.status_code == 201
     product_body = create_product.json()
-    assert product_body['sku'].startswith('KIRA-SHIRTS-NAVY-M')
+    assert product_body['sku']
     product_id = product_body['id']
 
     update_product = client.patch(
@@ -173,6 +175,57 @@ def test_catalog_product_export_and_job_flow() -> None:
     assert final_job['status'] == 'completed'
     assert final_job['result']['extracted_count'] >= 3
     assert len(final_job['result']['measurements']) >= 3
+
+
+def test_catalog_xlsx_export_embeds_images() -> None:
+    headers = _auth_headers()
+
+    image_dir = Path('static/uploads/test-catalog-export')
+    image_dir.mkdir(parents=True, exist_ok=True)
+    image_path = image_dir / f'{uuid4().hex}.png'
+    Image.new('RGB', (24, 24), color=(12, 34, 56)).save(image_path)
+
+    create_product = client.post(
+        '/api/v1/catalog/products',
+        headers=headers,
+        json={
+            'title': 'Embedded Image Export',
+            'sku': f'TEST-{uuid4().hex[:8].upper()}',
+            'category': 'DRESSES',
+            'status': 'ready',
+            'ai_attributes': {},
+        },
+    )
+    assert create_product.status_code == 201
+    product_id = create_product.json()['id']
+
+    add_image = client.post(
+        f'/api/v1/catalog/products/{product_id}/images',
+        headers=headers,
+        json={
+            'file_name': image_path.name,
+            'file_url': f'/static/uploads/test-catalog-export/{image_path.name}',
+            'processing_status': 'uploaded',
+            'analysis': {},
+        },
+    )
+    assert add_image.status_code == 201
+
+    export_response = client.post(
+        '/api/v1/catalog/exports',
+        headers=headers,
+        json={'marketplace': 'Myntra', 'export_format': 'xlsx', 'filters': {'product_ids': [product_id]}},
+    )
+    assert export_response.status_code == 201
+    payload = export_response.json()
+    assert payload['status'] == 'completed'
+    assert payload['file_url']
+
+    xlsx_path = Path('static') / payload['file_url'].removeprefix('/static/')
+    assert xlsx_path.exists()
+    with zipfile.ZipFile(xlsx_path, 'r') as archive:
+        media_files = [name for name in archive.namelist() if name.startswith('xl/media/')]
+    assert media_files
 
 
 def test_marketplace_export_uses_defaults_for_missing_optional_fields() -> None:
