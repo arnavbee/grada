@@ -25,6 +25,7 @@ __pycache__/
 
 # Generated exports
 apps/api/static/exports/
+apps/api/static/generated/
 
 # Local/generated runtime artifacts
 apps/web/.next-dev/

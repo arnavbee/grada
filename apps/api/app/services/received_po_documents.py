@@ -1251,7 +1251,7 @@ def _invoice_pdf_lines(
     address = str(brand_profile.get('address') or '-')
     gst_number = str(brand_profile.get('gst_number') or '-')
     pan_number = str(brand_profile.get('pan_number') or '-')
-    bill_to = str(brand_profile.get('bill_to_address') or 'Styli')
+    bill_to = str(brand_profile.get('bill_to_address') or '')
     ship_to = str(brand_profile.get('ship_to_address') or bill_to)
 
     lines = [
