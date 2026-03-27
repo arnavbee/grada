@@ -938,7 +938,7 @@ def _generate_sku(db: Session, company_id: str, company_settings: CompanySetting
     return _generate_default_catalog_style_no(db, company_id, payload.category)
 
 
-def _to_product_response(product: Product) -> ProductResponse:
+def _to_product_response(product: Product, *, primary_image_url: str | None = None) -> ProductResponse:
     return ProductResponse(
         id=product.id,
         company_id=product.company_id,
@@ -955,7 +955,7 @@ def _to_product_response(product: Product) -> ProductResponse:
         created_by_user_id=product.created_by_user_id,
         created_at=product.created_at,
         updated_at=product.updated_at,
-        primary_image_url=getattr(product, 'primary_image_url', None),
+        primary_image_url=primary_image_url,
     )
 
 
@@ -1316,37 +1316,13 @@ def list_products(
         query = query.filter(Product.status == status_filter)
 
     total = query.count()
-    # Join with ProductImage to get the first image for each product
-    # We use a subquery or a strategic join. For simplicity in MVP, we might just join and group by.
-    # OR, we can use a separate query or an eager load if relation is defined.
-    # Since Product model doesn't seem to have the relationship defined in what I viewed,
-    # I will fetch images separately or use a subquery.
-    
-    # Efficient approach: Fetch products, then fetch primary images for these products.
-    total = query.count()
     rows = query.order_by(Product.updated_at.desc()).offset(offset).limit(limit).all()
-    
-    if rows:
-        product_ids = [str(r.id) for r in rows]
-        # Fetch one image per product (limit 1 per product is hard in common SQL without window functions)
-        # We'll just fetch all images for these products and pick one in python for now.
-        images = db.query(ProductImage).filter(
-            ProductImage.product_id.in_(product_ids),
-            ProductImage.company_id == current_user.company_id
-        ).order_by(ProductImage.created_at.asc()).all()
-        image_map = {}
-        for img in images:
-            # Ensure both keys are strings for consistent comparison
-            product_id_str = str(img.product_id)
-            if product_id_str not in image_map:
-                image_map[product_id_str] = img.file_url
-        
-        for row in rows:
-            # Attach dynamic attribute - ensure row.id is string for lookup
-            row_id_str = str(row.id)
-            row.primary_image_url = image_map.get(row_id_str)
+    image_map = _build_primary_image_map(db, current_user.company_id, [row.id for row in rows])
 
-    return ProductListResponse(items=[_to_product_response(row) for row in rows], total=total)
+    return ProductListResponse(
+        items=[_to_product_response(row, primary_image_url=image_map.get(row.id)) for row in rows],
+        total=total,
+    )
 
 
 @router.post('/products', response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
@@ -1399,14 +1375,8 @@ def create_product(payload: ProductCreateRequest, db: DbSession, current_user: W
 @router.get('/products/{product_id}', response_model=ProductResponse)
 def get_product(product_id: str, db: DbSession, current_user: ReadUser) -> ProductResponse:
     product = _get_company_product_or_404(db, current_user.company_id, product_id)
-    # Fetch primary image URL - get the first image for this product
-    primary_image = db.query(ProductImage).filter(
-        ProductImage.product_id == product_id,
-        ProductImage.company_id == current_user.company_id
-    ).order_by(ProductImage.created_at.asc()).first()
-    if primary_image:
-        product.primary_image_url = primary_image.file_url
-    return _to_product_response(product)
+    image_map = _build_primary_image_map(db, current_user.company_id, [product.id])
+    return _to_product_response(product, primary_image_url=image_map.get(product.id))
 
 
 @router.patch('/products/{product_id}', response_model=ProductResponse)
@@ -1443,7 +1413,8 @@ def update_product(
     )
     db.commit()
     db.refresh(product)
-    return _to_product_response(product)
+    image_map = _build_primary_image_map(db, current_user.company_id, [product.id])
+    return _to_product_response(product, primary_image_url=image_map.get(product.id))
 
 
 @router.delete('/products/{product_id}', status_code=status.HTTP_204_NO_CONTENT)

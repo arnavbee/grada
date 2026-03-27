@@ -439,3 +439,42 @@ def test_catalog_template_crud_and_style_pattern() -> None:
 
     delete_template = client.delete(f'/api/v1/catalog/templates/{template_id}', headers=headers)
     assert delete_template.status_code == 204
+
+
+def test_product_detail_and_list_include_primary_image_url() -> None:
+    headers = _auth_headers()
+
+    create_product = client.post(
+        '/api/v1/catalog/products',
+        headers=headers,
+        json={
+            'title': 'Primary Image Test',
+            'sku': f'TEST-{uuid4().hex[:8].upper()}',
+            'category': 'DRESSES',
+            'status': 'draft',
+            'ai_attributes': {},
+        },
+    )
+    assert create_product.status_code == 201
+    product_id = create_product.json()['id']
+
+    add_image = client.post(
+        f'/api/v1/catalog/products/{product_id}/images',
+        headers=headers,
+        json={
+            'file_name': 'primary-image.png',
+            'file_url': 'https://cdn.example.com/primary-image.png',
+            'processing_status': 'uploaded',
+            'analysis': {},
+        },
+    )
+    assert add_image.status_code == 201
+
+    product_detail = client.get(f'/api/v1/catalog/products/{product_id}', headers=headers)
+    assert product_detail.status_code == 200
+    assert product_detail.json()['primary_image_url'] == 'https://cdn.example.com/primary-image.png'
+
+    products = client.get('/api/v1/catalog/products', headers=headers)
+    assert products.status_code == 200
+    matching = next(item for item in products.json()['items'] if item['id'] == product_id)
+    assert matching['primary_image_url'] == 'https://cdn.example.com/primary-image.png'

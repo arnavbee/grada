@@ -587,6 +587,70 @@ function buildAiAttributesFromRow(
   };
 }
 
+function mapProductResponseToCatalogRow(
+  product: ProductResponse,
+  fallback: CatalogRow,
+  options: {
+    imageUrl?: string;
+    imageName?: string;
+  } = {},
+): CatalogRow {
+  const attributes = product.ai_attributes ?? {};
+  const attrFabric = typeof attributes.fabric === "string" ? attributes.fabric : fallback.fabric;
+  const attrComposition =
+    typeof attributes.composition === "string" ? attributes.composition : fallback.composition;
+  const attrWovenKnitsRaw =
+    typeof attributes.woven_knits === "string"
+      ? attributes.woven_knits
+      : typeof attributes.wovenKnits === "string"
+        ? attributes.wovenKnits
+        : fallback.wovenKnits;
+  const attrUnits = attributes.units;
+  const attrPoPrice = attributes.po_price ?? attributes.poPrice;
+  const attrOsp = attributes.osp ?? attributes.osp_sar ?? attributes.ospSar;
+
+  return {
+    ...fallback,
+    id: product.id,
+    primary_image_url: options.imageUrl ?? product.primary_image_url ?? fallback.primary_image_url,
+    styleNo: product.sku,
+    name: product.title || fallback.name,
+    category: normalizeCategory(product.category ?? fallback.category),
+    color: product.color ?? fallback.color,
+    fabric:
+      typeof attrFabric === "string" && attrFabric.trim() ? attrFabric.trim() : fallback.fabric,
+    composition:
+      typeof attrComposition === "string" && attrComposition.trim()
+        ? attrComposition.trim()
+        : fallback.composition,
+    wovenKnits:
+      typeof attrWovenKnitsRaw === "string" && attrWovenKnitsRaw.trim()
+        ? attrWovenKnitsRaw.trim()
+        : fallback.wovenKnits,
+    units:
+      typeof attrUnits === "number"
+        ? String(attrUnits)
+        : typeof attrUnits === "string" && attrUnits.trim()
+          ? attrUnits.trim()
+          : fallback.units,
+    poPrice:
+      typeof attrPoPrice === "number"
+        ? String(attrPoPrice)
+        : typeof attrPoPrice === "string" && attrPoPrice.trim()
+          ? attrPoPrice.trim()
+          : fallback.poPrice,
+    price:
+      typeof attrOsp === "number"
+        ? formatSarPrice(attrOsp)
+        : typeof attrOsp === "string" && attrOsp.trim()
+          ? formatSarPrice(parseSarPrice(attrOsp))
+          : fallback.price,
+    status: product.status as CatalogStatus,
+    persisted: true,
+    imageName: options.imageName ?? fallback.imageName,
+  };
+}
+
 function buildDuplicateStyleNo(baseStyleNo: string, existingStyleNos: Set<string>): string {
   const normalizedBase =
     baseStyleNo
@@ -3884,6 +3948,13 @@ export function CatalogView(): JSX.Element {
       price: `SAR ${itemOspSar}`,
       imageName: itemImageName || itemStyleName,
     };
+    const modalCatalogRow: CatalogRow = {
+      id: editingRowId ?? pendingAnalyzeProductId ?? `draft-${Date.now()}`,
+      primary_image_url: imagePreviewUrl ?? undefined,
+      ...modalRowPayload,
+      status: "draft",
+      persisted: true,
+    };
 
     if (isEditMode && editingRowId) {
       const existingRow = catalogRows.find((row) => row.id === editingRowId);
@@ -3913,25 +3984,21 @@ export function CatalogView(): JSX.Element {
             category: itemCategory,
             color: itemColor,
             status: existingRow.status,
+            ai_attributes: buildAiAttributesFromRow({
+              ...modalCatalogRow,
+              id: existingRow.id,
+              status: existingRow.status,
+            }),
           }),
         });
+        const savedProduct = await apiRequest<ProductResponse>(`/catalog/products/${editingRowId}`);
+        const savedRow = mapProductResponseToCatalogRow(savedProduct, {
+          ...existingRow,
+          ...modalRowPayload,
+          status: response.status as CatalogStatus,
+        });
 
-        setCatalogRows((rows) =>
-          rows.map((row) =>
-            row.id === editingRowId
-              ? {
-                  ...row,
-                  ...modalRowPayload,
-                  styleNo: response.sku,
-                  name: response.title,
-                  category: normalizeCategory(response.category ?? itemCategory),
-                  color: response.color ?? itemColor,
-                  status: response.status as CatalogStatus,
-                  persisted: true,
-                }
-              : row,
-          ),
-        );
+        setCatalogRows((rows) => rows.map((row) => (row.id === editingRowId ? savedRow : row)));
         setCatalogNotice("Item updated successfully.");
         closeAddModal();
       } catch (error) {
@@ -3967,6 +4034,7 @@ export function CatalogView(): JSX.Element {
               category: itemCategory,
               color: itemColor,
               status: "draft",
+              ai_attributes: buildAiAttributesFromRow(modalCatalogRow),
             }),
           })
         : await apiRequest<ProductResponse>("/catalog/products", {
@@ -3977,6 +4045,7 @@ export function CatalogView(): JSX.Element {
               category: itemCategory,
               color: itemColor,
               status: "draft",
+              ai_attributes: buildAiAttributesFromRow(modalCatalogRow),
             }),
           });
 
@@ -4011,24 +4080,12 @@ export function CatalogView(): JSX.Element {
           console.warn("Failed to upload image:", uploadError);
         }
       }
+      const savedProduct = await apiRequest<ProductResponse>(`/catalog/products/${response.id}`);
 
-      const createdRow: CatalogRow = {
-        id: response.id,
-        primary_image_url: imageUrl,
-        styleNo: response.sku,
-        name: response.title,
-        category: normalizeCategory(response.category ?? itemCategory),
-        color: response.color ?? itemColor,
-        fabric: modalRowPayload.fabric,
-        composition: modalRowPayload.composition,
-        wovenKnits: modalRowPayload.wovenKnits,
-        units: modalRowPayload.units,
-        poPrice: modalRowPayload.poPrice,
-        price: modalRowPayload.price,
-        status: response.status as CatalogStatus,
-        persisted: true,
+      const createdRow = mapProductResponseToCatalogRow(savedProduct, modalCatalogRow, {
+        imageUrl,
         imageName: modalRowPayload.imageName,
-      };
+      });
 
       setCatalogRows((rows) => [createdRow, ...rows]);
       setCatalogNotice("Item saved to catalog.");
