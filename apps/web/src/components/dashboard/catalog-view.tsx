@@ -19,6 +19,7 @@ import { cn } from "@/src/lib/cn";
 
 type CatalogStatus = "draft" | "processing" | "needs_review" | "ready" | "archived";
 type UploadStatus = "queued" | "uploading" | "completed" | "completed_local" | "failed";
+type UploadAnalysisMode = "manual" | "ai";
 type ExportFormat = "csv" | "xlsx";
 type ExportStatus = "queued" | "processing" | "completed" | "failed";
 type AiFieldKey = "category" | "styleName" | "color" | "fabric" | "composition" | "wovenKnits";
@@ -212,6 +213,22 @@ interface CatalogRow {
   imageName?: string;
 }
 
+interface UploadAnalysis {
+  styleNo: string;
+  styleName: string;
+  category: string;
+  color: string;
+  fabric: string;
+  composition: string;
+  wovenKnits: string;
+  units: string;
+  poPrice: string;
+  ospSar: string;
+  confidence: number;
+  needsReview: boolean;
+  mode: UploadAnalysisMode;
+}
+
 interface UploadItem {
   id: string;
   name: string;
@@ -222,21 +239,9 @@ interface UploadItem {
   file?: File;
   error?: string;
   previewUrl?: string;
-  analysis?: {
-    styleNo: string;
-    styleName: string;
-    category: string;
-    color: string;
-    fabric: string;
-    composition: string;
-    wovenKnits: string;
-    units: string;
-    poPrice: string;
-    ospSar: string;
-    confidence: number;
-    needsReview: boolean;
-  };
+  analysis?: UploadAnalysis;
   approved?: boolean;
+  analyzeWithAi?: boolean;
 }
 
 interface ProductImageResponse {
@@ -467,6 +472,14 @@ function normalizeCategory(value: string | null | undefined): (typeof CATEGORY_O
     return "CORD SETS";
   if (normalized.includes("CORD")) return "CORD SETS";
   return "DRESSES";
+}
+
+function deriveStyleNameFromFileName(fileName: string): string {
+  const stem = fileName
+    .replace(/\.[^.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .trim();
+  return stem || "Bulk Item";
 }
 
 function formatStatusLabel(status: CatalogStatus): string {
@@ -980,6 +993,7 @@ export function CatalogView(): JSX.Element {
   const [isUploadProcessing, setIsUploadProcessing] = useState(false);
   const [isBulkAnalyzing, setIsBulkAnalyzing] = useState(false);
   const [isBulkReviewOpen, setIsBulkReviewOpen] = useState(false);
+  const [bulkAnalyzeAllEnabled, setBulkAnalyzeAllEnabled] = useState(true);
   const [bulkReviewFilter, setBulkReviewFilter] = useState<
     "all" | "ready" | "needs_review" | "approved" | "failed"
   >("all");
@@ -2023,12 +2037,12 @@ export function CatalogView(): JSX.Element {
   }, [uploadItems, bulkReviewFilter, bulkReviewQuery]);
 
   const bulkReviewStats = useMemo(() => {
-    const analyzed = uploadItems.filter((item) => Boolean(item.analysis));
-    const ready = analyzed.filter((item) => item.analysis && !item.analysis.needsReview).length;
-    const needsReview = analyzed.filter((item) => item.analysis?.needsReview).length;
-    const approved = analyzed.filter((item) => item.approved).length;
+    const prepared = uploadItems.filter((item) => Boolean(item.analysis));
+    const ready = prepared.filter((item) => item.analysis && !item.analysis.needsReview).length;
+    const needsReview = prepared.filter((item) => item.analysis?.needsReview).length;
+    const approved = prepared.filter((item) => item.approved).length;
     const failed = uploadItems.filter((item) => item.status === "failed").length;
-    return { analyzed: analyzed.length, ready, needsReview, approved, failed };
+    return { prepared: prepared.length, ready, needsReview, approved, failed };
   }, [uploadItems]);
 
   const isEditMode = editingRowId !== null;
@@ -2039,15 +2053,13 @@ export function CatalogView(): JSX.Element {
 
   function updateUploadAnalysisField(
     itemId: string,
-    field: keyof NonNullable<UploadItem["analysis"]>,
+    field: keyof UploadAnalysis,
     value: string | number | boolean,
   ): void {
     setUploadItems((items) =>
       items.map((item) => {
         if (item.id !== itemId || !item.analysis) return item;
-        const nextAnalysis = { ...item.analysis, [field]: value } as NonNullable<
-          UploadItem["analysis"]
-        >;
+        const nextAnalysis = { ...item.analysis, [field]: value } as UploadAnalysis;
         if (field === "confidence") {
           nextAnalysis.needsReview = Number(nextAnalysis.confidence) < 82;
         }
@@ -2058,6 +2070,192 @@ export function CatalogView(): JSX.Element {
         return { ...item, analysis: nextAnalysis };
       }),
     );
+  }
+
+  function toggleUploadAnalyzeWithAi(itemId: string): void {
+    setUploadItems((items) =>
+      items.map((item) =>
+        item.id === itemId ? { ...item, analyzeWithAi: !(item.analyzeWithAi ?? true) } : item,
+      ),
+    );
+  }
+
+  async function generateBulkStyleCode(category: string): Promise<string> {
+    if (!hasAccessToken()) {
+      return `TEMP${Date.now().toString().slice(-6)}`;
+    }
+
+    try {
+      const styleRes = await apiRequest<{ style_code: string }>("/catalog/generate-style-code", {
+        method: "POST",
+        body: JSON.stringify({
+          brand: companyBrand,
+          category,
+          pattern: activeTemplate?.style_code_pattern ?? undefined,
+        }),
+      });
+      return styleRes.style_code;
+    } catch {
+      return `TEMP${Date.now().toString().slice(-6)}`;
+    }
+  }
+
+  function buildUploadAnalysisDraft(
+    item: UploadItem,
+    styleNo: string,
+    mode: UploadAnalysisMode,
+    overrides?: Partial<UploadAnalysis>,
+  ): UploadAnalysis {
+    const defaultCategory = normalizeCategory(activeTemplate?.defaults?.category);
+    const defaultStyleName =
+      activeTemplate?.defaults?.styleName || deriveStyleNameFromFileName(item.name);
+    const defaultColor = activeTemplate?.defaults?.color || seasonalRecommendation.color;
+    const defaultFabric = activeTemplate?.defaults?.fabric || seasonalRecommendation.fabric;
+    const defaultComposition = activeTemplate?.defaults?.composition || bulkComposition;
+    const defaultWovenKnits = activeTemplate?.defaults?.wovenKnits || bulkWovenKnits;
+    const defaultUnits = activeTemplate?.defaults?.units || TOTAL_UNITS_OPTIONS[0];
+    const defaultPoPrice = activeTemplate?.defaults?.poPrice || bulkPoPrice;
+    const defaultOspSar = activeTemplate?.defaults?.ospSar || bulkOspSar;
+
+    return {
+      styleNo,
+      styleName: defaultStyleName,
+      category: defaultCategory,
+      color: defaultColor,
+      fabric: defaultFabric,
+      composition: defaultComposition,
+      wovenKnits: defaultWovenKnits,
+      units: defaultUnits,
+      poPrice: defaultPoPrice,
+      ospSar: defaultOspSar,
+      confidence: mode === "ai" ? 0 : 100,
+      needsReview: mode === "ai",
+      mode,
+      ...overrides,
+    };
+  }
+
+  async function ensureManualDraftForItem(itemId: string): Promise<void> {
+    const item =
+      queueRef.current.find((entry) => entry.id === itemId) ??
+      uploadItems.find((entry) => entry.id === itemId);
+    if (!item || item.analysis || item.status === "failed" || item.status === "completed") return;
+    const category = normalizeCategory(activeTemplate?.defaults?.category);
+    const styleNo = await generateBulkStyleCode(category);
+    updateUploadItem(itemId, (current) => ({
+      ...current,
+      status: current.status === "completed" ? "completed" : "completed_local",
+      progress: current.progress > 0 ? current.progress : 100,
+      analysis: buildUploadAnalysisDraft(current, styleNo, "manual", {
+        needsReview: false,
+        confidence: 100,
+      }),
+      approved: current.approved ?? false,
+      error: undefined,
+    }));
+  }
+
+  async function prepareItemsForReview(): Promise<void> {
+    const pendingItems = uploadItems.filter(
+      (item) => !item.analysis && item.status !== "failed" && item.status !== "completed",
+    );
+    for (const item of pendingItems) {
+      await ensureManualDraftForItem(item.id);
+    }
+  }
+
+  async function handleAnalyzeItemWithAi(itemId: string): Promise<void> {
+    const item = uploadItems.find((entry) => entry.id === itemId);
+    if (!item || !item.file || isBulkAnalyzing) return;
+    if (!hasAccessToken()) {
+      setUploadMessage("Sign in to analyze and save bulk items.");
+      return;
+    }
+
+    updateUploadItem(itemId, (current) => ({
+      ...current,
+      status: "uploading",
+      progress: 25,
+      error: undefined,
+      analyzeWithAi: true,
+    }));
+
+    try {
+      const uploadedImage = await uploadCatalogImage(item.file);
+      const analysisRes = await apiRequest<AnalyzeImageApiResult>("/catalog/analyze-image", {
+        method: "POST",
+        body: JSON.stringify(buildAnalyzeImageRequestPayload(uploadedImage.url)),
+      });
+
+      const resolvedCategory = normalizeCategory(normalizeAiValue(analysisRes.category?.value));
+      const resolvedStyleName =
+        pickOptionValue(analysisRes.style_name?.value, STYLE_NAME_OPTIONS) ??
+        normalizeAiValue(analysisRes.style_name?.value) ??
+        deriveStyleNameFromFileName(item.name);
+      const resolvedColor =
+        pickOptionValue(analysisRes.color?.value, COLOR_OPTIONS) ??
+        normalizeAiValue(analysisRes.color?.value) ??
+        seasonalRecommendation.color;
+      const resolvedFabric =
+        pickOptionValue(analysisRes.fabric?.value, FABRIC_OPTIONS) ??
+        normalizeAiValue(analysisRes.fabric?.value) ??
+        seasonalRecommendation.fabric;
+      const resolvedComposition =
+        pickOptionValue(analysisRes.composition?.value, COMPOSITION_OPTIONS) ??
+        normalizeAiValue(analysisRes.composition?.value) ??
+        bulkComposition;
+      const resolvedWovenKnits =
+        pickOptionValue(analysisRes.woven_knits?.value, WOVEN_KNITS_OPTIONS) ??
+        normalizeAiValue(analysisRes.woven_knits?.value) ??
+        bulkWovenKnits;
+      const styleNo = await generateBulkStyleCode(resolvedCategory);
+
+      const confidenceValues = [
+        analysisRes.category?.confidence,
+        analysisRes.style_name?.confidence,
+        analysisRes.color?.confidence,
+        analysisRes.fabric?.confidence,
+        analysisRes.composition?.confidence,
+        analysisRes.woven_knits?.confidence,
+      ].filter((value): value is number => typeof value === "number");
+      const avgConfidence =
+        confidenceValues.length > 0
+          ? Math.round(
+              confidenceValues.reduce((sum, value) => sum + value, 0) / confidenceValues.length,
+            )
+          : 0;
+
+      const analysisPayload = buildUploadAnalysisDraft(item, styleNo, "ai", {
+        styleName: resolvedStyleName,
+        category: resolvedCategory,
+        color: resolvedColor,
+        fabric: resolvedFabric,
+        composition: resolvedComposition,
+        wovenKnits: resolvedWovenKnits,
+        units: activeTemplate?.defaults?.units ?? TOTAL_UNITS_OPTIONS[0],
+        poPrice: bulkPoPrice,
+        ospSar: bulkOspSar,
+        confidence: avgConfidence,
+        needsReview: avgConfidence < 82,
+      });
+
+      updateUploadItem(itemId, (current) => ({
+        ...current,
+        status: "completed_local",
+        progress: 100,
+        analysis: analysisPayload,
+        approved: analysisPayload.needsReview ? false : (current.approved ?? true),
+        error: undefined,
+      }));
+    } catch (error) {
+      updateUploadItem(itemId, (current) => ({
+        ...current,
+        status: "failed",
+        error: error instanceof Error ? error.message : "Analysis failed",
+        progress: 100,
+      }));
+      throw error;
+    }
   }
 
   function toggleUploadApproval(itemId: string): void {
@@ -2127,103 +2325,20 @@ export function CatalogView(): JSX.Element {
 
     try {
       const pendingItems = uploadItems.filter(
-        (item) => item.status !== "completed" && item.status !== "uploading",
+        (item) =>
+          item.status !== "completed" &&
+          item.status !== "uploading" &&
+          item.analyzeWithAi !== false,
       );
+      if (pendingItems.length === 0) {
+        setUploadMessage("No items are selected for AI analysis.");
+        return true;
+      }
       for (const item of pendingItems) {
-        if (!item.file) continue;
-
         try {
-          updateUploadItem(item.id, (current) => ({
-            ...current,
-            status: "uploading",
-            progress: 25,
-            error: undefined,
-          }));
-
-          const uploadedImage = await uploadCatalogImage(item.file);
-          const analysisRes = await apiRequest<AnalyzeImageApiResult>("/catalog/analyze-image", {
-            method: "POST",
-            body: JSON.stringify(buildAnalyzeImageRequestPayload(uploadedImage.url)),
-          });
-
-          const resolvedCategory = normalizeCategory(normalizeAiValue(analysisRes.category?.value));
-          const resolvedStyleName =
-            pickOptionValue(analysisRes.style_name?.value, STYLE_NAME_OPTIONS) ??
-            normalizeAiValue(analysisRes.style_name?.value);
-          const resolvedColor =
-            pickOptionValue(analysisRes.color?.value, COLOR_OPTIONS) ??
-            normalizeAiValue(analysisRes.color?.value) ??
-            seasonalRecommendation.color;
-          const resolvedFabric =
-            pickOptionValue(analysisRes.fabric?.value, FABRIC_OPTIONS) ??
-            normalizeAiValue(analysisRes.fabric?.value) ??
-            seasonalRecommendation.fabric;
-          const resolvedComposition =
-            pickOptionValue(analysisRes.composition?.value, COMPOSITION_OPTIONS) ??
-            normalizeAiValue(analysisRes.composition?.value) ??
-            bulkComposition;
-          const resolvedWovenKnits =
-            pickOptionValue(analysisRes.woven_knits?.value, WOVEN_KNITS_OPTIONS) ??
-            normalizeAiValue(analysisRes.woven_knits?.value) ??
-            bulkWovenKnits;
-
-          const styleRes = await apiRequest<{ style_code: string }>(
-            "/catalog/generate-style-code",
-            {
-              method: "POST",
-              body: JSON.stringify({
-                brand: companyBrand,
-                category: resolvedCategory,
-                pattern: activeTemplate?.style_code_pattern ?? undefined,
-              }),
-            },
-          );
-
-          const confidenceValues = [
-            analysisRes.category?.confidence,
-            analysisRes.style_name?.confidence,
-            analysisRes.color?.confidence,
-            analysisRes.fabric?.confidence,
-            analysisRes.composition?.confidence,
-            analysisRes.woven_knits?.confidence,
-          ].filter((value): value is number => typeof value === "number");
-          const avgConfidence =
-            confidenceValues.length > 0
-              ? Math.round(
-                  confidenceValues.reduce((sum, value) => sum + value, 0) / confidenceValues.length,
-                )
-              : 0;
-          const defaultName = item.name.split(".")[0] || "Bulk Item";
-          const analysisPayload = {
-            styleNo: styleRes.style_code,
-            styleName: resolvedStyleName ?? defaultName,
-            category: resolvedCategory,
-            color: resolvedColor,
-            fabric: resolvedFabric,
-            composition: resolvedComposition,
-            wovenKnits: resolvedWovenKnits,
-            units: activeTemplate?.defaults?.units ?? "24",
-            poPrice: bulkPoPrice,
-            ospSar: bulkOspSar,
-            confidence: avgConfidence,
-            needsReview: avgConfidence < 82,
-          };
-
-          updateUploadItem(item.id, (current) => ({
-            ...current,
-            status: "completed_local",
-            progress: 100,
-            analysis: analysisPayload,
-            approved: analysisPayload.needsReview ? false : (current.approved ?? true),
-          }));
+          await handleAnalyzeItemWithAi(item.id);
         } catch (error) {
           hasFailures = true;
-          updateUploadItem(item.id, (current) => ({
-            ...current,
-            status: "failed",
-            error: error instanceof Error ? error.message : "Analysis failed",
-            progress: 100,
-          }));
         }
       }
 
@@ -2240,12 +2355,7 @@ export function CatalogView(): JSX.Element {
 
   async function handleSaveAllToCatalog(): Promise<void> {
     if (uploadItems.length === 0 || isBulkAnalyzing) return;
-    const hasPendingAnalysis = uploadItems.some(
-      (item) => !item.analysis && item.status !== "failed" && item.status !== "completed",
-    );
-    if (hasPendingAnalysis) {
-      await handleAnalyzeAll();
-    }
+    await prepareItemsForReview();
     setIsBulkReviewOpen(true);
   }
 
@@ -2255,6 +2365,8 @@ export function CatalogView(): JSX.Element {
       setUploadMessage("Sign in to save analyzed items.");
       return;
     }
+
+    await prepareItemsForReview();
 
     const candidates = uploadItems.filter((item) => {
       if (!item.analysis) return false;
@@ -2409,6 +2521,10 @@ export function CatalogView(): JSX.Element {
       } else {
         setUploadMessage(`Saved ${successCount} item(s) to catalog.`);
       }
+
+      if (successCount === 0 && failedCount > 0) {
+        setBulkReviewFilter("failed");
+      }
     } finally {
       setIsSavingReviewedItems(false);
     }
@@ -2442,6 +2558,7 @@ export function CatalogView(): JSX.Element {
         status: "queued",
         file,
         previewUrl: URL.createObjectURL(file),
+        analyzeWithAi: bulkAnalyzeAllEnabled,
       });
     }
 
@@ -2471,6 +2588,14 @@ export function CatalogView(): JSX.Element {
     setUploadItems((items) =>
       items.filter((item) => item.status === "queued" || item.status === "uploading"),
     );
+  }
+
+  async function handleManualReviewItem(itemId: string): Promise<void> {
+    await ensureManualDraftForItem(itemId);
+    const item = uploadItems.find((entry) => entry.id === itemId);
+    setBulkReviewFilter("all");
+    setBulkReviewQuery(item?.name ?? "");
+    setIsBulkReviewOpen(true);
   }
 
   async function handleEditRow(row: CatalogRow): Promise<void> {
@@ -5354,22 +5479,39 @@ export function CatalogView(): JSX.Element {
                     <h3 className="text-[15px] text-[#6B7280]">
                       {uploadItems.length} images selected
                     </h3>
-                    <button
-                      className="bg-[#D4AF37] hover:bg-[#B8962A] text-white px-5 py-2.5 text-xs font-bold tracking-wider rounded-sm transition-colors flex items-center gap-2 disabled:opacity-50"
-                      onClick={() => void handleAnalyzeAll()}
-                      disabled={isBulkAnalyzing || uploadItems.length === 0}
-                    >
-                      {isBulkAnalyzing ? (
-                        <i className="ri-loader-4-line text-sm animate-spin"></i>
-                      ) : (
-                        <i className="ri-brain-line text-sm"></i>
-                      )}
-                      {isBulkAnalyzing ? "ANALYZING..." : "ANALYZE ALL WITH AI"}
-                    </button>
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#6B7280]">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-kira-black"
+                          checked={bulkAnalyzeAllEnabled}
+                          onChange={(event) => {
+                            const checked = event.target.checked;
+                            setBulkAnalyzeAllEnabled(checked);
+                            setUploadItems((items) =>
+                              items.map((item) => ({ ...item, analyzeWithAi: checked })),
+                            );
+                          }}
+                        />
+                        Analyze all with AI
+                      </label>
+                      <button
+                        className="bg-[#D4AF37] hover:bg-[#B8962A] text-white px-5 py-2.5 text-xs font-bold tracking-wider rounded-sm transition-colors flex items-center gap-2 disabled:opacity-50"
+                        onClick={() => void handleAnalyzeAll()}
+                        disabled={isBulkAnalyzing || uploadItems.length === 0}
+                      >
+                        {isBulkAnalyzing ? (
+                          <i className="ri-loader-4-line text-sm animate-spin"></i>
+                        ) : (
+                          <i className="ri-brain-line text-sm"></i>
+                        )}
+                        {isBulkAnalyzing ? "ANALYZING..." : "RUN AI FOR SELECTED"}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-[2px] bg-[#E5E7EB] dark:bg-black/40 border border-[#E5E7EB] dark:border-white/10">
-                    {uploadItems.map((item, idx) => (
+                    {uploadItems.map((item) => (
                       <div
                         key={item.id}
                         className="bg-white dark:bg-[#1C1E26] p-4 flex items-center justify-between"
@@ -5394,28 +5536,66 @@ export function CatalogView(): JSX.Element {
                           </span>
                         </div>
 
-                        <div className="flex flex-col items-center gap-1 text-[#6B7280]">
-                          {item.status === "queued" ? (
-                            <>
-                              <i className="ri-time-line text-base"></i>
-                              <span className="text-xs">In queue</span>
-                            </>
-                          ) : item.status === "uploading" ? (
-                            <>
-                              <i className="ri-loader-4-line text-base animate-spin text-kira-brown"></i>
-                              <span className="text-xs text-kira-brown">{item.progress}%</span>
-                            </>
-                          ) : item.status === "completed_local" ? (
-                            <>
-                              <i className="ri-checkbox-circle-line text-base text-[#64748B]"></i>
-                              <span className="text-xs text-[#64748B]">Ready</span>
-                            </>
-                          ) : (
-                            <>
-                              <i className="ri-check-line text-base text-[#1E7145]"></i>
-                              <span className="text-xs text-[#1E7145]">Done</span>
-                            </>
-                          )}
+                        <div className="flex items-center gap-6">
+                          <div className="flex flex-col items-center gap-1 text-[#6B7280]">
+                            {item.status === "queued" ? (
+                              <>
+                                <i className="ri-time-line text-base"></i>
+                                <span className="text-xs">In queue</span>
+                              </>
+                            ) : item.status === "uploading" ? (
+                              <>
+                                <i className="ri-loader-4-line text-base animate-spin text-kira-brown"></i>
+                                <span className="text-xs text-kira-brown">{item.progress}%</span>
+                              </>
+                            ) : item.status === "completed_local" ? (
+                              <>
+                                <i className="ri-checkbox-circle-line text-base text-[#64748B]"></i>
+                                <span className="text-xs text-[#64748B]">
+                                  {item.analysis?.mode === "manual" ? "Manual" : "Ready"}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <i className="ri-check-line text-base text-[#1E7145]"></i>
+                                <span className="text-xs text-[#1E7145]">Done</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex min-w-[220px] flex-col items-end gap-2">
+                            <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#6B7280]">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 accent-kira-black"
+                                checked={item.analyzeWithAi ?? true}
+                                onChange={() => toggleUploadAnalyzeWithAi(item.id)}
+                              />
+                              Analyze with AI
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                className="border border-[#D1D5DB] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#111827] transition-colors hover:bg-[#F3F4F6] disabled:opacity-50 dark:border-white/10 dark:text-white dark:hover:bg-[#2A2D35]"
+                                onClick={() => void handleManualReviewItem(item.id)}
+                                disabled={item.status === "queued" || item.status === "uploading"}
+                              >
+                                Edit manually
+                              </button>
+                              <button
+                                type="button"
+                                className="bg-[#111827] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-white transition-colors hover:bg-black disabled:opacity-50"
+                                onClick={() => void handleAnalyzeItemWithAi(item.id)}
+                                disabled={
+                                  isBulkAnalyzing ||
+                                  item.status === "queued" ||
+                                  item.status === "uploading" ||
+                                  item.analyzeWithAi === false
+                                }
+                              >
+                                Analyze now
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -5432,7 +5612,7 @@ export function CatalogView(): JSX.Element {
                   </button>
                   <button
                     className="bg-[#111827] hover:bg-black text-white px-8 py-3 text-xs font-bold tracking-widest flex items-center gap-2 transition-colors disabled:opacity-50"
-                    disabled={isBulkAnalyzing || uploadItems.length === 0}
+                    disabled={isBulkAnalyzing || isUploadProcessing || uploadItems.length === 0}
                     onClick={() => void handleSaveAllToCatalog()}
                     type="button"
                   >
@@ -5455,7 +5635,7 @@ export function CatalogView(): JSX.Element {
                   Batch Review
                 </h3>
                 <p className="text-sm text-kira-midgray dark:text-gray-400">
-                  Verify AI suggestions before catalog save.
+                  Verify AI or manual details before catalog save.
                 </p>
               </div>
               <button
@@ -5470,9 +5650,9 @@ export function CatalogView(): JSX.Element {
             <div className="border-b border-kira-warmgray/35 px-6 py-4">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                 <div className="border border-kira-warmgray/40 dark:border-white/10 bg-white dark:bg-[#1C1E26] px-3 py-2 text-xs text-kira-darkgray dark:text-gray-300 ">
-                  Analyzed:{" "}
+                  Prepared:{" "}
                   <span className="font-semibold text-kira-black dark:text-white ">
-                    {bulkReviewStats.analyzed}
+                    {bulkReviewStats.prepared}
                   </span>
                 </div>
                 <div className="border border-kira-warmgray/40 dark:border-white/10 bg-white dark:bg-[#1C1E26] px-3 py-2 text-xs text-kira-darkgray dark:text-gray-300 ">
@@ -5497,6 +5677,11 @@ export function CatalogView(): JSX.Element {
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-3">
+                {uploadMessage ? (
+                  <div className="w-full rounded-md border border-kira-warmgray/45 bg-white px-3 py-2 text-sm text-kira-darkgray dark:border-white/10 dark:bg-[#1C1E26] dark:text-gray-300">
+                    {uploadMessage}
+                  </div>
+                ) : null}
                 <input
                   type="search"
                   className="kira-focus-ring min-w-[220px] flex-1 border border-kira-warmgray/55 dark:border-white/20 bg-white dark:bg-[#1C1E26] px-3 py-2 text-sm text-kira-black dark:text-white dark:placeholder-gray-500 "
@@ -5547,6 +5732,7 @@ export function CatalogView(): JSX.Element {
                     <th className="px-2 py-2 text-left">Units</th>
                     <th className="px-2 py-2 text-left">OSP</th>
                     <th className="px-2 py-2 text-left">Confidence</th>
+                    <th className="px-2 py-2 text-left">Source</th>
                     <th className="px-2 py-2 text-left">Approve</th>
                   </tr>
                 </thead>
@@ -5589,91 +5775,98 @@ export function CatalogView(): JSX.Element {
                       </td>
                       <td className="px-2 py-2">
                         {item.analysis ? (
-                          <input
+                          <select
                             className="kira-focus-ring w-40 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.styleName}
                             onChange={(event) =>
                               updateUploadAnalysisField(item.id, "styleName", event.target.value)
                             }
-                          />
+                          >
+                            {withCurrentOption(
+                              templateStyleNameOptions,
+                              item.analysis.styleName,
+                            ).map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
                         ) : null}
                       </td>
                       <td className="px-2 py-2">
                         {item.analysis ? (
-                          <input
+                          <select
                             className="kira-focus-ring w-28 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.category}
                             onChange={(event) =>
                               updateUploadAnalysisField(item.id, "category", event.target.value)
                             }
-                            onBlur={(event) =>
-                              checkAndPromptOutOfBounds(
-                                item.id,
-                                "category",
-                                event.target.value,
-                                "user_input",
-                                () => {},
-                              )
-                            }
-                            list="list-category"
-                          />
+                          >
+                            {withCurrentOption(templateCategoryOptions, item.analysis.category).map(
+                              (option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ),
+                            )}
+                          </select>
                         ) : null}
                       </td>
                       <td className="px-2 py-2">
                         {item.analysis ? (
-                          <input
+                          <select
                             className="kira-focus-ring w-28 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.color}
                             onChange={(event) =>
                               updateUploadAnalysisField(item.id, "color", event.target.value)
                             }
-                            onBlur={(event) =>
-                              checkAndPromptOutOfBounds(
-                                item.id,
-                                "color",
-                                event.target.value,
-                                "user_input",
-                                () => {},
-                              )
-                            }
-                            list="list-color"
-                          />
+                          >
+                            {withCurrentOption(templateColorOptions, item.analysis.color).map(
+                              (option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ),
+                            )}
+                          </select>
                         ) : null}
                       </td>
                       <td className="px-2 py-2">
                         {item.analysis ? (
-                          <input
+                          <select
                             className="kira-focus-ring w-36 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.fabric}
                             onChange={(event) =>
                               updateUploadAnalysisField(item.id, "fabric", event.target.value)
                             }
-                            onBlur={(event) =>
-                              checkAndPromptOutOfBounds(
-                                item.id,
-                                "fabric",
-                                event.target.value,
-                                "user_input",
-                                () => {},
-                              )
-                            }
-                            list="list-fabric"
-                          />
+                          >
+                            {withCurrentOption(templateFabricOptions, item.analysis.fabric).map(
+                              (option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ),
+                            )}
+                          </select>
                         ) : null}
                       </td>
                       <td className="px-2 py-2">
                         {item.analysis ? (
-                          <input
+                          <select
                             className="kira-focus-ring w-14 border border-kira-warmgray/45 dark:border-white/20 px-2 py-1 text-xs dark:bg-[#12141B] dark:text-white"
                             value={item.analysis.units}
                             onChange={(event) =>
-                              updateUploadAnalysisField(
-                                item.id,
-                                "units",
-                                event.target.value.replace(/[^0-9]/g, ""),
-                              )
+                              updateUploadAnalysisField(item.id, "units", event.target.value)
                             }
-                          />
+                          >
+                            {withCurrentOption([...TOTAL_UNITS_OPTIONS], item.analysis.units).map(
+                              (option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ),
+                            )}
+                          </select>
                         ) : null}
                       </td>
                       <td className="px-2 py-2">
@@ -5693,17 +5886,30 @@ export function CatalogView(): JSX.Element {
                       </td>
                       <td className="px-2 py-2">
                         {item.analysis ? (
-                          <span
-                            className={cn(
-                              "inline-flex rounded-sm border px-2 py-1 text-xs font-semibold",
-                              item.analysis.confidence >= 85
-                                ? "border-[#9EDAB7] bg-[#DDF4E7] text-[#1E7145]"
-                                : item.analysis.confidence >= 60
-                                  ? "border-[#E6D7A7] bg-[#FAF2D8] text-[#7A641A]"
-                                  : "border-[#E4BABA] bg-[#FCE7E7] text-[#9F3A3A]",
-                            )}
-                          >
-                            {item.analysis.confidence}%
+                          item.analysis.mode === "manual" ? (
+                            <span className="inline-flex rounded-sm border border-[#CBD5E1] bg-[#F8FAFC] px-2 py-1 text-xs font-semibold text-[#475569]">
+                              Manual
+                            </span>
+                          ) : (
+                            <span
+                              className={cn(
+                                "inline-flex rounded-sm border px-2 py-1 text-xs font-semibold",
+                                item.analysis.confidence >= 85
+                                  ? "border-[#9EDAB7] bg-[#DDF4E7] text-[#1E7145]"
+                                  : item.analysis.confidence >= 60
+                                    ? "border-[#E6D7A7] bg-[#FAF2D8] text-[#7A641A]"
+                                    : "border-[#E4BABA] bg-[#FCE7E7] text-[#9F3A3A]",
+                              )}
+                            >
+                              {item.analysis.confidence}%
+                            </span>
+                          )
+                        ) : null}
+                      </td>
+                      <td className="px-2 py-2">
+                        {item.analysis ? (
+                          <span className="text-xs font-medium uppercase tracking-[0.06em] text-kira-midgray dark:text-gray-400">
+                            {item.analysis.mode === "ai" ? "AI" : "Manual"}
                           </span>
                         ) : null}
                       </td>
@@ -5721,7 +5927,7 @@ export function CatalogView(): JSX.Element {
                   ))}
                   {bulkReviewRows.length === 0 ? (
                     <tr>
-                      <td className="px-3 py-6 text-center text-sm text-kira-midgray" colSpan={10}>
+                      <td className="px-3 py-6 text-center text-sm text-kira-midgray" colSpan={11}>
                         No items match current review filters.
                       </td>
                     </tr>
