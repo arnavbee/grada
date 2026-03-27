@@ -45,8 +45,19 @@ export function resolveAssetUrl(assetUrl: string | null | undefined): string | n
   if (raw.startsWith("http://") || raw.startsWith("https://")) {
     try {
       const parsed = new URL(raw);
+      const isApiOriginUrl =
+        hasAbsoluteApiOrigin &&
+        parsed.origin.toLowerCase() === new URL(normalizedApiOrigin).origin.toLowerCase();
+      const isLegacyApiUploadPath =
+        parsed.pathname.startsWith("/api/v1/static/") ||
+        parsed.pathname.startsWith("/api/v1/uploads/") ||
+        parsed.pathname.startsWith("/uploads/") ||
+        parsed.pathname.startsWith("/static/");
+      if (!isApiOriginUrl && !isLegacyApiUploadPath) {
+        return raw;
+      }
       const normalizedPath = normalizeStaticAssetPath(parsed.pathname);
-      if (hasAbsoluteApiOrigin && normalizedPath.startsWith("/static/")) {
+      if (isApiOriginUrl && normalizedPath.startsWith("/static/")) {
         return `${normalizedApiOrigin}${normalizedPath}${parsed.search}${parsed.hash}`;
       }
       if (normalizedPath !== parsed.pathname) {
