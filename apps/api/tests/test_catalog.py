@@ -105,7 +105,6 @@ def test_catalog_product_export_and_job_flow() -> None:
     assert csv_path.exists()
     csv_contents = csv_path.read_text(encoding='utf-8')
     assert 'image-preview' in csv_contents
-    assert 'main-image-url' in csv_contents
     assert 'https://cdn.example.com/linen-shirt-front.jpg' in csv_contents
 
     create_xlsx_export = client.post(
@@ -289,7 +288,7 @@ def test_generic_export_has_catalog_shape() -> None:
     csv_path = Path('static') / export_body['file_url'].removeprefix('/static/')
     assert csv_path.exists()
     csv_contents = csv_path.read_text(encoding='utf-8')
-    assert 'Style-No,Name,Category,Color,Fabric,Composition,Woven/Knits,Units,PO Price,OSP,Status,Image Preview,Primary Image URL' in csv_contents
+    assert 'Style-No,Name,Category,Color,Fabric,Composition,Woven/Knits,Units,PO Price,OSP,Status,Image Preview' in csv_contents
     assert 'GENERIC-SHAPE-1,Catalog Item' in csv_contents
 
 

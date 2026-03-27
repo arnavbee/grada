@@ -130,7 +130,6 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
             ('OSP', 'osp'),
             ('Status', 'status'),
             ('Image Preview', 'image_preview'),
-            ('Primary Image URL', 'image_url'),
         ),
     },
     'myntra': {
@@ -146,7 +145,6 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
             ('MRP', 'mrp'),
             ('Description', 'description'),
             ('Image Preview', 'image_preview'),
-            ('Primary Image URL', 'image_url'),
         ),
     },
     'ajio': {
@@ -161,7 +159,6 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
             ('MRP', 'mrp'),
             ('Description', 'description'),
             ('Image Preview', 'image_preview'),
-            ('Primary Image URL', 'image_url'),
         ),
     },
     'amazon_in': {
@@ -177,7 +174,6 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
             ('standard-price', 'mrp'),
             ('product-description', 'description'),
             ('image-preview', 'image_preview'),
-            ('main-image-url', 'image_url'),
         ),
     },
     'flipkart': {
@@ -193,7 +189,6 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
             ('Selling Price', 'mrp'),
             ('Description', 'description'),
             ('Image Preview', 'image_preview'),
-            ('Primary Image URL', 'image_url'),
         ),
     },
     'nykaa': {
@@ -209,7 +204,6 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
             ('MRP', 'mrp'),
             ('Description', 'description'),
             ('Image Preview', 'image_preview'),
-            ('Primary Image URL', 'image_url'),
         ),
     },
 }
