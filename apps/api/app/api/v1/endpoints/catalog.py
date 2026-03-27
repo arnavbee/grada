@@ -118,6 +118,7 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'label': 'Generic',
         'required_fields': ('sku', 'title'),
         'columns': (
+            ('S. No', 'serial_no'),
             ('Style-No', 'sku'),
             ('Name', 'title'),
             ('Category', 'category'),
@@ -136,6 +137,7 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'label': 'Myntra',
         'required_fields': ('sku', 'title', 'brand', 'category', 'color', 'size', 'mrp'),
         'columns': (
+            ('S. No', 'serial_no'),
             ('Style ID', 'sku'),
             ('Product Name', 'title'),
             ('Brand', 'brand'),
@@ -151,6 +153,7 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'label': 'Ajio',
         'required_fields': ('sku', 'title', 'category', 'color', 'size', 'mrp'),
         'columns': (
+            ('S. No', 'serial_no'),
             ('Seller SKU', 'sku'),
             ('Product Name', 'title'),
             ('Department', 'category'),
@@ -165,6 +168,7 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'label': 'Amazon IN',
         'required_fields': ('sku', 'title', 'brand', 'category', 'mrp'),
         'columns': (
+            ('S. No', 'serial_no'),
             ('seller-sku', 'sku'),
             ('item-name', 'title'),
             ('brand-name', 'brand'),
@@ -180,6 +184,7 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'label': 'Flipkart',
         'required_fields': ('sku', 'title', 'brand', 'category', 'color', 'size', 'mrp'),
         'columns': (
+            ('S. No', 'serial_no'),
             ('Seller SKU', 'sku'),
             ('Product Title', 'title'),
             ('Brand', 'brand'),
@@ -195,6 +200,7 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'label': 'Nykaa',
         'required_fields': ('sku', 'title', 'brand', 'category', 'color', 'mrp'),
         'columns': (
+            ('S. No', 'serial_no'),
             ('SKU', 'sku'),
             ('Name', 'title'),
             ('Brand', 'brand'),
@@ -802,6 +808,8 @@ def _generate_xlsx_bytes(headers: list[str], rows: list[list[str]]) -> bytes:
         if normalized_header in {'image preview', 'image-preview'}:
             image_preview_column = column_index
         width = 20 if normalized_header in {'image preview', 'image-preview'} else 28
+        if normalized_header == 's. no':
+            width = 10
         if normalized_header in {'primary image url', 'main-image-url'}:
             width = 42
         sheet.column_dimensions[get_column_letter(column_index)].width = width
@@ -835,8 +843,9 @@ def _build_export_file(
     columns: tuple[tuple[str, str], ...] = template['columns']
     headers = [column[0] for column in columns]
     rows: list[list[str]] = []
-    for product in products:
+    for index, product in enumerate(products, start=1):
         fields = _extract_export_fields(product, primary_image_map.get(product.id, ''))
+        fields['serial_no'] = str(index)
         data_row = [fields.get(column_key, '') for _, column_key in columns]
         rows.append(data_row)
 

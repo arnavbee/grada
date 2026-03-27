@@ -288,8 +288,8 @@ def test_generic_export_has_catalog_shape() -> None:
     csv_path = Path('static') / export_body['file_url'].removeprefix('/static/')
     assert csv_path.exists()
     csv_contents = csv_path.read_text(encoding='utf-8')
-    assert 'Style-No,Name,Category,Color,Fabric,Composition,Woven/Knits,Units,PO Price,OSP,Status,Image Preview' in csv_contents
-    assert 'GENERIC-SHAPE-1,Catalog Item' in csv_contents
+    assert 'S. No,Style-No,Name,Category,Color,Fabric,Composition,Woven/Knits,Units,PO Price,OSP,Status,Image Preview' in csv_contents
+    assert '1,GENERIC-SHAPE-1,Catalog Item' in csv_contents
 
 
 def test_analyze_image_returns_hash_and_source_context(monkeypatch) -> None:
