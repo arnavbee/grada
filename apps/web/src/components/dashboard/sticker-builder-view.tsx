@@ -54,7 +54,7 @@ const SAMPLE_VALUES: Record<string, string> = {
 };
 
 const STYLI_STARTER_TEMPLATE: StickerTemplateDraft = {
-  name: "Styli starter template",
+  name: "Standard starter template",
   width_mm: 45.03,
   height_mm: 60,
   border_color: "#dc5096",
@@ -68,7 +68,7 @@ const DYNAMIC_FIELDS = [
   { label: "Model number", value: "model_number" },
   { label: "Option ID", value: "option_id" },
   { label: "Size", value: "size" },
-  { label: "Styli SKU", value: "styli_sku" },
+  { label: "Marketplace SKU", value: "styli_sku" },
   { label: "Brand name", value: "brand_name" },
   { label: "SKU ID", value: "sku_id" },
   { label: "Color", value: "color" },
@@ -89,7 +89,7 @@ const SOCIAL_FIELDS = new Set([
 
 const BARCODE_FIELDS = [
   { label: "Option ID", value: "option_id" },
-  { label: "Styli SKU", value: "styli_sku" },
+  { label: "Marketplace SKU", value: "styli_sku" },
   { label: "SKU ID", value: "sku_id" },
   { label: "Model number", value: "model_number" },
   { label: "Custom formula", value: "custom_formula" },
@@ -464,7 +464,7 @@ function createStyliStarterElements(): StickerElement[] {
         font_size: 5.8,
         alignment: "left",
         color: "#000000",
-        social_value: "/styliofficial",
+        social_value: "/instagram_handle",
       },
       created_at: now,
       updated_at: now,
@@ -486,7 +486,7 @@ function createStyliStarterElements(): StickerElement[] {
         font_size: 5.8,
         alignment: "left",
         color: "#000000",
-        social_value: "/styli_official",
+        social_value: "/facebook_handle",
       },
       created_at: now,
       updated_at: now,
@@ -1165,7 +1165,7 @@ export function StickerBuilderView(): JSX.Element {
       setTemplate(starter.template, starter.elements);
       setStatusLine(
         preset === "styli"
-          ? "Started a new Styli-like starter template."
+          ? "Started a new standard starter template."
           : "Started a fresh sticker template.",
       );
       return;
@@ -1177,7 +1177,7 @@ export function StickerBuilderView(): JSX.Element {
       setTemplate(starter.template, starter.elements);
       setStatusLine(
         preset === "styli"
-          ? "Deleted template and restored the Styli-like starter."
+          ? "Deleted template and restored the standard starter."
           : "Deleted sticker template.",
       );
     } catch (deleteError) {
@@ -1276,7 +1276,7 @@ export function StickerBuilderView(): JSX.Element {
                     setTemplate(starter.template, starter.elements);
                     setStatusLine(
                       preset === "styli"
-                        ? "Reset to the Styli-like starter template."
+                        ? "Reset to the standard starter template."
                         : "Started a fresh sticker template.",
                     );
                   }}
@@ -1895,7 +1895,7 @@ export function StickerBuilderView(): JSX.Element {
                   setTemplatePickerOpen(false);
                   setStatusLine(
                     preset === "styli"
-                      ? "Started a new Styli-like starter template."
+                      ? "Started a new standard starter template."
                       : "Started a fresh sticker template.",
                   );
                 }}

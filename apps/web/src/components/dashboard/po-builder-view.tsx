@@ -444,7 +444,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = downloadUrl;
-      link.download = `styli-po-${poRequestId}.${format}`;
+      link.download = `po-workbook-${poRequestId}.${format}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -460,7 +460,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
   return (
     <DashboardShell
       title="PO Format Builder"
-      subtitle="Turn approved catalog styles into Styli-ready colorway x size rows with AI-reviewed dress attributes."
+      subtitle="Turn approved catalog styles into export-ready colorway x size rows with AI-reviewed dress attributes."
     >
       <div className="mx-auto flex max-w-6xl flex-col gap-8 pb-16">
         <div className="flex flex-wrap gap-3">
@@ -499,7 +499,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                 <p className="text-sm leading-6 text-kira-darkgray">
                   Each selected catalog style becomes a configurable PO style. In the next step
                   we’ll add colorways, ratios, pricing, and fabric so the app can explode each style
-                  into final Styli rows.
+                  into final submission rows.
                 </p>
               </div>
               <div className="rounded-2xl bg-kira-black px-5 py-4 text-kira-offwhite dark:bg-[#141b18] dark:text-kira-offwhite">
@@ -593,7 +593,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                   Style configuration
                 </p>
                 <h2 className="font-serif text-2xl text-kira-black">
-                  Set each style up the way Styli expects it.
+                  Set each style up the way the workbook expects it.
                 </h2>
                 <p className="text-sm leading-6 text-kira-darkgray">
                   Add colorways, adjust the size ratio, and set commercial inputs per style. The app
@@ -868,8 +868,8 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                 <div className="mx-auto mb-5 h-14 w-14 animate-spin rounded-full border-4 border-kira-brown border-t-transparent" />
                 <h2 className="font-serif text-3xl text-kira-black">AI is reviewing each style.</h2>
                 <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-kira-darkgray">
-                  We’re constraining the dress attributes to Styli-safe enum values and pulling
-                  confidence scores so you only need to touch the fields that look uncertain.
+                  We’re constraining the dress attributes to safe enum values and pulling confidence
+                  scores so you only need to touch the fields that look uncertain.
                 </p>
               </div>
             ) : (
@@ -1034,7 +1034,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-kira-offwhite/60 dark:text-kira-offwhite/60">
                   Workbook preview
                 </p>
-                <h2 className="font-serif text-3xl">Your Styli submission rows are ready.</h2>
+                <h2 className="font-serif text-3xl">Your submission rows are ready.</h2>
                 <p className="max-w-2xl text-sm leading-6 text-kira-offwhite/78 dark:text-kira-offwhite/78">
                   The builder has already exploded each style into colorway x size rows and placed
                   dress attributes into the correct section of the workbook. Export now to hand your

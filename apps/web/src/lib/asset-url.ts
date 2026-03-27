@@ -48,12 +48,7 @@ export function resolveAssetUrl(assetUrl: string | null | undefined): string | n
       const isApiOriginUrl =
         hasAbsoluteApiOrigin &&
         parsed.origin.toLowerCase() === new URL(normalizedApiOrigin).origin.toLowerCase();
-      const isLegacyApiUploadPath =
-        parsed.pathname.startsWith("/api/v1/static/") ||
-        parsed.pathname.startsWith("/api/v1/uploads/") ||
-        parsed.pathname.startsWith("/uploads/") ||
-        parsed.pathname.startsWith("/static/");
-      if (!isApiOriginUrl && !isLegacyApiUploadPath) {
+      if (!isApiOriginUrl) {
         return raw;
       }
       const normalizedPath = normalizeStaticAssetPath(parsed.pathname);

@@ -1,6 +1,4 @@
 "use client";
-
-import Image from "next/image";
 import {
   ChangeEvent,
   DragEvent,
@@ -4606,12 +4604,12 @@ export function CatalogView(): JSX.Element {
                     <td className="px-4 py-4">
                       <div className="flex h-14 w-14 items-center justify-center bg-kira-warmgray/15 text-sm font-semibold text-kira-darkgray overflow-hidden">
                         {row.primary_image_url ? (
-                          <Image
+                          <img
                             src={getImageUrl(row.primary_image_url) ?? ""}
                             alt=""
                             className="h-full w-full object-cover"
                             height={56}
-                            unoptimized
+                            loading="lazy"
                             width={56}
                           />
                         ) : (
@@ -5379,12 +5377,12 @@ export function CatalogView(): JSX.Element {
                         <div className="flex items-center gap-6">
                           <div className="w-[100px] h-[100px] bg-[#E5E7EB] dark:bg-black/30 flex items-center justify-center text-[#9CA3AF] overflow-hidden">
                             {item.previewUrl ? (
-                              <Image
+                              <img
                                 src={item.previewUrl}
                                 alt={item.name}
                                 className="w-full h-full object-cover"
                                 height={100}
-                                unoptimized
+                                loading="lazy"
                                 width={100}
                               />
                             ) : (
@@ -5561,12 +5559,12 @@ export function CatalogView(): JSX.Element {
                       <td className="px-2 py-2">
                         <div className="h-12 w-12 overflow-hidden border border-kira-warmgray/45 dark:border-white/10 bg-kira-offwhite dark:bg-black/40 ">
                           {item.previewUrl ? (
-                            <Image
+                            <img
                               src={item.previewUrl}
                               alt={item.name}
                               className="h-full w-full object-cover"
                               height={48}
-                              unoptimized
+                              loading="lazy"
                               width={48}
                             />
                           ) : null}
@@ -5932,12 +5930,11 @@ export function CatalogView(): JSX.Element {
                           className="relative w-full aspect-[3/4] cursor-pointer overflow-hidden border border-[#D3D7D4] dark:border-white/10 bg-[#ECEFEE] dark:bg-[#1C1E26]"
                           onClick={() => addItemImageInputRef.current?.click()}
                         >
-                          <Image
+                          <img
                             src={getImageUrl(imagePreviewUrl) ?? ""}
                             alt="Preview"
-                            className="h-full w-full object-cover"
-                            fill
-                            unoptimized
+                            className="absolute inset-0 h-full w-full object-cover"
+                            loading="lazy"
                           />
                           <button
                             type="button"

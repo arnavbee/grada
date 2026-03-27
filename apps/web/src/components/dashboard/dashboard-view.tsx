@@ -180,7 +180,7 @@ export function DashboardView(): JSX.Element {
         detail:
           stats.poDrafts > 0
             ? `${stats.poDrafts} builder draft${stats.poDrafts === 1 ? "" : "s"} waiting for style setup or review.`
-            : "Start a new Styli workbook from your approved catalog styles.",
+            : "Start a new workbook from your approved catalog styles.",
         href: stats.poDrafts > 0 ? "/dashboard/po-builder" : "/dashboard/po-builder/new",
         badge:
           stats.poDrafts > 0
@@ -233,7 +233,7 @@ export function DashboardView(): JSX.Element {
       {
         title: "PO Format Builder",
         detail:
-          "Build Styli-ready workbooks from styles, colorways, ratios, and AI-reviewed attributes.",
+          "Build export-ready workbooks from styles, colorways, ratios, and AI-reviewed attributes.",
         href: "/dashboard/po-builder",
         metrics: [
           `${stats.poDrafts} drafts`,
@@ -286,7 +286,7 @@ export function DashboardView(): JSX.Element {
     if (stats.poReady > 0) {
       items.push({
         title: "Workbook exports are ready",
-        detail: `${stats.poReady} builder${stats.poReady === 1 ? "" : "s"} are ready to download as Styli workbooks.`,
+        detail: `${stats.poReady} builder${stats.poReady === 1 ? "" : "s"} are ready to download as workbooks.`,
         href: "/dashboard/po-builder",
       });
     }
@@ -338,8 +338,8 @@ export function DashboardView(): JSX.Element {
                 Run the real workflows from one place.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-kira-darkgray">
-                This dashboard now reflects the product you actually have: catalog readiness, Styli
-                PO workbook creation, received PO processing, and operational defaults that drive
+                This dashboard now reflects the product you actually have: catalog readiness, PO
+                workbook creation, received PO processing, and operational defaults that drive
                 document generation.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">

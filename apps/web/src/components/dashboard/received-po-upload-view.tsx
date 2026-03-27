@@ -12,7 +12,7 @@ export function ReceivedPOUploadView(): JSX.Element {
   const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [receivedPoId, setReceivedPoId] = useState<string | null>(null);
-  const [statusText, setStatusText] = useState("Upload a Styli PO to start parsing.");
+  const [statusText, setStatusText] = useState("Upload a marketplace PO to start parsing.");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,7 +70,7 @@ export function ReceivedPOUploadView(): JSX.Element {
         <POUploadZone
           disabled={busy}
           fileName={selectedFile?.name}
-          helperText="Upload the official PDF or Excel purchase order you received back from Styli."
+          helperText="Upload the official PDF or Excel purchase order you received back from the marketplace."
           onSelectFile={handleUpload}
         />
 

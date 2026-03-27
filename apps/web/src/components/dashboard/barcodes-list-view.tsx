@@ -23,7 +23,7 @@ function formatBarcodeDate(value: string): string {
 
 function templateLabel(item: BarcodeListItem): string {
   if (item.template_kind === "styli") {
-    return "Styli format";
+    return "Standard format";
   }
   return item.template_id ? "Custom template" : "Custom";
 }

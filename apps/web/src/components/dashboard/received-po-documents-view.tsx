@@ -228,11 +228,11 @@ function StickerTemplatePreview({
   );
 }
 
-function StyliTemplatePreview(): JSX.Element {
+function StandardTemplatePreview(): JSX.Element {
   return (
     <div className="flex justify-center rounded-xl border border-kira-warmgray/20 bg-kira-offwhite/50 p-3 dark:border-white/10 dark:bg-white/5">
       <div className="relative h-[210px] w-[158px] overflow-hidden rounded-[10px] border border-[#dc5096] bg-white shadow-sm">
-        <div className="pt-3 text-center text-[11px] font-bold text-black">STYLI</div>
+        <div className="pt-3 text-center text-[11px] font-bold text-black">BRAND</div>
         <div className="mt-5 text-center text-[9px] text-black">PO No : 70150792</div>
         <div className="mt-1 text-center text-[9px] text-black">Model No. : IN000090128</div>
         <div className="mt-1 text-center text-[9px] text-black">Option ID : 7015079228</div>
@@ -332,7 +332,7 @@ export function ReceivedPODocumentsView({
   );
   const selectedStickerTemplateName = useMemo(() => {
     if (selectedBarcodeTemplate === "styli") {
-      return "Styli format";
+      return "Standard format";
     }
     return (
       stickerTemplates.find((template) => template.id === selectedBarcodeTemplate)?.name ??
@@ -720,7 +720,7 @@ export function ReceivedPODocumentsView({
                   summary: barcodeJob
                     ? `${barcodeJob.total_stickers} stickers`
                     : selectedBarcodeTemplate === "styli"
-                      ? "Styli format"
+                      ? "Standard format"
                       : "Custom template",
                 },
                 {
@@ -778,7 +778,7 @@ export function ReceivedPODocumentsView({
               <div className="space-y-3 text-sm text-kira-darkgray dark:text-gray-200">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-kira-brown/10 px-2 py-1 text-xs font-medium uppercase tracking-[0.08em] text-kira-brown dark:bg-kira-brown/20 dark:text-amber-200">
-                    {selectedBarcodeTemplate === "styli" ? "Styli format" : "Custom template"}
+                    {selectedBarcodeTemplate === "styli" ? "Standard format" : "Custom template"}
                   </span>
                   {barcodeJob?.total_pages ? <span>{barcodeJob.total_pages} page(s)</span> : null}
                 </div>
@@ -1151,11 +1151,11 @@ export function ReceivedPODocumentsView({
                 }}
                 type="button"
               >
-                <StyliTemplatePreview />
+                <StandardTemplatePreview />
                 <div className="mt-3">
-                  <p className="font-medium text-kira-black dark:text-white">Styli format</p>
+                  <p className="font-medium text-kira-black dark:text-white">Standard format</p>
                   <p className="text-xs text-kira-midgray dark:text-gray-400">
-                    Fixed Styli-compatible sticker sheet
+                    Fixed marketplace-compatible sticker sheet
                   </p>
                 </div>
               </button>

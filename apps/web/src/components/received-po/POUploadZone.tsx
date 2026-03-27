@@ -17,7 +17,7 @@ const ACCEPTED_TYPES = ".pdf,.xlsx,.xls";
 export function POUploadZone({
   disabled = false,
   fileName,
-  helperText = "Accepts PDF, XLSX, and XLS files from Styli.",
+  helperText = "Accepts PDF, XLSX, and XLS marketplace PO files.",
   onSelectFile,
 }: POUploadZoneProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null);

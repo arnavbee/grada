@@ -65,7 +65,7 @@ export function ReceivedPOListView(): JSX.Element {
           <Card className="p-8 text-center">
             <h2>No received POs yet</h2>
             <p className="mt-2 text-kira-darkgray">
-              Start by uploading the official marketplace PO you received back from Styli.
+              Start by uploading the official marketplace PO you received back from the buyer.
             </p>
             <Link className="mt-5 inline-block" href="/dashboard/received-pos/upload">
               <Button>Upload first PO</Button>
