@@ -29,18 +29,18 @@ const modules = [
 ];
 
 const metrics = [
-  { label: "Less Rework", value: "One PO, reused everywhere" },
-  { label: "Fewer Mistakes", value: "Review before docs go out" },
-  { label: "Faster Output", value: "Barcode / Invoice / Packing" },
+  { label: "Built For", value: "Apparel ops teams" },
+  { label: "Core Flow", value: "Catalog → PO → Docs" },
+  { label: "Try It", value: "Open the real product" },
 ];
 
 const challengeAreas = [
-  "Style details live across chats, folders, and spreadsheets",
-  "PO sheets still get assembled by hand in Excel",
-  "Submission mistakes show up too late",
-  "Returned POs get typed again for every next step",
-  "Barcode, invoice, and packing files are made separately",
-  "Templates and defaults live in someone’s memory",
+  "Catalog styles, imagery, and defaults in one workspace",
+  "PO workbook builder with colorways, size ratios, and AI review",
+  "Received PO review before barcode, invoice, and packing",
+  "Reusable sticker templates and document settings",
+  "Brand defaults and carton rules stored in-product",
+  "Live workflow screens your team can actually click through",
 ];
 
 const workflowSteps = [
@@ -68,13 +68,18 @@ const workflowSteps = [
 
 const contactChannels = [
   {
-    label: "Schedule a Call",
-    sublabel: "Book on Calendly",
-    href: "https://calendly.com/bsngarnav/discuss-startups",
+    label: "Create Account",
+    sublabel: "Start in the product",
+    href: "/signup",
+  },
+  {
+    label: "Open Dashboard",
+    sublabel: "Explore the workflow",
+    href: "/dashboard",
   },
   {
     label: "Email",
-    sublabel: "hello@grada.com",
+    sublabel: "Ask a question",
     href: "mailto:hello@grada.com",
   },
 ];
@@ -90,19 +95,19 @@ const tickerItems = [
 
 const coverageBlocks = [
   {
-    title: "Save time on every PO",
+    title: "Not just a database",
     detail:
-      "Set styles up once, then carry the same product data forward instead of rebuilding the sheet from scratch.",
+      "Catalog styles become workbook rows, and confirmed PO data becomes documents. That handoff is already built in.",
   },
   {
-    title: "Catch issues earlier",
+    title: "Not just a template",
     detail:
-      "Review returned PO data before it reaches barcode, invoice, and packing, when mistakes are cheaper to fix.",
+      "Colorways, ratios, sticker layouts, carton rules, and brand defaults stay connected instead of living in separate files.",
   },
   {
-    title: "Keep ops in one place",
+    title: "Not just another ops tool",
     detail:
-      "Templates, carton rules, sticker layouts, and brand defaults stop living across random files and messages.",
+      "You review once, confirm once, and reuse approved data everywhere downstream instead of reconciling it again later.",
   },
 ];
 
@@ -157,7 +162,7 @@ export default function LandingPage(): JSX.Element {
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link href="/dashboard">
-                <Button className="px-6 py-3">Open Dashboard</Button>
+                <Button className="px-6 py-3">Explore Product</Button>
               </Link>
               <Link href="/signup">
                 <Button className="px-6 py-3" variant="secondary">
@@ -180,8 +185,8 @@ export default function LandingPage(): JSX.Element {
               className="mt-6 text-sm text-kira-midgray animate-fade-in-up"
               style={{ animationDelay: "1200ms" }}
             >
-              Built for brands that are tired of chasing details across Excel, chats, and shared
-              drives.
+              No static mockups. Open the actual workflow and see how the product handles catalog,
+              PO prep, received-PO review, and shipping docs.
             </p>
           </div>
 
@@ -276,11 +281,12 @@ export default function LandingPage(): JSX.Element {
       >
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Why Teams Care</p>
-            <h2 className="mt-2 text-3xl">Less Copying. Fewer Fire Drills.</h2>
+            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Why Grada Wins</p>
+            <h2 className="mt-2 text-3xl">Why Not Just Use Airtable, Notion, or Excel?</h2>
           </div>
           <p className="text-sm text-kira-midgray">
-            The payoff is speed, clarity, and less avoidable cleanup
+            Because the handoff from catalog to PO to shipping docs is the product, not a workflow
+            you still have to build yourself
           </p>
         </div>
         <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -301,11 +307,11 @@ export default function LandingPage(): JSX.Element {
           className="animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7"
           style={{ animationDelay: "260ms" }}
         >
-          <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Common Challenges</p>
-          <h2 className="mt-2 text-3xl">What Teams Are Trying to Escape</h2>
+          <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Proof</p>
+          <h2 className="mt-2 text-3xl">See the Actual Workflow</h2>
           <p className="mt-2 text-kira-darkgray">
-            Grada is built for the repeated manual work that slows teams down between catalog setup,
-            PO prep, and post-PO documentation.
+            If you&apos;re comparing Grada to a generic stack, the real question is whether the
+            workflow is already here. These are the parts you can explore in the product today.
           </p>
           <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {challengeAreas.map((challenge) => (
@@ -324,10 +330,10 @@ export default function LandingPage(): JSX.Element {
           style={{ animationDelay: "320ms" }}
         >
           <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Get Started</p>
-          <h2 className="mt-2 text-3xl">See Where Grada Saves Time First</h2>
+          <h2 className="mt-2 text-3xl">Start with the Product</h2>
           <p className="mt-2 text-kira-darkgray">
-            Walk through your current catalog, workbook, and post-PO process with us and we&apos;ll
-            show you where Grada fits fastest.
+            Don&apos;t start with a sales call unless you need one. Open the product, create an
+            account, or send us a question if you want to understand the fit first.
           </p>
           <div className="mt-5 space-y-2">
             {contactChannels.map((channel) => (
@@ -382,19 +388,19 @@ export default function LandingPage(): JSX.Element {
       <Card className="animate-enter p-5 md:p-7" style={{ animationDelay: "560ms" }}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2>See grada in Action</h2>
+            <h2>Start Exploring Grada</h2>
             <p className="mt-1 text-kira-darkgray">
-              Open the product and see how quickly your team can move from style setup to PO prep to
-              final documents.
+              See the live workflow, not a pitch deck. Move from style setup to PO prep to final
+              documents in the real product.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href="/dashboard">
-              <Button className="px-6">Go to Dashboard</Button>
+              <Button className="px-6">Explore Product</Button>
             </Link>
             <Link href="/signup">
               <Button className="px-6" variant="secondary">
-                Get Started
+                Create Account
               </Button>
             </Link>
           </div>
@@ -411,7 +417,7 @@ export default function LandingPage(): JSX.Element {
           <div>
             <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">grada</p>
             <p className="mt-1 text-kira-darkgray">
-              Less spreadsheet cleanup between catalog, PO prep, and shipping docs.
+              A purpose-built workflow for catalog, PO prep, and shipping docs.
             </p>
           </div>
           <p className="text-sm text-kira-midgray">© 2026 grada. All rights reserved.</p>
