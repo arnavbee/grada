@@ -120,6 +120,7 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'columns': (
             ('S. No', 'serial_no'),
             ('Style-No', 'sku'),
+            ('Image Preview', 'image_preview'),
             ('Name', 'title'),
             ('Category', 'category'),
             ('Color', 'color'),
@@ -130,7 +131,6 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
             ('PO Price', 'po_price'),
             ('OSP', 'osp'),
             ('Status', 'status'),
-            ('Image Preview', 'image_preview'),
         ),
     },
     'myntra': {
@@ -139,6 +139,7 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'columns': (
             ('S. No', 'serial_no'),
             ('Style ID', 'sku'),
+            ('Image Preview', 'image_preview'),
             ('Product Name', 'title'),
             ('Brand', 'brand'),
             ('Category', 'category'),
@@ -146,7 +147,6 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
             ('Size', 'size'),
             ('MRP', 'mrp'),
             ('Description', 'description'),
-            ('Image Preview', 'image_preview'),
         ),
     },
     'ajio': {
@@ -155,13 +155,13 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'columns': (
             ('S. No', 'serial_no'),
             ('Seller SKU', 'sku'),
+            ('Image Preview', 'image_preview'),
             ('Product Name', 'title'),
             ('Department', 'category'),
             ('Color', 'color'),
             ('Size', 'size'),
             ('MRP', 'mrp'),
             ('Description', 'description'),
-            ('Image Preview', 'image_preview'),
         ),
     },
     'amazon_in': {
@@ -170,6 +170,7 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'columns': (
             ('S. No', 'serial_no'),
             ('seller-sku', 'sku'),
+            ('image-preview', 'image_preview'),
             ('item-name', 'title'),
             ('brand-name', 'brand'),
             ('item-type', 'category'),
@@ -177,7 +178,6 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
             ('size-name', 'size'),
             ('standard-price', 'mrp'),
             ('product-description', 'description'),
-            ('image-preview', 'image_preview'),
         ),
     },
     'flipkart': {
@@ -186,6 +186,7 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'columns': (
             ('S. No', 'serial_no'),
             ('Seller SKU', 'sku'),
+            ('Image Preview', 'image_preview'),
             ('Product Title', 'title'),
             ('Brand', 'brand'),
             ('Category', 'category'),
@@ -193,7 +194,6 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
             ('Size', 'size'),
             ('Selling Price', 'mrp'),
             ('Description', 'description'),
-            ('Image Preview', 'image_preview'),
         ),
     },
     'nykaa': {
@@ -202,6 +202,7 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
         'columns': (
             ('S. No', 'serial_no'),
             ('SKU', 'sku'),
+            ('Image Preview', 'image_preview'),
             ('Name', 'title'),
             ('Brand', 'brand'),
             ('Category', 'category'),
@@ -209,7 +210,6 @@ MARKETPLACE_EXPORT_TEMPLATES: dict[str, dict[str, Any]] = {
             ('Size', 'size'),
             ('MRP', 'mrp'),
             ('Description', 'description'),
-            ('Image Preview', 'image_preview'),
         ),
     },
 }
@@ -815,7 +815,10 @@ def _generate_xlsx_bytes(headers: list[str], rows: list[list[str]]) -> bytes:
         sheet.column_dimensions[get_column_letter(column_index)].width = width
 
     for row_index, row in enumerate(rows, start=2):
-        sheet.append(row)
+        row_values = list(row)
+        if image_preview_column is not None:
+            row_values[image_preview_column - 1] = ''
+        sheet.append(row_values)
         if image_preview_column is None:
             continue
         image_url = row[image_preview_column - 1]

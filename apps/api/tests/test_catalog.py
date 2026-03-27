@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from openpyxl import load_workbook
 from PIL import Image
 
 from app.db.session import init_db
@@ -222,6 +223,9 @@ def test_catalog_xlsx_export_embeds_images() -> None:
 
     xlsx_path = Path('static') / payload['file_url'].removeprefix('/static/')
     assert xlsx_path.exists()
+    workbook = load_workbook(xlsx_path)
+    sheet = workbook.active
+    assert sheet['C2'].value in (None, '')
     with zipfile.ZipFile(xlsx_path, 'r') as archive:
         media_files = [name for name in archive.namelist() if name.startswith('xl/media/')]
     assert media_files
@@ -288,8 +292,8 @@ def test_generic_export_has_catalog_shape() -> None:
     csv_path = Path('static') / export_body['file_url'].removeprefix('/static/')
     assert csv_path.exists()
     csv_contents = csv_path.read_text(encoding='utf-8')
-    assert 'S. No,Style-No,Name,Category,Color,Fabric,Composition,Woven/Knits,Units,PO Price,OSP,Status,Image Preview' in csv_contents
-    assert '1,GENERIC-SHAPE-1,Catalog Item' in csv_contents
+    assert 'S. No,Style-No,Image Preview,Name,Category,Color,Fabric,Composition,Woven/Knits,Units,PO Price,OSP,Status' in csv_contents
+    assert '1,GENERIC-SHAPE-1,' in csv_contents
 
 
 def test_analyze_image_returns_hash_and_source_context(monkeypatch) -> None:
