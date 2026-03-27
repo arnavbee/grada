@@ -1,3 +1,4 @@
+import atexit
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -12,7 +13,9 @@ from app.models.received_po import ReceivedPO, ReceivedPOLineItem
 from app.services.received_po_documents import _resolve_model_display_value
 
 init_db()
-client = TestClient(app)
+client_manager = TestClient(app)
+client = client_manager.__enter__()
+atexit.register(client_manager.__exit__, None, None, None)
 
 
 def _auth_headers() -> dict[str, str]:
@@ -413,6 +416,93 @@ def test_custom_sticker_template_preview_and_sheet_generation() -> None:
     assert custom_sheet_path.read_bytes().startswith(b'%PDF-')
 
 
+def test_custom_sticker_sheet_generation_tolerates_unreachable_image_assets(monkeypatch) -> None:
+    from urllib.error import URLError
+
+    from app.services import received_po_documents
+
+    headers = _auth_headers()
+    _, received_po_id = _seed_confirmed_received_po(headers)
+
+    monkeypatch.setattr(
+        received_po_documents,
+        'urlopen',
+        lambda *args, **kwargs: (_ for _ in ()).throw(URLError('unreachable asset')),
+    )
+
+    create_template = client.post(
+        '/api/v1/sticker-templates',
+        headers=headers,
+        json={
+            'name': 'Label With Remote Logo',
+            'width_mm': 45.03,
+            'height_mm': 60,
+            'border_color': '#000000',
+            'border_radius_mm': 2,
+            'background_color': '#FFFFFF',
+            'is_default': False,
+            'elements': [
+                {
+                    'element_type': 'image',
+                    'x_mm': 4,
+                    'y_mm': 4,
+                    'width_mm': 12,
+                    'height_mm': 8,
+                    'z_index': 0,
+                    'properties': {
+                        'asset_type': 'custom',
+                        'asset_url': 'https://cdn.example.com/logo.png',
+                        'fit': 'contain',
+                    },
+                },
+                {
+                    'element_type': 'barcode',
+                    'x_mm': 5,
+                    'y_mm': 18,
+                    'width_mm': 34,
+                    'height_mm': 14,
+                    'z_index': 1,
+                    'properties': {
+                        'field': 'styli_sku',
+                        'custom_formula': 'styli_sku',
+                        'barcode_type': 'code128',
+                        'show_number': True,
+                        'number_font_size': 7,
+                    },
+                },
+            ],
+        },
+    )
+    assert create_template.status_code == 201
+    template_id = create_template.json()['id']
+
+    custom_sheet = client.post(
+        '/api/v1/barcode/generate-custom-sheet',
+        headers=headers,
+        json={
+            'template_id': template_id,
+            'received_po_id': received_po_id,
+            'line_items': [
+                {
+                    'po_number': '70150792',
+                    'model_number': 'IN000090128',
+                    'option_id': '7015079228',
+                    'size': 'M',
+                    'quantity': 7,
+                    'sku_id': 'HRDS25001-A-BLACK-M',
+                    'color': 'Black',
+                    'brand_name': 'House Of Raeli',
+                }
+            ],
+        },
+    )
+    assert custom_sheet.status_code == 200
+    body = custom_sheet.json()
+    assert body['total_stickers'] == 1
+    assert body['total_pages'] == 1
+    assert body['file_url'].startswith('/static/generated/barcodes/')
+
+
 def test_document_flow_happy_path() -> None:
     headers = _auth_headers()
     _, received_po_id = _seed_confirmed_received_po(headers)
@@ -533,3 +623,87 @@ def test_model_display_uses_brand_style_code_when_model_number_missing() -> None
     assert _resolve_model_display_value(None, 'IN000090128') == 'IN000090128'
     assert _resolve_model_display_value('', 'IN000090128') == 'IN000090128'
     assert _resolve_model_display_value('MODEL-7', 'IN000090128') == 'MODEL-7'
+
+
+def test_invoice_generation_failure_marks_invoice_failed(monkeypatch) -> None:
+    from app.services import received_po_documents
+
+    headers = _auth_headers()
+    _, received_po_id = _seed_confirmed_received_po(headers)
+
+    invoice_create = client.post(
+        f'/api/v1/received-pos/{received_po_id}/invoice',
+        headers=headers,
+        json={'number_of_cartons': 2, 'export_mode': 'Air'},
+    )
+    assert invoice_create.status_code == 201
+
+    monkeypatch.setattr(
+        received_po_documents,
+        '_write_generated_pdf',
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError('storage write failed')),
+    )
+
+    generate_response = client.post(
+        f'/api/v1/received-pos/{received_po_id}/invoice/generate-pdf',
+        headers=headers,
+    )
+    assert generate_response.status_code == 200
+    assert generate_response.json()['status'] == 'draft'
+    assert generate_response.json()['file_url'] is None
+
+    for _ in range(20):
+        invoice_get = client.get(f'/api/v1/received-pos/{received_po_id}/invoice', headers=headers)
+        assert invoice_get.status_code == 200
+        payload = invoice_get.json()
+        if payload['status'] == 'failed':
+            assert payload['file_url'] is None
+            return
+        time.sleep(0.1)
+
+    raise AssertionError('Invoice did not transition to failed status')
+
+
+def test_packing_list_generation_failure_marks_packing_list_failed(monkeypatch) -> None:
+    from app.services import received_po_documents
+
+    headers = _auth_headers()
+    _, received_po_id = _seed_confirmed_received_po(headers)
+
+    invoice_create = client.post(
+        f'/api/v1/received-pos/{received_po_id}/invoice',
+        headers=headers,
+        json={'number_of_cartons': 2, 'export_mode': 'Air'},
+    )
+    assert invoice_create.status_code == 201
+
+    packing_create = client.post(
+        f'/api/v1/received-pos/{received_po_id}/packing-list',
+        headers=headers,
+    )
+    assert packing_create.status_code == 201
+
+    monkeypatch.setattr(
+        received_po_documents,
+        '_write_generated_pdf',
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError('storage write failed')),
+    )
+
+    generate_response = client.post(
+        f'/api/v1/received-pos/{received_po_id}/packing-list/generate-pdf',
+        headers=headers,
+    )
+    assert generate_response.status_code == 200
+    assert generate_response.json()['status'] == 'draft'
+    assert generate_response.json()['file_url'] is None
+
+    for _ in range(20):
+        packing_get = client.get(f'/api/v1/received-pos/{received_po_id}/packing-list', headers=headers)
+        assert packing_get.status_code == 200
+        payload = packing_get.json()
+        if payload['status'] == 'failed':
+            assert payload['file_url'] is None
+            return
+        time.sleep(0.1)
+
+    raise AssertionError('Packing list did not transition to failed status')

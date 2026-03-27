@@ -212,14 +212,36 @@ def _normalize_color(value: str | None, fallback: colors.Color = colors.black) -
 def _local_static_path_from_url(asset_url: str) -> Path | None:
     if asset_url.startswith('/static/'):
         return STATIC_DIR / Path(asset_url.removeprefix('/static/'))
+    if asset_url.startswith('/api/v1/static/'):
+        return STATIC_DIR / Path(asset_url.removeprefix('/api/v1/static/'))
     if asset_url.startswith('static/'):
         return Path(asset_url)
+    if asset_url.startswith('api/v1/static/'):
+        return STATIC_DIR / Path(asset_url.removeprefix('api/v1/static/'))
+    if asset_url.startswith('/api/v1/uploads/'):
+        return STATIC_DIR / 'uploads' / Path(asset_url.removeprefix('/api/v1/uploads/'))
+    if asset_url.startswith('api/v1/uploads/'):
+        return STATIC_DIR / 'uploads' / Path(asset_url.removeprefix('api/v1/uploads/'))
+    if asset_url.startswith('/uploads/'):
+        return STATIC_DIR / Path(asset_url.removeprefix('/'))
+    if asset_url.startswith('uploads/'):
+        return STATIC_DIR / Path(asset_url)
     try:
         parsed = urlparse(asset_url)
         if parsed.path.startswith('/static/'):
             return STATIC_DIR / Path(parsed.path.removeprefix('/static/'))
+        if parsed.path.startswith('/api/v1/static/'):
+            return STATIC_DIR / Path(parsed.path.removeprefix('/api/v1/static/'))
         if parsed.path.startswith('static/'):
             return Path(parsed.path)
+        if parsed.path.startswith('/api/v1/uploads/'):
+            return STATIC_DIR / 'uploads' / Path(parsed.path.removeprefix('/api/v1/uploads/'))
+        if parsed.path.startswith('api/v1/uploads/'):
+            return STATIC_DIR / 'uploads' / Path(parsed.path.removeprefix('api/v1/uploads/'))
+        if parsed.path.startswith('/uploads/'):
+            return STATIC_DIR / Path(parsed.path.removeprefix('/'))
+        if parsed.path.startswith('uploads/'):
+            return STATIC_DIR / Path(parsed.path)
     except Exception:
         return None
     return None
@@ -229,17 +251,20 @@ def _load_image_reader(asset_url: str | None) -> ImageReader | None:
     if not asset_url:
         return None
 
-    local_path = _local_static_path_from_url(asset_url)
-    if local_path is not None and local_path.exists():
-        return ImageReader(str(local_path))
+    try:
+        local_path = _local_static_path_from_url(asset_url)
+        if local_path is not None and local_path.exists():
+            return ImageReader(str(local_path))
 
-    file_path = Path(asset_url)
-    if file_path.is_absolute() and file_path.exists():
-        return ImageReader(str(file_path))
+        file_path = Path(asset_url)
+        if file_path.is_absolute() and file_path.exists():
+            return ImageReader(str(file_path))
 
-    if asset_url.startswith(('http://', 'https://')):
-        with urlopen(asset_url, timeout=5) as response:  # noqa: S310
-            return ImageReader(BytesIO(response.read()))
+        if asset_url.startswith(('http://', 'https://')):
+            with urlopen(asset_url, timeout=5) as response:  # noqa: S310
+                return ImageReader(BytesIO(response.read()))
+    except Exception:
+        return None
 
     return None
 
@@ -2202,6 +2227,12 @@ def generate_invoice_pdf(invoice_id: str) -> None:
         invoice.file_url = _write_generated_pdf(key=key, content=pdf_content)
         invoice.status = 'final'
         db.commit()
+    except Exception:
+        if 'invoice' in locals() and invoice is not None:
+            invoice.status = 'failed'
+            invoice.file_url = None
+            db.commit()
+        raise
     finally:
         db.close()
 
@@ -2276,5 +2307,11 @@ def generate_packing_list_pdf(packing_list_id: str) -> None:
         packing_list.file_url = _write_generated_pdf(key=key, content=pdf_content)
         packing_list.status = 'final'
         db.commit()
+    except Exception:
+        if 'packing_list' in locals() and packing_list is not None:
+            packing_list.status = 'failed'
+            packing_list.file_url = None
+            db.commit()
+        raise
     finally:
         db.close()

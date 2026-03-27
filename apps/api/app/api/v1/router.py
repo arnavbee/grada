@@ -13,6 +13,7 @@ from app.api.v1.endpoints.settings import router as settings_router
 from app.api.v1.endpoints.sticker_templates import router as sticker_templates_router
 from app.api.v1.endpoints.uploads import router as uploads_router
 from app.api.v1.endpoints.users import router as users_router
+from app.services.object_storage import get_object_storage_service
 
 api_router = APIRouter()
 api_router.include_router(admin_router)
@@ -33,3 +34,12 @@ api_router.include_router(received_pos_router)
 @api_router.get('/health', tags=['health'])
 def api_health() -> dict[str, str]:
     return {'status': 'ok', 'service': 'api-v1'}
+
+
+@api_router.get('/health/storage', tags=['health'])
+def api_storage_health() -> dict[str, object]:
+    return {
+        'status': 'ok',
+        'service': 'api-v1',
+        'storage': get_object_storage_service().status_summary(),
+    }

@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.core.security import TokenError, decode_access_token
 from app.db.session import init_db
 from app.services.job_queue import start_job_worker, stop_job_worker
+from app.services.object_storage import get_object_storage_service
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -18,6 +19,13 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    object_storage = get_object_storage_service()
+    if settings.app_env == 'production' and not object_storage.enabled:
+        logger.warning(
+            'Object storage is disabled in production. Uploads and generated PDFs will use ephemeral local disk.'
+        )
+    else:
+        logger.info('Object storage backend: %s', object_storage.backend)
     start_job_worker()
     try:
         yield

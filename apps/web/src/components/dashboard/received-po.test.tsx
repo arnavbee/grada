@@ -308,6 +308,13 @@ function buildPackingList(
   };
 }
 
+async function openDocumentsTab(name: "Invoice" | "Packing List"): Promise<void> {
+  const tabLabel = screen.getByText(name);
+  const tabButton = tabLabel.closest("button");
+  expect(tabButton).not.toBeNull();
+  fireEvent.click(tabButton as HTMLElement);
+}
+
 describe("received PO dashboard flows", () => {
   beforeEach(() => {
     pushMock.mockReset();
@@ -439,6 +446,7 @@ describe("received PO dashboard flows", () => {
 
     render(<ReceivedPODocumentsView receivedPoId="po_1" />);
 
+    await openDocumentsTab("Invoice");
     await screen.findByRole("button", { name: "Create invoice" });
 
     await userEvent.setup().click(screen.getByRole("button", { name: "Create invoice" }));
@@ -451,7 +459,7 @@ describe("received PO dashboard flows", () => {
       });
     });
     expect(screen.getByRole("button", { name: "Generate invoice PDF" })).toBeTruthy();
-    expect(screen.getByText(/INV-2026-001/i)).toBeTruthy();
+    expect(screen.getAllByText(/INV-2026-001/i).length).toBeGreaterThan(0);
 
     await userEvent.setup().click(screen.getByRole("button", { name: "Generate invoice PDF" }));
 
@@ -476,8 +484,10 @@ describe("received PO dashboard flows", () => {
 
     render(<ReceivedPODocumentsView receivedPoId="po_1" />);
 
-    await screen.findByRole("button", { name: "Change details" });
-    await userEvent.setup().click(screen.getByRole("button", { name: "Change details" }));
+    await openDocumentsTab("Invoice");
+    await screen.findByRole("button", { name: "Edit details" });
+    await userEvent.setup().click(screen.getByRole("button", { name: "Edit details" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "Change invoice details" }));
 
     const dialog = await screen.findByRole("dialog");
     const vendorCompanyInput = within(dialog).getByLabelText("Vendor company name");
@@ -514,6 +524,7 @@ describe("received PO dashboard flows", () => {
 
     render(<ReceivedPODocumentsView receivedPoId="po_1" />);
 
+    await openDocumentsTab("Invoice");
     const invoiceHeading = await screen.findByRole("heading", { name: "Invoice" });
     const invoiceCard = invoiceHeading.closest(".surface-card");
     expect(invoiceCard).not.toBeNull();
@@ -530,5 +541,72 @@ describe("received PO dashboard flows", () => {
     );
 
     openSpy.mockRestore();
+  });
+
+  it("stops invoice PDF polling and shows an error when generation fails", async () => {
+    vi.useFakeTimers();
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock.mockResolvedValue(null);
+    getOptionalInvoiceMock
+      .mockResolvedValueOnce(buildInvoice("draft"))
+      .mockResolvedValueOnce(buildInvoice("failed"));
+    getOptionalPackingListMock.mockResolvedValue(null);
+    generateInvoicePdfMock.mockResolvedValue({
+      invoice_id: "inv_1",
+      status: "draft",
+      file_url: null,
+    });
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    await act(async () => {});
+    await openDocumentsTab("Invoice");
+    fireEvent.click(screen.getByRole("button", { name: "Generate invoice PDF" }));
+    await act(async () => {});
+    expect(generateInvoicePdfMock).toHaveBeenCalledWith("po_1");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    expect(screen.getByText("Invoice PDF generation failed. Please try again.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Generate invoice PDF" })).toBeTruthy();
+  });
+
+  it("stops packing list PDF polling and shows an error when generation fails", async () => {
+    vi.useFakeTimers();
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock.mockResolvedValue(null);
+    getOptionalInvoiceMock.mockResolvedValue(
+      buildInvoice("final", "/static/generated/invoices/inv_1.pdf"),
+    );
+    getOptionalPackingListMock
+      .mockResolvedValueOnce(buildPackingList("draft"))
+      .mockResolvedValueOnce(buildPackingList("failed"));
+    createPackingListMock.mockResolvedValue({
+      packing_list_id: "pl_1",
+      total_cartons: 1,
+      total_pieces: 20,
+    });
+    generatePackingListPdfMock.mockResolvedValue({
+      packing_list_id: "pl_1",
+      status: "draft",
+      file_url: null,
+    });
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    await act(async () => {});
+    await openDocumentsTab("Packing List");
+    fireEvent.click(screen.getByRole("button", { name: "Generate PDF" }));
+    await act(async () => {});
+    expect(generatePackingListPdfMock).toHaveBeenCalledWith("po_1");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    expect(screen.getByText("Packing list PDF generation failed. Please try again.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Generate PDF" })).toBeTruthy();
   });
 });

@@ -61,6 +61,7 @@ Available health checks:
 
 - `GET /health`
 - `GET /api/v1/health`
+- `GET /api/v1/health/storage`
 
 ## Quality checks
 
@@ -139,6 +140,27 @@ R2_REGION=auto
 ```
 
 When these values are set, the upload/document services store files in object storage and return object-backed URLs. If not set, the API falls back to local `static/` storage.
+
+### Production setup for durable PDFs
+
+For Render-hosted API deployments, set these on the API service:
+
+```bash
+APP_ENV=production
+R2_ENDPOINT=https://<account>.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET=...
+R2_PUBLIC_BASE_URL=https://<public-r2-domain-or-cdn-domain>
+R2_REGION=auto
+```
+
+Notes:
+
+- `R2_PUBLIC_BASE_URL` should be a publicly readable bucket/CDN domain so saved `file_url` values remain downloadable later.
+- Once configured, newly generated barcode, invoice, and packing-list PDFs will be stored in R2 instead of local disk.
+- Existing local-disk PDFs from older deploys cannot be recovered automatically after the host filesystem is replaced.
+- Verify the deployment is using R2 with `GET /api/v1/health/storage` and check that `storage.enabled` is `true`.
 
 ## Development notes
 

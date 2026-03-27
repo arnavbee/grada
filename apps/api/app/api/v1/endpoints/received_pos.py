@@ -827,6 +827,7 @@ def generate_invoice_pdf_endpoint(
     company_settings = _get_company_settings(db, current_user.company_id)
     _refresh_invoice_snapshot(db, invoice, received_po, company_settings)
     invoice.status = 'draft'
+    invoice.file_url = None
     enqueue_processing_job(
         db,
         company_id=current_user.company_id,
@@ -935,6 +936,8 @@ def generate_packing_list_pdf_endpoint(
 ) -> PackingListGeneratePdfResponse:
     _get_received_po_or_404(db, current_user.company_id, received_po_id)
     packing_list = _get_packing_list_or_404(db, current_user.company_id, received_po_id)
+    packing_list.status = 'draft'
+    packing_list.file_url = None
     enqueue_processing_job(
         db,
         company_id=current_user.company_id,

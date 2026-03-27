@@ -34,6 +34,21 @@ class ObjectStorageService:
     def enabled(self) -> bool:
         return bool(self._enabled)
 
+    @property
+    def backend(self) -> str:
+        return 'r2' if self.enabled else 'local'
+
+    @property
+    def public_base_configured(self) -> bool:
+        return bool(self._r2_public_base_url)
+
+    def status_summary(self) -> dict[str, object]:
+        return {
+            'enabled': self.enabled,
+            'backend': self.backend,
+            'public_base_configured': self.public_base_configured,
+        }
+
     def _client_or_none(self):
         if not self.enabled:
             return None

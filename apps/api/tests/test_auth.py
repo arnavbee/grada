@@ -57,3 +57,25 @@ def test_register_login_refresh_and_reset_flow() -> None:
         '/api/v1/auth/login', json={'email': email, 'password': 'NewPassword1'}
     )
     assert login_new_response.status_code == 200
+
+
+def test_me_accepts_access_token_cookie() -> None:
+    email = f'test-cookie-{uuid4().hex[:8]}@example.com'
+    password = 'Password1'
+
+    register_response = client.post(
+        '/api/v1/auth/register',
+        json={
+            'company_name': 'Cookie Co',
+            'full_name': 'Cookie Admin',
+            'email': email,
+            'password': password,
+        },
+    )
+    assert register_response.status_code == 201
+
+    access_token = register_response.json()['access_token']
+    me_response = client.get('/api/v1/auth/me', cookies={'kira_access_token': access_token})
+
+    assert me_response.status_code == 200
+    assert me_response.json()['email'] == email

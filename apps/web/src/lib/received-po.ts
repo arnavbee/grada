@@ -5,8 +5,8 @@ import type { StickerTemplateKind } from "@/src/lib/sticker-templates";
 
 export type ReceivedPOStatus = "uploaded" | "parsing" | "parsed" | "confirmed" | "failed";
 export type BarcodeJobStatus = "pending" | "generating" | "done" | "failed";
-export type InvoiceStatus = "draft" | "final";
-export type PackingListStatus = "draft" | "final";
+export type InvoiceStatus = "draft" | "final" | "failed";
+export type PackingListStatus = "draft" | "final" | "failed";
 export type ExportMode = "Air" | "Sea" | "Road";
 
 export interface InvoiceDetails {

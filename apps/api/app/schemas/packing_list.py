@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-PackingListStatus = Literal['draft', 'final']
+PackingListStatus = Literal['draft', 'final', 'failed']
 
 
 class PackingListCartonItemResponse(BaseModel):

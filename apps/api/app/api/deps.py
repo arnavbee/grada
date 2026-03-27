@@ -17,20 +17,29 @@ security_scheme = HTTPBearer(auto_error=False)
 DbSession = Annotated[Session, Depends(get_db)]
 
 
+def _normalize_token(raw_value: str | None) -> str | None:
+    if not raw_value:
+        return None
+    token = raw_value.strip()
+    if token.startswith('"') and token.endswith('"') and len(token) > 1:
+        token = token[1:-1].strip()
+    if token.lower().startswith('bearer '):
+        token = token[7:].strip()
+    return token or None
+
+
 def get_current_user(
     request: Request,
     db: DbSession,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security_scheme)],
 ) -> User:
-    token: str | None = None
-    if credentials is not None:
-        token = credentials.credentials.strip() if credentials.credentials else None
+    token = _normalize_token(credentials.credentials if credentials is not None else None)
 
     if not token:
-        fallback_header = request.headers.get('x-access-token', '').strip()
-        if fallback_header.lower().startswith('bearer '):
-            fallback_header = fallback_header.removeprefix('Bearer ').strip()
-        token = fallback_header or None
+        token = _normalize_token(request.headers.get('x-access-token'))
+
+    if not token:
+        token = _normalize_token(request.cookies.get('kira_access_token'))
 
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Authentication required.')

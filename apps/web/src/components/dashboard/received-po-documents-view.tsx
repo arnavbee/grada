@@ -440,6 +440,11 @@ export function ReceivedPODocumentsView({
           if (nextInvoice.status === "final") {
             setWorkingKey(null);
             window.clearInterval(interval);
+          } else if (nextInvoice.status === "failed") {
+            setWorkingKey(null);
+            setStatusLine(null);
+            setError("Invoice PDF generation failed. Please try again.");
+            window.clearInterval(interval);
           }
         }
       } catch {
@@ -464,6 +469,11 @@ export function ReceivedPODocumentsView({
           setCartonDrafts(buildCartonDrafts(nextPackingList));
           if (nextPackingList.status === "final") {
             setWorkingKey(null);
+            window.clearInterval(interval);
+          } else if (nextPackingList.status === "failed") {
+            setWorkingKey(null);
+            setStatusLine(null);
+            setError("Packing list PDF generation failed. Please try again.");
             window.clearInterval(interval);
           }
         }
@@ -572,7 +582,16 @@ export function ReceivedPODocumentsView({
         }));
       setInvoice(ensuredInvoice);
       setInvoiceDetailsDraft(ensuredInvoice.details);
-      await generateInvoicePdf(receivedPoId);
+      const generation = await generateInvoicePdf(receivedPoId);
+      setInvoice((current) =>
+        current
+          ? {
+              ...current,
+              status: generation.status,
+              file_url: generation.file_url,
+            }
+          : current,
+      );
       setStatusLine("Invoice PDF generation started.");
     } catch (nextError) {
       setWorkingKey(null);
@@ -684,7 +703,16 @@ export function ReceivedPODocumentsView({
       if (!packingList) {
         await handleCreatePackingList();
       }
-      await generatePackingListPdf(receivedPoId);
+      const generation = await generatePackingListPdf(receivedPoId);
+      setPackingList((current) =>
+        current
+          ? {
+              ...current,
+              status: generation.status,
+              file_url: generation.file_url,
+            }
+          : current,
+      );
       setStatusLine("Packing list PDF generation started.");
     } catch (nextError) {
       setWorkingKey(null);
