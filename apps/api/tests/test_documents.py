@@ -503,6 +503,46 @@ def test_custom_sticker_sheet_generation_tolerates_unreachable_image_assets(monk
     assert body['file_url'].startswith('/static/generated/barcodes/')
 
 
+def test_custom_template_preview_renders_builtin_styli_logo_for_logo_assets() -> None:
+    headers = _auth_headers()
+
+    create_template = client.post(
+        '/api/v1/sticker-templates',
+        headers=headers,
+        json={
+            'name': 'Label With Builtin Logo',
+            'width_mm': 45.03,
+            'height_mm': 60,
+            'border_color': '#000000',
+            'border_radius_mm': 2,
+            'background_color': '#FFFFFF',
+            'is_default': False,
+            'elements': [
+                {
+                    'element_type': 'image',
+                    'x_mm': 4,
+                    'y_mm': 4,
+                    'width_mm': 18,
+                    'height_mm': 8,
+                    'z_index': 0,
+                    'properties': {
+                        'asset_type': 'logo',
+                        'asset_url': '',
+                        'fit': 'contain',
+                    },
+                }
+            ],
+        },
+    )
+    assert create_template.status_code == 201
+    template_id = create_template.json()['id']
+
+    preview = client.post(f'/api/v1/sticker-templates/{template_id}/preview', headers=headers)
+    assert preview.status_code == 200
+    assert preview.content.startswith(b'%PDF-')
+    assert b'STYLI' in preview.content
+
+
 def test_document_flow_happy_path() -> None:
     headers = _auth_headers()
     _, received_po_id = _seed_confirmed_received_po(headers)

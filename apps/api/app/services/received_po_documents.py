@@ -251,22 +251,40 @@ def _load_image_reader(asset_url: str | None) -> ImageReader | None:
     if not asset_url:
         return None
 
+    def _reader_from_bytes(content: bytes) -> ImageReader | None:
+        try:
+            return ImageReader(BytesIO(content))
+        except Exception:
+            try:
+                image = Image.open(BytesIO(content))
+                converted = BytesIO()
+                image.save(converted, format='PNG')
+                converted.seek(0)
+                return ImageReader(converted)
+            except Exception:
+                return None
+
     try:
         local_path = _local_static_path_from_url(asset_url)
         if local_path is not None and local_path.exists():
-            return ImageReader(str(local_path))
+            return _reader_from_bytes(local_path.read_bytes())
 
         file_path = Path(asset_url)
         if file_path.is_absolute() and file_path.exists():
-            return ImageReader(str(file_path))
+            return _reader_from_bytes(file_path.read_bytes())
 
         if asset_url.startswith(('http://', 'https://')):
             with urlopen(asset_url, timeout=5) as response:  # noqa: S310
-                return ImageReader(BytesIO(response.read()))
+                return _reader_from_bytes(response.read())
     except Exception:
         return None
 
     return None
+
+
+def _resolve_template_image_reader(properties: dict[str, object]) -> ImageReader | None:
+    asset_url = str(properties.get('asset_url') or '').strip()
+    return _load_image_reader(asset_url)
 
 
 def _chunk_lines(lines: list[str], *, page_size: int = 48) -> list[list[str]]:
@@ -1054,8 +1072,17 @@ def _render_sticker_template(
             continue
 
         if element.element_type == 'image':
-            image_reader = _load_image_reader(str(props.get('asset_url') or ''))
+            image_reader = _resolve_template_image_reader(props)
             if image_reader is None:
+                if str(props.get('asset_type') or '').strip().lower() == 'logo':
+                    _draw_styli_logo(
+                        pdf,
+                        x=absolute_x,
+                        y=absolute_y,
+                        width=box_width,
+                        height=box_height,
+                    )
+                    continue
                 pdf.setStrokeColor(colors.lightgrey)
                 pdf.rect(absolute_x, absolute_y, box_width, box_height, stroke=1, fill=0)
                 pdf.setFillColor(colors.grey)
