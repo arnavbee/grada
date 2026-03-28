@@ -65,15 +65,12 @@ export function SmartCatalogModuleCard({
         <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Module {index + 1}</p>
         <h2 className="mt-2 text-2xl">{title}</h2>
         <p className="mt-2 text-kira-darkgray">{detail}</p>
-        <p className="mt-4 text-xs uppercase tracking-[0.08em] text-kira-midgray">
-          Hover or focus to preview the AI extraction visual
-        </p>
       </Card>
 
       <div
-        className={`mt-5 overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-[#fbf7f0] transition-all duration-500 ease-out md:max-h-0 md:opacity-0 lg:absolute lg:left-[calc(100%+1rem)] lg:top-1/2 lg:z-50 lg:mt-0 lg:w-[30rem] lg:max-h-none lg:-translate-y-1/2 lg:translate-x-2 lg:scale-[0.98] lg:shadow-2xl lg:transition-[opacity,transform] lg:duration-300 lg:ease-out ${
+        className={`mt-5 overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-[#fbf7f0] transition-all duration-500 ease-out md:max-h-0 md:opacity-0 lg:fixed lg:left-1/2 lg:top-[56%] lg:z-50 lg:mt-0 lg:w-[30rem] lg:max-h-none lg:-translate-x-1/2 lg:-translate-y-1/2 lg:scale-[0.98] lg:shadow-2xl lg:transition-[opacity,transform] lg:duration-300 lg:ease-out ${
           isPreviewOpen
-            ? "md:max-h-[46rem] md:opacity-100 lg:pointer-events-auto lg:translate-x-0 lg:scale-100 lg:opacity-100"
+            ? "md:max-h-[46rem] md:opacity-100 lg:pointer-events-none lg:scale-100 lg:opacity-100"
             : "lg:pointer-events-none"
         }`}
       >
