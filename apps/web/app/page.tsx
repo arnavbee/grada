@@ -5,6 +5,8 @@ import { Card } from "@/src/components/ui/card";
 import { FooterBrand } from "@/src/components/FooterBrand";
 import { GridBackground } from "@/src/components/GridBackground";
 
+const smartCatalogInfographicSrc = "/marketing/grada-smart-catalog-infographic.svg";
+
 const modules = [
   {
     title: "Smart Catalog",
@@ -200,20 +202,56 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {modules.map((module, index) => (
-          <Card
-            className="animate-enter p-5 transition-transform duration-300 hover:-translate-y-1"
-            key={module.title}
-            style={{ animationDelay: `${120 + index * 80}ms` }}
-          >
-            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-              Module {index + 1}
-            </p>
-            <h2 className="mt-2 text-2xl">{module.title}</h2>
-            <p className="mt-2 text-kira-darkgray">{module.detail}</p>
-          </Card>
-        ))}
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+        {modules.map((module, index) => {
+          const isSmartCatalog = module.title === "Smart Catalog";
+
+          return (
+            <Card
+              aria-label={
+                isSmartCatalog ? "Smart Catalog module with infographic preview" : undefined
+              }
+              className={`animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 ${
+                isSmartCatalog ? "group md:col-span-2 xl:col-span-3" : "xl:col-span-1"
+              }`}
+              key={module.title}
+              style={{ animationDelay: `${120 + index * 80}ms` }}
+              tabIndex={isSmartCatalog ? 0 : undefined}
+            >
+              <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                Module {index + 1}
+              </p>
+              <h2 className="mt-2 text-2xl">{module.title}</h2>
+              <p className="mt-2 text-kira-darkgray">{module.detail}</p>
+              {isSmartCatalog ? (
+                <>
+                  <p className="mt-4 text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                    Hover or focus to preview the AI extraction visual
+                  </p>
+                  <div className="mt-5 overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-[#fbf7f0] md:mt-0 md:max-h-0 md:opacity-0 md:transition-all md:duration-500 md:ease-out md:group-hover:mt-5 md:group-hover:max-h-[58rem] md:group-hover:opacity-100 md:group-focus-within:mt-5 md:group-focus-within:max-h-[58rem] md:group-focus-within:opacity-100">
+                    <div className="border-b border-kira-warmgray/35 px-4 py-3">
+                      <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                        Inside Smart Catalog
+                      </p>
+                      <p className="mt-1 text-sm text-kira-darkgray">
+                        From one product image to AI suggestions, human review, and export-ready
+                        catalog data.
+                      </p>
+                    </div>
+                    <div className="p-3 md:p-4">
+                      <img
+                        alt="Smart Catalog infographic showing AI attribute extraction and review workflow"
+                        className="w-full rounded-xl border border-kira-warmgray/25 bg-[#c48b2a]"
+                        loading="lazy"
+                        src={smartCatalogInfographicSrc}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </Card>
+          );
+        })}
       </section>
 
       <section
