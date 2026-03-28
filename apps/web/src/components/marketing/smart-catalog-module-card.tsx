@@ -90,7 +90,7 @@ export function SmartCatalogModuleCard({
         onMouseLeave={closePreview}
       >
         <div className="p-3 md:p-4">
-          <div className="overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-kira-brown/10">
+          <div className="overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-kira-brown">
             <iframe
               aria-label="Animated Smart Catalog workflow preview"
               className="kira-infographic-embed"

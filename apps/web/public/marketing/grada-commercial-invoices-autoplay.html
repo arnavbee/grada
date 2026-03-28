@@ -1,6 +1,6 @@
 
 <style>
-:root{--anim-speed:0.55}
+:root{--anim-speed:0.55;--grada-accent:#A06F42}
 html,body{width:100%;height:100%}
 body{margin:0}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -21,7 +21,7 @@ body{margin:0}
 
 *{box-sizing:border-box;margin:0;padding:0}
 
-.root{background:#1C1A14;font-family:Georgia,'Times New Roman',serif;color:#F0EAD8;overflow:hidden;position:relative;min-height:100%}
+.root{background:var(--grada-accent);font-family:Georgia,'Times New Roman',serif;color:#F0EAD8;overflow:hidden;position:relative;min-height:100%}
 
 .phase-bar{display:flex;align-items:center;padding:0 36px;border-bottom:1px solid rgba(240,234,216,0.1);background:rgba(0,0,0,0.1)}
 .phase-dot-wrap{display:flex;align-items:center;gap:0;flex:1}
@@ -48,7 +48,7 @@ body{margin:0}
 .scan-beam{position:absolute;left:0;right:0;height:1.5px;background:rgba(240,234,216,0.45);top:0;display:none}
 .scan-beam.on{display:block;animation:scanLine 1.4s linear infinite}
 .file-icon{width:48px;height:60px;border:1.5px solid rgba(240,234,216,0.5);border-radius:3px;flex-shrink:0;position:relative;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;animation:pulse 2s ease-in-out infinite}
-.file-icon::after{content:'';position:absolute;top:-1px;right:-1px;width:13px;height:13px;border-bottom:1.5px solid rgba(240,234,216,0.5);border-left:1.5px solid rgba(240,234,216,0.5);background:#1C1A14}
+.file-icon::after{content:'';position:absolute;top:-1px;right:-1px;width:13px;height:13px;border-bottom:1.5px solid rgba(240,234,216,0.5);border-left:1.5px solid rgba(240,234,216,0.5);background:var(--grada-accent)}
 .file-lines{display:flex;flex-direction:column;gap:4px}
 .fl{height:2px;background:rgba(240,234,216,0.3);border-radius:1px}
 .upload-info h3{font-size:14px;font-weight:700;color:#F0EAD8;margin-bottom:4px}

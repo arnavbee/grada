@@ -109,11 +109,7 @@ export function DispatchDocumentsModuleCard({
         onMouseLeave={closePreview}
       >
         <div className="p-3 md:p-4">
-          <div
-            className={`overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 ${
-              previewKind === "invoice" ? "bg-[#1c1a14]" : "bg-[#1a1a18]"
-            }`}
-          >
+          <div className="overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-kira-brown">
             <iframe
               aria-label={
                 previewKind === "invoice"
