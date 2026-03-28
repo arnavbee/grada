@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Grada — Smart Catalog</title>
 <style>
+  :root { --grada-accent: #A06F42; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #C48B2A; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+  body { background: var(--grada-accent); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
   svg { display: block; width: 100%; max-width: 680px; margin: 0 auto; }
 
   @keyframes draw    { from { stroke-dashoffset: var(--len); opacity:0; } to { stroke-dashoffset: 0; opacity:1; } }
@@ -27,7 +28,7 @@
 </defs>
 
 <!-- BG -->
-<rect x="0" y="0" width="680" height="580" fill="#C48B2A" class="f" style="--del:0s;--dur:.6s"/>
+<rect x="0" y="0" width="680" height="580" fill="var(--grada-accent)" class="f" style="--del:0s;--dur:.6s"/>
 
 <!-- HEADER -->
 <text x="44" y="64" font-family="Georgia,serif" font-size="38" font-weight="700" fill="#FFF8EE" letter-spacing="-0.5" class="u" style="--del:.4s;--dur:.7s">SMART CATALOG</text>
