@@ -524,6 +524,7 @@ export function ReceivedPODocumentsView({
   const refreshCustomTemplateImagesForPdf = async (templateId: string): Promise<void> => {
     const template = await getStickerTemplate(templateId);
     let changed = false;
+    let failedImageCount = 0;
 
     const nextElements = await Promise.all(
       template.elements.map(async (element) => {
@@ -559,10 +560,19 @@ export function ReceivedPODocumentsView({
             },
           };
         } catch {
+          failedImageCount += 1;
           return element;
         }
       }),
     );
+
+    if (failedImageCount > 0) {
+      throw new Error(
+        failedImageCount === 1
+          ? "Template logo/image could not be prepared for PDF. Re-upload it in the sticker builder, save the template, and try again."
+          : "Some template images could not be prepared for PDF. Re-upload them in the sticker builder, save the template, and try again.",
+      );
+    }
 
     if (!changed) {
       return;

@@ -39,6 +39,7 @@ const {
   getStickerTemplateMock,
   updateStickerTemplateMock,
   uploadStickerImageMock,
+  normalizeStickerAssetUrlForPdfMock,
   getBrandProfileMock,
 } = vi.hoisted(() => ({
   pushMock: vi.fn(),
@@ -64,6 +65,7 @@ const {
   getStickerTemplateMock: vi.fn(),
   updateStickerTemplateMock: vi.fn(),
   uploadStickerImageMock: vi.fn(),
+  normalizeStickerAssetUrlForPdfMock: vi.fn(),
   getBrandProfileMock: vi.fn(),
 }));
 
@@ -138,6 +140,16 @@ vi.mock("@/src/lib/sticker-templates", async () => {
 vi.mock("@/src/lib/settings", () => ({
   getBrandProfile: getBrandProfileMock,
 }));
+
+vi.mock("@/src/lib/sticker-asset-pdf", async () => {
+  const actual = await vi.importActual<typeof import("@/src/lib/sticker-asset-pdf")>(
+    "@/src/lib/sticker-asset-pdf",
+  );
+  return {
+    ...actual,
+    normalizeStickerAssetUrlForPdf: normalizeStickerAssetUrlForPdfMock,
+  };
+});
 
 const DEFAULT_INVOICE_DETAILS: InvoiceDetails = {
   marketplace_name: "Styli",
@@ -354,6 +366,10 @@ describe("received PO dashboard flows", () => {
     getStickerTemplateMock.mockReset();
     updateStickerTemplateMock.mockReset();
     uploadStickerImageMock.mockReset();
+    normalizeStickerAssetUrlForPdfMock.mockReset();
+    normalizeStickerAssetUrlForPdfMock.mockResolvedValue(
+      new File(["png"], "logo.png", { type: "image/png" }),
+    );
     getBrandProfileMock.mockReset();
     getBrandProfileMock.mockResolvedValue(buildBrandProfile());
   });
@@ -621,6 +637,82 @@ describe("received PO dashboard flows", () => {
     });
     expect(screen.queryByRole("button", { name: "Download PDF" })).toBeNull();
     expect(screen.getByText("Barcode generation started.")).toBeTruthy();
+  });
+
+  it("stops barcode generation with a clear error when template images cannot be prepared", async () => {
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock.mockResolvedValue(null);
+    getOptionalInvoiceMock.mockResolvedValue(null);
+    getOptionalPackingListMock.mockResolvedValue(null);
+    listStickerTemplatesMock.mockResolvedValue([
+      {
+        id: "template_2",
+        company_id: "co_1",
+        name: "kita",
+        width_mm: 45.03,
+        height_mm: 60,
+        border_color: "#E34A93",
+        border_radius_mm: 2,
+        background_color: "#FFFFFF",
+        is_default: false,
+        created_at: "2026-03-24T00:00:00+00:00",
+        updated_at: "2026-03-24T00:00:00+00:00",
+        elements: [],
+      },
+    ]);
+    getStickerTemplateMock.mockResolvedValue({
+      id: "template_2",
+      company_id: "co_1",
+      name: "kita",
+      width_mm: 45.03,
+      height_mm: 60,
+      border_color: "#E34A93",
+      border_radius_mm: 2,
+      background_color: "#FFFFFF",
+      is_default: false,
+      created_at: "2026-03-24T00:00:00+00:00",
+      updated_at: "2026-03-24T00:00:00+00:00",
+      elements: [
+        {
+          id: "img_1",
+          template_id: "template_2",
+          element_type: "image",
+          x_mm: 10,
+          y_mm: 5,
+          width_mm: 20,
+          height_mm: 8,
+          z_index: 0,
+          properties: {
+            asset_type: "custom",
+            asset_url: "https://pub.example.test/logo.png",
+            fit: "contain",
+          },
+          created_at: "2026-03-24T00:00:00+00:00",
+          updated_at: "2026-03-24T00:00:00+00:00",
+        },
+      ],
+    });
+    normalizeStickerAssetUrlForPdfMock.mockRejectedValue(
+      new Error("Unable to fetch sticker asset for PDF generation."),
+    );
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Choose" }));
+    const templateLabel = await screen.findByText("kita");
+    const templateButton = templateLabel.closest("button");
+    expect(templateButton).not.toBeNull();
+    await userEvent.setup().click(templateButton as HTMLElement);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Generate barcodes" }));
+
+    await waitFor(() => {
+      expect(createBarcodeJobMock).not.toHaveBeenCalled();
+    });
+    expect(
+      screen.getByText(
+        "Template logo/image could not be prepared for PDF. Re-upload it in the sticker builder, save the template, and try again.",
+      ),
+    ).toBeTruthy();
   });
 
   it("stops invoice PDF polling and shows an error when generation fails", async () => {
