@@ -63,8 +63,7 @@ export function SmartCatalogModuleCard({
         tabIndex={0}
       >
         <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Module {index + 1}</p>
-        <h2 className="mt-2 text-2xl">{title}</h2>
-        <p className="mt-2 text-kira-darkgray">{detail}</p>
+        <p className="mt-4 text-kira-darkgray">{detail}</p>
         <p className="mt-4 text-xs uppercase tracking-[0.08em] text-kira-midgray">
           Hover or focus to preview the AI extraction visual
         </p>
