@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Grada — Smart Catalog</title>
 <style>
-  :root { --grada-accent: #A06F42; }
+  :root {
+    --grada-accent: #A06F42;
+    --anim-speed: 0.55;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; }
   body { background: var(--grada-accent); display: flex; justify-content: center; align-items: center; min-height: 100%; }
@@ -15,9 +18,9 @@
   @keyframes fadeup  { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
   @keyframes fadein  { from { opacity:0; } to { opacity:1; } }
 
-  .d { animation: draw    var(--dur,1.8s) var(--del,0s) cubic-bezier(.4,0,.2,1) both; }
-  .f { animation: fadein  var(--dur,.5s)  var(--del,0s) ease both; }
-  .u { animation: fadeup  var(--dur,.55s) var(--del,0s) ease both; }
+  .d { animation: draw calc(var(--dur,1.8s) * var(--anim-speed)) calc(var(--del,0s) * var(--anim-speed)) cubic-bezier(.4,0,.2,1) both; }
+  .f { animation: fadein calc(var(--dur,.5s) * var(--anim-speed)) calc(var(--del,0s) * var(--anim-speed)) ease both; }
+  .u { animation: fadeup calc(var(--dur,.55s) * var(--anim-speed)) calc(var(--del,0s) * var(--anim-speed)) ease both; }
 </style>
 </head>
 <body>

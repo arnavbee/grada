@@ -2,15 +2,16 @@
 <html>
 <head>
 <style>
+:root { --anim-speed: 0.55; }
 html, body { width: 100%; height: 100%; }
 @keyframes draw   { from { stroke-dashoffset: var(--len); opacity:0; } to { stroke-dashoffset: 0; opacity:1; } }
 @keyframes fadeup { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
 @keyframes fadein { from { opacity:0; } to { opacity:1; } }
 @keyframes barrise { from { transform: scaleY(0); opacity:0; } to { transform: scaleY(1); opacity:1; } }
-.d { animation: draw    var(--dur,1.8s) var(--del,0s) cubic-bezier(.4,0,.2,1) both; }
-.f { animation: fadein  var(--dur,.5s)  var(--del,0s) ease both; }
-.u { animation: fadeup  var(--dur,.5s)  var(--del,0s) ease both; }
-.bar { animation: barrise var(--dur,.35s) var(--del,0s) ease both; transform-origin: bottom center; }
+.d { animation: draw calc(var(--dur,1.8s) * var(--anim-speed)) calc(var(--del,0s) * var(--anim-speed)) cubic-bezier(.4,0,.2,1) both; }
+.f { animation: fadein calc(var(--dur,.5s) * var(--anim-speed)) calc(var(--del,0s) * var(--anim-speed)) ease both; }
+.u { animation: fadeup calc(var(--dur,.5s) * var(--anim-speed)) calc(var(--del,0s) * var(--anim-speed)) ease both; }
+.bar { animation: barrise calc(var(--dur,.35s) * var(--anim-speed)) calc(var(--del,0s) * var(--anim-speed)) ease both; transform-origin: bottom center; }
 body { margin: 0; background: transparent; display: flex; justify-content: center; align-items: center; min-height: 100%; }
 svg { display: block; width: 100%; max-height: 100%; margin: 0 auto; }
 </style>
