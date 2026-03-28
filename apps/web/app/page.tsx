@@ -4,6 +4,7 @@ import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { FooterBrand } from "@/src/components/FooterBrand";
 import { GridBackground } from "@/src/components/GridBackground";
+import { SmartCatalogModuleCard } from "@/src/components/marketing/smart-catalog-module-card";
 
 const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
 
@@ -206,54 +207,29 @@ export default function LandingPage(): JSX.Element {
         {modules.map((module, index) => {
           const isSmartCatalog = module.title === "Smart Catalog";
 
+          if (isSmartCatalog) {
+            return (
+              <SmartCatalogModuleCard
+                animationSrc={smartCatalogAnimationSrc}
+                detail={module.detail}
+                index={index}
+                key={module.title}
+                title={module.title}
+              />
+            );
+          }
+
           return (
             <Card
-              aria-label={
-                isSmartCatalog ? "Smart Catalog module with infographic preview" : undefined
-              }
-              className={`animate-enter h-full p-5 transition-transform duration-300 hover:-translate-y-1 ${
-                isSmartCatalog
-                  ? "group relative z-0 overflow-visible hover:z-40 focus-within:z-40"
-                  : ""
-              }`}
+              className="animate-enter h-full p-5 transition-transform duration-300 hover:-translate-y-1"
               key={module.title}
               style={{ animationDelay: `${120 + index * 80}ms` }}
-              tabIndex={isSmartCatalog ? 0 : undefined}
             >
               <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
                 Module {index + 1}
               </p>
               <h2 className="mt-2 text-2xl">{module.title}</h2>
               <p className="mt-2 text-kira-darkgray">{module.detail}</p>
-              {isSmartCatalog ? (
-                <>
-                  <p className="mt-4 text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                    Hover or focus to preview the AI extraction visual
-                  </p>
-                  <div className="mt-5 overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-[#fbf7f0] md:max-h-0 md:opacity-0 md:transition-all md:duration-500 md:ease-out md:group-hover:max-h-[46rem] md:group-hover:opacity-100 md:group-focus-within:max-h-[46rem] md:group-focus-within:opacity-100 lg:absolute lg:left-[calc(100%+1rem)] lg:top-1/2 lg:z-50 lg:mt-0 lg:w-[30rem] lg:max-h-none lg:-translate-y-1/2 lg:translate-x-2 lg:scale-[0.98] lg:opacity-0 lg:shadow-2xl lg:transition-[opacity,transform] lg:duration-300 lg:ease-out lg:pointer-events-none lg:group-hover:pointer-events-auto lg:group-hover:translate-x-0 lg:group-hover:scale-100 lg:group-hover:opacity-100 lg:group-focus-within:pointer-events-auto lg:group-focus-within:translate-x-0 lg:group-focus-within:scale-100 lg:group-focus-within:opacity-100">
-                    <div className="border-b border-kira-warmgray/35 px-4 py-3">
-                      <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                        Inside Smart Catalog
-                      </p>
-                      <p className="mt-1 text-sm text-kira-darkgray">
-                        From one product image to AI suggestions, human review, and export-ready
-                        catalog data.
-                      </p>
-                    </div>
-                    <div className="p-3 md:p-4">
-                      <div className="overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-kira-brown/10">
-                        <iframe
-                          aria-label="Animated Smart Catalog workflow preview"
-                          className="kira-infographic-embed"
-                          loading="lazy"
-                          src={smartCatalogAnimationSrc}
-                          title="Animated Smart Catalog workflow preview"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : null}
             </Card>
           );
         })}
