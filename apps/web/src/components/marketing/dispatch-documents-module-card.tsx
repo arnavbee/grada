@@ -5,19 +5,17 @@ import { useRef, useState } from "react";
 
 import { Card } from "@/src/components/ui/card";
 
-interface SmartCatalogModuleCardProps {
+interface DispatchDocumentsModuleCardProps {
   animationSrc: string;
-  detail: string;
   index: number;
   title: string;
 }
 
-export function SmartCatalogModuleCard({
+export function DispatchDocumentsModuleCard({
   animationSrc,
-  detail,
   index,
   title,
-}: SmartCatalogModuleCardProps): JSX.Element {
+}: DispatchDocumentsModuleCardProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewRun, setPreviewRun] = useState(0);
@@ -51,22 +49,27 @@ export function SmartCatalogModuleCard({
     <div
       className="group relative z-0 h-full overflow-visible hover:z-40 focus-within:z-40"
       onBlurCapture={handleBlurCapture}
-      onFocusCapture={openPreview}
-      onMouseEnter={openPreview}
       onMouseLeave={closePreview}
       ref={containerRef}
     >
       <Card
-        aria-label="Smart Catalog module with infographic preview"
         className="animate-enter h-full p-5 transition-transform duration-300 hover:-translate-y-1"
         style={{ animationDelay: `${120 + index * 80}ms` }}
-        tabIndex={0}
       >
         <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Module {index + 1}</p>
         <h2 className="mt-2 text-2xl">{title}</h2>
-        <p className="mt-2 text-kira-darkgray">{detail}</p>
-        <p className="mt-4 text-xs uppercase tracking-[0.08em] text-kira-midgray">
-          Hover or focus to preview the AI extraction visual
+        <p className="mt-2 text-kira-darkgray">
+          Generate{" "}
+          <button
+            className="kira-focus-ring rounded-sm bg-kira-brown/12 px-1.5 py-0.5 font-semibold text-kira-black transition-colors hover:bg-kira-brown/20"
+            onFocus={openPreview}
+            onMouseEnter={openPreview}
+            type="button"
+          >
+            barcodes
+          </button>
+          , GST invoices, packing lists, and sticker outputs from the same confirmed PO instead of
+          rebuilding each document by hand.
         </p>
       </Card>
 
@@ -78,14 +81,14 @@ export function SmartCatalogModuleCard({
         }`}
       >
         <div className="p-3 md:p-4">
-          <div className="overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-kira-brown/10">
+          <div className="overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-[#1a1a18]">
             <iframe
-              aria-label="Animated Smart Catalog workflow preview"
+              aria-label="Animated barcode generation workflow preview"
               className="kira-infographic-embed"
               key={previewRun}
               loading="lazy"
               src={`${animationSrc}?preview=${previewRun}`}
-              title="Animated Smart Catalog workflow preview"
+              title="Animated barcode generation workflow preview"
             />
           </div>
         </div>

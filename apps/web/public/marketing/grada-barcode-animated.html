@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+@keyframes draw   { from { stroke-dashoffset: var(--len); opacity:0; } to { stroke-dashoffset: 0; opacity:1; } }
+@keyframes fadeup { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fadein { from { opacity:0; } to { opacity:1; } }
+@keyframes barrise { from { transform: scaleY(0); opacity:0; } to { transform: scaleY(1); opacity:1; } }
+.d { animation: draw    var(--dur,1.8s) var(--del,0s) cubic-bezier(.4,0,.2,1) both; }
+.f { animation: fadein  var(--dur,.5s)  var(--del,0s) ease both; }
+.u { animation: fadeup  var(--dur,.5s)  var(--del,0s) ease both; }
+.bar { animation: barrise var(--dur,.35s) var(--del,0s) ease both; transform-origin: bottom center; }
+</style>
+</head>
+<body style="margin:0;background:transparent">
+<svg width="100%" viewBox="0 0 680 580" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<!-- BG -->
+<rect x="0" y="0" width="680" height="580" fill="#1A1A18" class="f" style="--del:0s;--dur:.5s"/>
+
+<!-- HEADER -->
+<text x="44" y="64" font-family="Georgia,serif" font-size="38" font-weight="700" fill="#F5F0E4" letter-spacing="-0.5" class="u" style="--del:.3s;--dur:.7s">BARCODE GENERATION</text>
+<text x="44" y="86" font-family="Georgia,serif" font-size="13" font-style="italic" fill="rgba(245,240,228,0.45)" letter-spacing="1" class="u" style="--del:.6s;--dur:.6s">Print-ready labels from confirmed purchase orders</text>
+<line x1="44" y1="100" x2="540" y2="100" stroke="rgba(245,240,228,0.15)" stroke-width="0.8" class="d" style="--len:500;stroke-dasharray:500;--del:.8s;--dur:.8s"/>
+
+<!-- ══════════════════════════════════ -->
+<!-- LABEL SHEET — draws first         -->
+<!-- ══════════════════════════════════ -->
+
+<!-- Outer print sheet dashed border -->
+<rect x="160" y="118" width="360" height="300" rx="6" fill="none" stroke="rgba(245,240,228,0.2)" stroke-width="0.9" stroke-dasharray="5 4"
+  class="d" style="--len:1400;stroke-dasharray:1400;--del:1.0s;--dur:2.0s"/>
+
+<!-- LABEL 1 (top-left, bright) -->
+<rect x="184" y="138" width="148" height="120" rx="4" fill="rgba(245,240,228,0.06)" stroke="rgba(245,240,228,0.55)" stroke-width="0.9"
+  class="d" style="--len:540;stroke-dasharray:540;--del:2.2s;--dur:.8s"/>
+<text x="258" y="158" font-family="Georgia,serif" font-size="9" font-weight="700" fill="rgba(245,240,228,0.9)" text-anchor="middle" letter-spacing="1.5" class="f" style="--del:2.8s;--dur:.4s">BRAND NAME</text>
+<line x1="200" y1="164" x2="316" y2="164" stroke="rgba(245,240,228,0.3)" stroke-width="0.5" class="d" style="--len:120;stroke-dasharray:120;--del:3.0s;--dur:.4s"/>
+
+<!-- Barcode bars label 1 — rise up in sequence -->
+<g style="transform-box:fill-box">
+  <rect class="bar" style="--del:3.2s;--dur:.3s" x="206" y="170" width="3"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.24s;--dur:.3s" x="211" y="170" width="1.5" height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.28s;--dur:.3s" x="214" y="170" width="4"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.32s;--dur:.3s" x="220" y="170" width="2"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.36s;--dur:.3s" x="224" y="170" width="3.5" height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.40s;--dur:.3s" x="229" y="170" width="1.5" height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.44s;--dur:.3s" x="232" y="170" width="5"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.48s;--dur:.3s" x="239" y="170" width="2"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.52s;--dur:.3s" x="243" y="170" width="3"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.56s;--dur:.3s" x="248" y="170" width="1.5" height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.60s;--dur:.3s" x="251" y="170" width="4"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.64s;--dur:.3s" x="257" y="170" width="2"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.68s;--dur:.3s" x="261" y="170" width="3"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.72s;--dur:.3s" x="266" y="170" width="1.5" height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.76s;--dur:.3s" x="269" y="170" width="4.5" height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.80s;--dur:.3s" x="275" y="170" width="2"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.84s;--dur:.3s" x="279" y="170" width="3"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.88s;--dur:.3s" x="284" y="170" width="1.5" height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.92s;--dur:.3s" x="287" y="170" width="5"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:3.96s;--dur:.3s" x="294" y="170" width="2"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:4.00s;--dur:.3s" x="298" y="170" width="3"   height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:4.04s;--dur:.3s" x="303" y="170" width="1.5" height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:4.08s;--dur:.3s" x="306" y="170" width="3.5" height="28" fill="rgba(245,240,228,0.85)"/>
+  <rect class="bar" style="--del:4.12s;--dur:.3s" x="311" y="170" width="2"   height="28" fill="rgba(245,240,228,0.85)"/>
+</g>
+
+<text x="258" y="209" font-family="Georgia,serif" font-size="7.5" fill="rgba(245,240,228,0.55)" text-anchor="middle" letter-spacing="2" class="f" style="--del:4.2s;--dur:.3s">8901234567890</text>
+<line x1="200" y1="215" x2="316" y2="215" stroke="rgba(245,240,228,0.2)" stroke-width="0.5" class="d" style="--len:120;stroke-dasharray:120;--del:4.3s;--dur:.4s"/>
+<text x="258" y="228" font-family="Georgia,serif" font-size="8" fill="rgba(245,240,228,0.7)"  text-anchor="middle" class="f" style="--del:4.4s;--dur:.3s">SKU: KRT-DSR-FL-001</text>
+<text x="258" y="240" font-family="Georgia,serif" font-size="8" fill="rgba(245,240,228,0.55)" text-anchor="middle" class="f" style="--del:4.5s;--dur:.3s">Size: M  |  MRP: ₹1,299</text>
+<text x="258" y="251" font-family="Georgia,serif" font-size="8" fill="rgba(245,240,228,0.4)"  text-anchor="middle" class="f" style="--del:4.6s;--dur:.3s">PO: STL-2026-0042</text>
+
+<!-- LABEL 2 (top-right, dim) -->
+<rect x="348" y="138" width="148" height="120" rx="4" fill="rgba(245,240,228,0.04)" stroke="rgba(245,240,228,0.3)" stroke-width="0.7"
+  class="d" style="--len:540;stroke-dasharray:540;--del:4.8s;--dur:.7s"/>
+<text x="422" y="158" font-family="Georgia,serif" font-size="9" font-weight="700" fill="rgba(245,240,228,0.5)" text-anchor="middle" letter-spacing="1.5" class="f" style="--del:5.3s;--dur:.4s">BRAND NAME</text>
+<g fill="rgba(245,240,228,0.4)" class="f" style="--del:5.4s;--dur:.5s">
+  <rect x="370" y="170" width="3"   height="28"/><rect x="375" y="170" width="1.5" height="28"/>
+  <rect x="378" y="170" width="4"   height="28"/><rect x="384" y="170" width="2"   height="28"/>
+  <rect x="388" y="170" width="3.5" height="28"/><rect x="393" y="170" width="1.5" height="28"/>
+  <rect x="396" y="170" width="5"   height="28"/><rect x="403" y="170" width="2"   height="28"/>
+  <rect x="407" y="170" width="3"   height="28"/><rect x="412" y="170" width="1.5" height="28"/>
+  <rect x="415" y="170" width="4"   height="28"/><rect x="421" y="170" width="2"   height="28"/>
+  <rect x="425" y="170" width="3"   height="28"/><rect x="430" y="170" width="1.5" height="28"/>
+  <rect x="433" y="170" width="4.5" height="28"/><rect x="439" y="170" width="2"   height="28"/>
+  <rect x="443" y="170" width="3"   height="28"/><rect x="448" y="170" width="1.5" height="28"/>
+  <rect x="451" y="170" width="5"   height="28"/><rect x="458" y="170" width="2"   height="28"/>
+  <rect x="462" y="170" width="3"   height="28"/><rect x="467" y="170" width="1.5" height="28"/>
+  <rect x="470" y="170" width="3.5" height="28"/><rect x="475" y="170" width="2"   height="28"/>
+</g>
+<text x="422" y="209" font-family="Georgia,serif" font-size="7.5" fill="rgba(245,240,228,0.35)" text-anchor="middle" letter-spacing="2" class="f" style="--del:5.6s;--dur:.3s">8901234567891</text>
+<text x="422" y="228" font-family="Georgia,serif" font-size="8" fill="rgba(245,240,228,0.4)" text-anchor="middle" class="f" style="--del:5.7s;--dur:.3s">SKU: KRT-DSR-FL-001</text>
+<text x="422" y="240" font-family="Georgia,serif" font-size="8" fill="rgba(245,240,228,0.3)" text-anchor="middle" class="f" style="--del:5.8s;--dur:.3s">Size: L  |  MRP: ₹1,299</text>
+
+<!-- LABEL 3 (bottom-left, dim) -->
+<rect x="184" y="278" width="148" height="120" rx="4" fill="rgba(245,240,228,0.03)" stroke="rgba(245,240,228,0.25)" stroke-width="0.7"
+  class="d" style="--len:540;stroke-dasharray:540;--del:5.8s;--dur:.7s"/>
+<text x="258" y="298" font-family="Georgia,serif" font-size="9" font-weight="700" fill="rgba(245,240,228,0.4)" text-anchor="middle" letter-spacing="1.5" class="f" style="--del:6.3s;--dur:.4s">BRAND NAME</text>
+<g fill="rgba(245,240,228,0.3)" class="f" style="--del:6.4s;--dur:.5s">
+  <rect x="206" y="310" width="3" height="28"/><rect x="211" y="310" width="1.5" height="28"/>
+  <rect x="214" y="310" width="4" height="28"/><rect x="220" y="310" width="2" height="28"/>
+  <rect x="224" y="310" width="3.5" height="28"/><rect x="229" y="310" width="1.5" height="28"/>
+  <rect x="232" y="310" width="5" height="28"/><rect x="239" y="310" width="2" height="28"/>
+  <rect x="243" y="310" width="3" height="28"/><rect x="248" y="310" width="1.5" height="28"/>
+  <rect x="251" y="310" width="4" height="28"/><rect x="257" y="310" width="2" height="28"/>
+  <rect x="261" y="310" width="3" height="28"/><rect x="266" y="310" width="1.5" height="28"/>
+  <rect x="269" y="310" width="4.5" height="28"/><rect x="275" y="310" width="2" height="28"/>
+  <rect x="279" y="310" width="3" height="28"/><rect x="284" y="310" width="1.5" height="28"/>
+  <rect x="287" y="310" width="5" height="28"/><rect x="294" y="310" width="2" height="28"/>
+  <rect x="298" y="310" width="3" height="28"/><rect x="303" y="310" width="1.5" height="28"/>
+  <rect x="306" y="310" width="3.5" height="28"/><rect x="311" y="310" width="2" height="28"/>
+</g>
+<text x="258" y="368" font-family="Georgia,serif" font-size="8" fill="rgba(245,240,228,0.3)" text-anchor="middle" class="f" style="--del:6.6s;--dur:.3s">SKU: KRT-DSR-FL-001</text>
+<text x="258" y="380" font-family="Georgia,serif" font-size="8" fill="rgba(245,240,228,0.2)" text-anchor="middle" class="f" style="--del:6.7s;--dur:.3s">Size: XL  |  MRP: ₹1,299</text>
+
+<!-- LABEL 4 (bottom-right, dimmest) -->
+<rect x="348" y="278" width="148" height="120" rx="4" fill="rgba(245,240,228,0.02)" stroke="rgba(245,240,228,0.18)" stroke-width="0.7"
+  class="d" style="--len:540;stroke-dasharray:540;--del:6.6s;--dur:.7s"/>
+<text x="422" y="298" font-family="Georgia,serif" font-size="9" font-weight="700" fill="rgba(245,240,228,0.25)" text-anchor="middle" letter-spacing="1.5" class="f" style="--del:7.0s;--dur:.4s">BRAND NAME</text>
+<g fill="rgba(245,240,228,0.18)" class="f" style="--del:7.1s;--dur:.5s">
+  <rect x="370" y="310" width="3" height="28"/><rect x="375" y="310" width="1.5" height="28"/>
+  <rect x="378" y="310" width="4" height="28"/><rect x="384" y="310" width="2" height="28"/>
+  <rect x="388" y="310" width="3.5" height="28"/><rect x="393" y="310" width="1.5" height="28"/>
+  <rect x="396" y="310" width="5" height="28"/><rect x="403" y="310" width="2" height="28"/>
+  <rect x="407" y="310" width="3" height="28"/><rect x="412" y="310" width="1.5" height="28"/>
+  <rect x="415" y="310" width="4" height="28"/><rect x="421" y="310" width="2" height="28"/>
+  <rect x="425" y="310" width="3" height="28"/><rect x="430" y="310" width="1.5" height="28"/>
+  <rect x="433" y="310" width="4.5" height="28"/><rect x="439" y="310" width="2" height="28"/>
+  <rect x="443" y="310" width="3" height="28"/><rect x="448" y="310" width="1.5" height="28"/>
+  <rect x="451" y="310" width="5" height="28"/><rect x="458" y="310" width="2" height="28"/>
+  <rect x="462" y="310" width="3" height="28"/><rect x="467" y="310" width="1.5" height="28"/>
+  <rect x="470" y="310" width="3.5" height="28"/><rect x="475" y="310" width="2" height="28"/>
+</g>
+<text x="422" y="368" font-family="Georgia,serif" font-size="8" fill="rgba(245,240,228,0.18)" text-anchor="middle" class="f" style="--del:7.2s;--dur:.3s">SKU: KRT-DSR-FL-002</text>
+
+<!-- ══════════════════════════════════ -->
+<!-- CALLOUTS — appear after labels    -->
+<!-- ══════════════════════════════════ -->
+
+<!-- Left callout: PO-linked data -->
+<line x1="184" y1="200" x2="120" y2="172" stroke="rgba(245,240,228,0.5)" stroke-width="0.7" stroke-dasharray="3 3"
+  class="d" style="--len:80;stroke-dasharray:80;--del:7.6s;--dur:.4s"/>
+<circle cx="184" cy="200" r="2.5" fill="#F5F0E4" opacity=".7" class="f" style="--del:7.9s;--dur:.3s"/>
+<text x="44" y="160" font-family="Georgia,serif" font-size="11" font-weight="700" fill="#F5F0E4" letter-spacing="1.5" class="u" style="--del:8.0s;--dur:.4s">PO DATA</text>
+<text x="44" y="174" font-family="Georgia,serif" font-size="10" fill="rgba(245,240,228,.7)" class="u" style="--del:8.1s;--dur:.4s">Auto-pulled from order</text>
+
+<!-- Left callout: SKU -->
+<line x1="184" y1="240" x2="120" y2="228" stroke="rgba(245,240,228,0.5)" stroke-width="0.7" stroke-dasharray="3 3"
+  class="d" style="--len:80;stroke-dasharray:80;--del:8.2s;--dur:.4s"/>
+<circle cx="184" cy="240" r="2.5" fill="#F5F0E4" opacity=".7" class="f" style="--del:8.5s;--dur:.3s"/>
+<text x="44" y="218" font-family="Georgia,serif" font-size="11" font-weight="700" fill="#F5F0E4" letter-spacing="1.5" class="u" style="--del:8.6s;--dur:.4s">SKU + SIZE</text>
+<text x="44" y="232" font-family="Georgia,serif" font-size="10" fill="rgba(245,240,228,.7)" class="u" style="--del:8.7s;--dur:.4s">Per variant, per unit</text>
+
+<!-- Right callout: barcode type -->
+<line x1="496" y1="200" x2="552" y2="172" stroke="rgba(245,240,228,0.5)" stroke-width="0.7" stroke-dasharray="3 3"
+  class="d" style="--len:80;stroke-dasharray:80;--del:8.8s;--dur:.4s"/>
+<circle cx="496" cy="200" r="2.5" fill="#F5F0E4" opacity=".7" class="f" style="--del:9.1s;--dur:.3s"/>
+<text x="558" y="162" font-family="Georgia,serif" font-size="11" font-weight="700" fill="#F5F0E4" letter-spacing="1.5" class="u" style="--del:9.2s;--dur:.4s">BARCODE</text>
+<text x="558" y="176" font-family="Georgia,serif" font-size="10" fill="rgba(245,240,228,.7)" class="u" style="--del:9.3s;--dur:.4s">EAN-13 standard</text>
+
+<!-- Right callout: MRP -->
+<line x1="496" y1="248" x2="552" y2="248" stroke="rgba(245,240,228,0.5)" stroke-width="0.7" stroke-dasharray="3 3"
+  class="d" style="--len:60;stroke-dasharray:60;--del:9.4s;--dur:.4s"/>
+<circle cx="496" cy="248" r="2.5" fill="#F5F0E4" opacity=".7" class="f" style="--del:9.7s;--dur:.3s"/>
+<text x="558" y="242" font-family="Georgia,serif" font-size="11" font-weight="700" fill="#F5F0E4" letter-spacing="1.5" class="u" style="--del:9.8s;--dur:.4s">MRP + INFO</text>
+<text x="558" y="256" font-family="Georgia,serif" font-size="10" fill="rgba(245,240,228,.7)" class="u" style="--del:9.9s;--dur:.4s">Printed per label</text>
+
+<!-- Left lower: template -->
+<line x1="184" y1="320" x2="120" y2="312" stroke="rgba(245,240,228,0.5)" stroke-width="0.7" stroke-dasharray="3 3"
+  class="d" style="--len:80;stroke-dasharray:80;--del:10.0s;--dur:.4s"/>
+<circle cx="184" cy="320" r="2.5" fill="#F5F0E4" opacity=".7" class="f" style="--del:10.3s;--dur:.3s"/>
+<text x="44" y="302" font-family="Georgia,serif" font-size="11" font-weight="700" fill="#F5F0E4" letter-spacing="1.5" class="u" style="--del:10.4s;--dur:.4s">TEMPLATE</text>
+<text x="44" y="316" font-family="Georgia,serif" font-size="10" fill="rgba(245,240,228,.7)" class="u" style="--del:10.5s;--dur:.4s">Styli or custom</text>
+
+<!-- Right lower: PDF output -->
+<line x1="496" y1="320" x2="552" y2="332" stroke="rgba(245,240,228,0.5)" stroke-width="0.7" stroke-dasharray="3 3"
+  class="d" style="--len:80;stroke-dasharray:80;--del:10.6s;--dur:.4s"/>
+<circle cx="496" cy="320" r="2.5" fill="#F5F0E4" opacity=".7" class="f" style="--del:10.9s;--dur:.3s"/>
+<text x="558" y="322" font-family="Georgia,serif" font-size="11" font-weight="700" fill="#F5F0E4" letter-spacing="1.5" class="u" style="--del:11.0s;--dur:.4s">PDF OUTPUT</text>
+<text x="558" y="336" font-family="Georgia,serif" font-size="10" fill="rgba(245,240,228,.7)" class="u" style="--del:11.1s;--dur:.4s">Stored, redownloadable</text>
+
+<!-- ══════════════════════════════════ -->
+<!-- PIPELINE + FOOTER                 -->
+<!-- ══════════════════════════════════ -->
+
+<!-- Divider -->
+<line x1="44" y1="448" x2="636" y2="448" stroke="rgba(245,240,228,0.12)" stroke-width="0.8" class="d" style="--len:600;stroke-dasharray:600;--del:11.4s;--dur:.7s"/>
+<text x="44" y="468" font-family="Georgia,serif" font-size="9" font-weight="700" fill="rgba(245,240,228,0.35)" letter-spacing="2" class="u" style="--del:11.6s;--dur:.4s">HOW IT WORKS</text>
+
+<!-- Pipeline nodes -->
+<rect x="44"  y="480" width="100" height="36" rx="3" fill="none" stroke="rgba(245,240,228,.4)" stroke-width="0.9" class="d" style="--len:200;stroke-dasharray:200;--del:11.8s;--dur:.5s"/>
+<text x="94"  y="495" font-family="Georgia,serif" font-size="9.5" fill="#F5F0E4" text-anchor="middle" font-weight="700" class="f" style="--del:12.2s;--dur:.3s">Confirm PO</text>
+<text x="94"  y="508" font-family="Georgia,serif" font-size="9" fill="rgba(245,240,228,.5)" text-anchor="middle" class="f" style="--del:12.3s;--dur:.3s">reviewed &amp; locked</text>
+<line x1="144" y1="498" x2="162" y2="498" stroke="rgba(245,240,228,.5)" stroke-width="0.8" marker-end="url(#ar)" class="d" style="--len:25;stroke-dasharray:25;--del:12.4s;--dur:.3s"/>
+
+<rect x="164" y="480" width="100" height="36" rx="3" fill="rgba(245,240,228,.07)" stroke="rgba(245,240,228,.4)" stroke-width="0.9" class="d" style="--len:200;stroke-dasharray:200;--del:12.5s;--dur:.5s"/>
+<text x="214" y="495" font-family="Georgia,serif" font-size="9.5" fill="#F5F0E4" text-anchor="middle" font-weight="700" class="f" style="--del:12.9s;--dur:.3s">Select template</text>
+<text x="214" y="508" font-family="Georgia,serif" font-size="9" fill="rgba(245,240,228,.5)" text-anchor="middle" class="f" style="--del:13.0s;--dur:.3s">Styli or custom</text>
+<line x1="264" y1="498" x2="282" y2="498" stroke="rgba(245,240,228,.5)" stroke-width="0.8" marker-end="url(#ar)" class="d" style="--len:25;stroke-dasharray:25;--del:13.1s;--dur:.3s"/>
+
+<rect x="284" y="480" width="100" height="36" rx="3" fill="none" stroke="rgba(245,240,228,.4)" stroke-width="0.9" class="d" style="--len:200;stroke-dasharray:200;--del:13.2s;--dur:.5s"/>
+<text x="334" y="495" font-family="Georgia,serif" font-size="9.5" fill="#F5F0E4" text-anchor="middle" font-weight="700" class="f" style="--del:13.6s;--dur:.3s">Generate</text>
+<text x="334" y="508" font-family="Georgia,serif" font-size="9" fill="rgba(245,240,228,.5)" text-anchor="middle" class="f" style="--del:13.7s;--dur:.3s">durable job queued</text>
+<line x1="384" y1="498" x2="402" y2="498" stroke="rgba(245,240,228,.5)" stroke-width="0.8" marker-end="url(#ar)" class="d" style="--len:25;stroke-dasharray:25;--del:13.8s;--dur:.3s"/>
+
+<rect x="404" y="480" width="100" height="36" rx="3" fill="none" stroke="rgba(245,240,228,.4)" stroke-width="0.9" class="d" style="--len:200;stroke-dasharray:200;--del:13.9s;--dur:.5s"/>
+<text x="454" y="495" font-family="Georgia,serif" font-size="9.5" fill="#F5F0E4" text-anchor="middle" font-weight="700" class="f" style="--del:14.3s;--dur:.3s">PDF ready</text>
+<text x="454" y="508" font-family="Georgia,serif" font-size="9" fill="rgba(245,240,228,.5)" text-anchor="middle" class="f" style="--del:14.4s;--dur:.3s">stored in R2</text>
+<line x1="504" y1="498" x2="522" y2="498" stroke="rgba(245,240,228,.5)" stroke-width="0.8" marker-end="url(#ar)" class="d" style="--len:25;stroke-dasharray:25;--del:14.5s;--dur:.3s"/>
+
+<rect x="524" y="480" width="108" height="36" rx="3" fill="rgba(245,240,228,.07)" stroke="rgba(245,240,228,.4)" stroke-width="0.9" class="d" style="--len:210;stroke-dasharray:210;--del:14.6s;--dur:.5s"/>
+<text x="578" y="495" font-family="Georgia,serif" font-size="9.5" fill="#F5F0E4" text-anchor="middle" font-weight="700" class="f" style="--del:15.0s;--dur:.3s">Print &amp; affix</text>
+<text x="578" y="508" font-family="Georgia,serif" font-size="9" fill="rgba(245,240,228,.5)" text-anchor="middle" class="f" style="--del:15.1s;--dur:.3s">dispatch-ready</text>
+
+<!-- Footer -->
+<line x1="44" y1="540" x2="636" y2="540" stroke="rgba(245,240,228,0.1)" stroke-width="0.8" class="d" style="--len:600;stroke-dasharray:600;--del:15.3s;--dur:.6s"/>
+<text x="44"  y="562" font-family="Georgia,serif" font-size="9" fill="rgba(245,240,228,.25)" letter-spacing="1" class="f" style="--del:15.7s;--dur:.5s">GRADA — FASHION OPERATIONS PLATFORM</text>
+<text x="636" y="562" font-family="Georgia,serif" font-size="9" fill="rgba(245,240,228,.25)" letter-spacing="1" text-anchor="end" class="f" style="--del:15.7s;--dur:.5s">GRADA-WEB.VERCEL.APP</text>
+
+</svg>
+</body>
+</html>
