@@ -2,6 +2,7 @@
 <html>
 <head>
 <style>
+html, body { width: 100%; height: 100%; }
 @keyframes draw   { from { stroke-dashoffset: var(--len); opacity:0; } to { stroke-dashoffset: 0; opacity:1; } }
 @keyframes fadeup { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
 @keyframes fadein { from { opacity:0; } to { opacity:1; } }
@@ -10,9 +11,11 @@
 .f { animation: fadein  var(--dur,.5s)  var(--del,0s) ease both; }
 .u { animation: fadeup  var(--dur,.5s)  var(--del,0s) ease both; }
 .bar { animation: barrise var(--dur,.35s) var(--del,0s) ease both; transform-origin: bottom center; }
+body { margin: 0; background: transparent; display: flex; justify-content: center; align-items: center; min-height: 100%; }
+svg { display: block; width: 100%; max-height: 100%; margin: 0 auto; }
 </style>
 </head>
-<body style="margin:0;background:transparent">
+<body>
 <svg width="100%" viewBox="0 0 680 580" xmlns="http://www.w3.org/2000/svg">
 <defs>
   <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">

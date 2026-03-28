@@ -7,8 +7,9 @@
 <style>
   :root { --grada-accent: #A06F42; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: var(--grada-accent); display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
-  svg { display: block; width: 100%; max-width: 680px; margin: 0 auto; }
+  html, body { width: 100%; height: 100%; }
+  body { background: var(--grada-accent); display: flex; justify-content: center; align-items: center; min-height: 100%; }
+  svg { display: block; width: 100%; max-width: 680px; max-height: 100%; margin: 0 auto; }
 
   @keyframes draw    { from { stroke-dashoffset: var(--len); opacity:0; } to { stroke-dashoffset: 0; opacity:1; } }
   @keyframes fadeup  { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
