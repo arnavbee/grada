@@ -1,16 +1,18 @@
 import atexit
 import time
+from io import BytesIO
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from app.db.session import SessionLocal, init_db
 from app.main import app
 from app.models.carton_capacity_rule import CartonCapacityRule
 from app.models.company_settings import CompanySettings
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
-from app.services.received_po_documents import _resolve_model_display_value
+from app.services.received_po_documents import _load_image_reader, _resolve_model_display_value
 
 init_db()
 client_manager = TestClient(app)
@@ -541,6 +543,30 @@ def test_custom_template_preview_renders_builtin_styli_logo_for_logo_assets() ->
     assert preview.status_code == 200
     assert preview.content.startswith(b'%PDF-')
     assert b'STYLI' in preview.content
+
+
+def test_load_image_reader_uses_object_storage_for_public_asset_urls(monkeypatch) -> None:
+    image = Image.new('RGB', (8, 8), color='black')
+    output = BytesIO()
+    image.save(output, format='PNG')
+    image_bytes = output.getvalue()
+
+    from app.services import received_po_documents
+
+    monkeypatch.setattr(
+        received_po_documents.object_storage,
+        'download_bytes_for_url',
+        lambda url: image_bytes,
+    )
+    monkeypatch.setattr(
+        received_po_documents,
+        'urlopen',
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError('public url fallback should not run')),
+    )
+
+    reader = _load_image_reader('https://pub.example.test/uploads/company/logo.png')
+
+    assert reader is not None
 
 
 def test_document_flow_happy_path() -> None:

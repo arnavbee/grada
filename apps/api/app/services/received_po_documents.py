@@ -265,6 +265,10 @@ def _load_image_reader(asset_url: str | None) -> ImageReader | None:
                 return None
 
     try:
+        object_storage_bytes = object_storage.download_bytes_for_url(asset_url)
+        if object_storage_bytes is not None:
+            return _reader_from_bytes(object_storage_bytes)
+
         local_path = _local_static_path_from_url(asset_url)
         if local_path is not None and local_path.exists():
             return _reader_from_bytes(local_path.read_bytes())
@@ -1072,9 +1076,11 @@ def _render_sticker_template(
             continue
 
         if element.element_type == 'image':
+            asset_type = str(props.get('asset_type') or '').strip().lower()
+            asset_url = str(props.get('asset_url') or '').strip()
             image_reader = _resolve_template_image_reader(props)
             if image_reader is None:
-                if str(props.get('asset_type') or '').strip().lower() == 'logo':
+                if asset_type == 'logo' and not asset_url:
                     _draw_styli_logo(
                         pdf,
                         x=absolute_x,
@@ -1083,6 +1089,8 @@ def _render_sticker_template(
                         height=box_height,
                     )
                     continue
+                if asset_url:
+                    raise ValueError('Template image asset could not be loaded for PDF generation.')
                 pdf.setStrokeColor(colors.lightgrey)
                 pdf.rect(absolute_x, absolute_y, box_width, box_height, stroke=1, fill=0)
                 pdf.setFillColor(colors.grey)

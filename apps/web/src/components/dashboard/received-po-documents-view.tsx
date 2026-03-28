@@ -436,6 +436,13 @@ export function ReceivedPODocumentsView({
         if (nextBarcodeJob) {
           setBarcodeJob(nextBarcodeJob);
           if (!["pending", "generating"].includes(nextBarcodeJob.status)) {
+            if (nextBarcodeJob.status === "failed") {
+              setWorkingKey(null);
+              setStatusLine(null);
+              setError(
+                "Barcode PDF generation failed. The template image/logo could not be loaded. Re-upload it in the sticker builder, save the template, and try again.",
+              );
+            }
             window.clearInterval(interval);
           }
         }
