@@ -241,17 +241,14 @@ export default function LandingPage(): JSX.Element {
                       </p>
                     </div>
                     <div className="p-3 md:p-4">
-                      <div className="kira-infographic-stage">
-                        <div className="kira-infographic-chip">Live workflow preview</div>
-                        <div className="kira-infographic-frame">
-                          <iframe
-                            aria-label="Animated Smart Catalog workflow preview"
-                            className="kira-infographic-embed"
-                            loading="lazy"
-                            src={smartCatalogAnimationSrc}
-                            title="Animated Smart Catalog workflow preview"
-                          />
-                        </div>
+                      <div className="overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-kira-brown/10">
+                        <iframe
+                          aria-label="Animated Smart Catalog workflow preview"
+                          className="kira-infographic-embed"
+                          loading="lazy"
+                          src={smartCatalogAnimationSrc}
+                          title="Animated Smart Catalog workflow preview"
+                        />
                       </div>
                     </div>
                   </div>
