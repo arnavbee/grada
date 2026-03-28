@@ -1,5 +1,5 @@
 from functools import lru_cache
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlparse
 
 from app.core.config import get_settings
 
@@ -80,6 +80,47 @@ class ObjectStorageService:
             CacheControl='public, max-age=31536000, immutable',
         )
         return self.build_public_url(key)
+
+    def extract_key_from_url(self, url: str) -> str | None:
+        raw = (url or '').strip()
+        if not raw:
+            return None
+
+        if self._r2_public_base_url:
+            base = self._r2_public_base_url.rstrip('/')
+            prefix = f'{base}/'
+            if raw.startswith(prefix):
+                return unquote(raw[len(prefix) :])
+
+        parsed = urlparse(raw)
+        path = parsed.path.strip('/')
+        if not path:
+            return None
+
+        bucket = (self._r2_bucket or '').strip('/')
+        if bucket:
+            bucket_prefix = f'{bucket}/'
+            if path == bucket:
+                return ''
+            if path.startswith(bucket_prefix):
+                return unquote(path[len(bucket_prefix) :])
+
+        return None
+
+    def download_bytes_for_url(self, url: str) -> bytes | None:
+        client = self._client_or_none()
+        if client is None:
+            return None
+
+        key = self.extract_key_from_url(url)
+        if not key:
+            return None
+
+        response = client.get_object(Bucket=self._r2_bucket, Key=key)
+        body = response.get('Body')
+        if body is None:
+            return None
+        return body.read()
 
     def build_public_url(self, key: str) -> str:
         encoded_key = quote(key)

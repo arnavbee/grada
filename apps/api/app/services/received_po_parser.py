@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.db.base import utcnow
 from app.db.session import SessionLocal
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
+from app.services.object_storage import get_object_storage_service
 
 SIZE_ORDER = {'XS': 0, 'S': 1, 'M': 2, 'L': 3, 'XL': 4, 'XXL': 5, 'XXXL': 6}
 LINE_ITEM_FIELD_ALIASES = {
@@ -63,6 +64,7 @@ LINE_ITEM_FIELD_ALIASES = {
     },
     'po_price': {'po price', 'po_price', 'price', 'unit price', 'po rate'},
 }
+object_storage = get_object_storage_service()
 
 
 def _json_dumps(payload: dict[str, object]) -> str:
@@ -72,6 +74,9 @@ def _json_dumps(payload: dict[str, object]) -> str:
 def _read_received_po_bytes(file_url: str) -> bytes:
     parsed = urlparse(file_url)
     if parsed.scheme in {'http', 'https'}:
+        object_storage_bytes = object_storage.download_bytes_for_url(file_url)
+        if object_storage_bytes is not None:
+            return object_storage_bytes
         with urlopen(file_url, timeout=15) as response:
             return response.read()
 

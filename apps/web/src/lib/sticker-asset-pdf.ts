@@ -1,3 +1,5 @@
+import { resolveAssetUrl } from "@/src/lib/asset-url";
+
 function loadImage(source: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new window.Image();
@@ -58,6 +60,27 @@ async function rasterizeImageBlob(blob: Blob, filenameHint: string): Promise<Fil
   }
 }
 
+export function getStickerAssetFetchUrl(assetUrl: string): string {
+  const raw = assetUrl.trim();
+  const resolved = resolveAssetUrl(raw) ?? raw;
+
+  if (typeof window === "undefined") {
+    return resolved;
+  }
+
+  try {
+    const url = new URL(resolved, window.location.origin);
+    if (url.origin === window.location.origin) {
+      return url.toString();
+    }
+    return `${window.location.origin}/api/sticker-assets/proxy?url=${encodeURIComponent(
+      url.toString(),
+    )}`;
+  } catch {
+    return resolved;
+  }
+}
+
 export async function normalizeStickerAssetFileForPdf(file: File): Promise<File> {
   if (typeof window === "undefined") {
     return file;
@@ -77,7 +100,7 @@ export async function normalizeStickerAssetUrlForPdf(
   assetUrl: string,
   filenameHint: string,
 ): Promise<File> {
-  const response = await fetch(assetUrl, { cache: "no-store" });
+  const response = await fetch(getStickerAssetFetchUrl(assetUrl), { cache: "no-store" });
   if (!response.ok) {
     throw new Error("Unable to fetch sticker asset for PDF generation.");
   }
