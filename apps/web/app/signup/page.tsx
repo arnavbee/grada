@@ -106,6 +106,13 @@ export default function SignupPage(): JSX.Element {
           {isSubmitting ? "Creating account..." : "Create Account"}
         </Button>
 
+        <Link
+          className="kira-focus-ring inline-flex w-full items-center justify-center rounded-md border border-kira-darkgray bg-transparent px-4 py-2 text-sm font-semibold text-kira-darkgray transition-colors duration-150 hover:bg-kira-warmgray/18 active:bg-kira-warmgray/28"
+          href="/"
+        >
+          Home
+        </Link>
+
         <p className="text-center text-sm text-kira-midgray">
           Already have an account?{" "}
           <Link className="kira-focus-ring text-kira-darkgray hover:text-kira-black" href="/login">
