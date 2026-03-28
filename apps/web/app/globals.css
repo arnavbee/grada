@@ -259,6 +259,146 @@ small {
     0 0 54px rgba(160, 111, 66, 0.08);
 }
 
+@keyframes kira-infographic-drift {
+  0% {
+    transform: translate3d(0, 10px, 0) scale(0.98);
+    opacity: 0.88;
+  }
+
+  50% {
+    transform: translate3d(0, -2px, 0) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate3d(0, 10px, 0) scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+@keyframes kira-infographic-sheen {
+  0% {
+    transform: translateX(-130%);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 0.34;
+  }
+
+  55% {
+    opacity: 0.18;
+  }
+
+  100% {
+    transform: translateX(150%);
+    opacity: 0;
+  }
+}
+
+@keyframes kira-infographic-orbit {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.96);
+    opacity: 0.2;
+  }
+
+  50% {
+    transform: translate3d(12px, -12px, 0) scale(1.05);
+    opacity: 0.4;
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) scale(0.96);
+    opacity: 0.2;
+  }
+}
+
+.kira-infographic-stage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(var(--kira-warmgray-rgb), 0.45);
+  background:
+    radial-gradient(circle at top left, rgba(196, 139, 42, 0.16), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(22, 33, 29, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(251, 247, 240, 0.96) 0%, rgba(244, 237, 225, 0.96) 100%);
+  padding: 1rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 22px 44px rgba(34, 28, 16, 0.08);
+}
+
+.kira-infographic-stage::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: -20% auto -20% -30%;
+  width: 40%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.58) 45%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-18deg);
+  animation: kira-infographic-sheen 4.6s ease-in-out infinite;
+}
+
+.kira-infographic-stage::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  top: 1.1rem;
+  right: 1.1rem;
+  height: 5.25rem;
+  width: 5.25rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(196, 139, 42, 0.18) 0%, rgba(196, 139, 42, 0) 70%);
+  animation: kira-infographic-orbit 5.5s ease-in-out infinite;
+}
+
+.kira-infographic-chip {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1;
+  border-radius: 9999px;
+  border: 1px solid rgba(var(--kira-brown-rgb), 0.16);
+  background: rgba(255, 252, 247, 0.88);
+  color: var(--kira-muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  padding: 0.55rem 0.8rem;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+
+.kira-infographic-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.35rem;
+  border: 1px solid rgba(var(--kira-warmgray-rgb), 0.45);
+  background: rgba(196, 139, 42, 0.08);
+  padding-top: 2.75rem;
+  transform-origin: center top;
+  animation: kira-infographic-drift 5.8s ease-in-out infinite;
+}
+
+.kira-infographic-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kira-infographic-stage::before,
+  .kira-infographic-stage::after,
+  .kira-infographic-frame {
+    animation: none;
+  }
+}
+
 .theme-toggle {
   background: var(--kira-toggle-bg);
   color: var(--kira-toggle-text);

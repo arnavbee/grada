@@ -239,12 +239,17 @@ export default function LandingPage(): JSX.Element {
                       </p>
                     </div>
                     <div className="p-3 md:p-4">
-                      <img
-                        alt="Smart Catalog infographic showing AI attribute extraction and review workflow"
-                        className="w-full rounded-xl border border-kira-warmgray/25 bg-[#c48b2a]"
-                        loading="lazy"
-                        src={smartCatalogInfographicSrc}
-                      />
+                      <div className="kira-infographic-stage">
+                        <div className="kira-infographic-chip">Live workflow preview</div>
+                        <div className="kira-infographic-frame">
+                          <img
+                            alt="Smart Catalog infographic showing AI attribute extraction and review workflow"
+                            className="w-full rounded-[1.25rem]"
+                            loading="lazy"
+                            src={smartCatalogInfographicSrc}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </>
