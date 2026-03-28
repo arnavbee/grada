@@ -206,6 +206,78 @@ def test_invoice_creation_and_update() -> None:
     assert invoice_items[0]['po_number'] == 'STY-2026-00999'
 
 
+def test_invoice_uses_cgst_and_sgst_for_intrastate_gst_numbers() -> None:
+    headers = _auth_headers()
+    _, received_po_id = _seed_confirmed_received_po(headers)
+
+    invoice = client.post(
+        f'/api/v1/received-pos/{received_po_id}/invoice',
+        headers=headers,
+        json={
+            'details': {
+                **{
+                    'marketplace_name': 'Styli',
+                    'supplier_name': 'Documents Co',
+                    'address': '123 Export Lane, Gurugram',
+                    'gst_number': '07ABCDE1234F1Z5',
+                    'pan_number': 'ABCDE1234F',
+                    'fbs_name': 'Documents Co',
+                    'vendor_company_name': 'Documents Co',
+                    'supplier_city': 'Gurugram',
+                    'supplier_state': 'Haryana',
+                    'supplier_pincode': '122004',
+                    'delivery_from_name': 'Documents Co',
+                    'delivery_from_address': '123 Export Lane, Gurugram',
+                    'delivery_from_city': 'Gurugram',
+                    'delivery_from_pincode': '122004',
+                    'origin_country': 'India',
+                    'origin_state': 'Haryana',
+                    'origin_district': 'Gurugram',
+                    'bill_to_name': 'Documents Buyer',
+                    'bill_to_address': 'Gurugram',
+                    'bill_to_gst': '07ZZZZZ1234F1Z5',
+                    'bill_to_pan': 'ABCDE1234F',
+                    'ship_to_name': 'Documents Buyer',
+                    'ship_to_address': 'Gurugram',
+                    'ship_to_gst': '07YYYYY1234F1Z5',
+                    'stamp_image_url': '',
+                }
+            }
+        },
+    )
+    assert invoice.status_code == 201
+    body = invoice.json()
+    assert body['tax_mode'] == 'intrastate'
+    assert body['igst_amount'] == 0.0
+    assert body['cgst_amount'] == 275.0
+    assert body['sgst_amount'] == 275.0
+    assert body['total_amount'] == 11550.0
+    assert body['line_items'][0]['igst_amount'] == 0.0
+    assert body['line_items'][0]['cgst_amount'] == 125.0
+    assert body['line_items'][0]['sgst_amount'] == 125.0
+
+    invoice_update = client.patch(
+        f'/api/v1/received-pos/{received_po_id}/invoice',
+        headers=headers,
+        json={
+            'details': {
+                **body['details'],
+                'bill_to_gst': '29ABCDE1234F1Z5',
+                'ship_to_gst': '29ABCDE1234F1Z5',
+            }
+        },
+    )
+    assert invoice_update.status_code == 200
+    updated_body = invoice_update.json()
+    assert updated_body['tax_mode'] == 'interstate'
+    assert updated_body['igst_amount'] == 550.0
+    assert updated_body['cgst_amount'] == 0.0
+    assert updated_body['sgst_amount'] == 0.0
+    assert updated_body['line_items'][0]['igst_amount'] == 250.0
+    assert updated_body['line_items'][0]['cgst_amount'] == 0.0
+    assert updated_body['line_items'][0]['sgst_amount'] == 0.0
+
+
 def test_packing_list_requires_invoice_before_creation() -> None:
     headers = _auth_headers()
     _, received_po_id = _seed_confirmed_received_po(headers)

@@ -8,6 +8,7 @@ export type BarcodeJobStatus = "pending" | "generating" | "done" | "failed";
 export type InvoiceStatus = "draft" | "final" | "failed";
 export type PackingListStatus = "draft" | "final" | "failed";
 export type ExportMode = "Air" | "Sea" | "Road";
+export type InvoiceTaxMode = "interstate" | "intrastate";
 
 export interface InvoiceDetails {
   marketplace_name: string;
@@ -112,6 +113,9 @@ export interface Invoice {
   subtotal: number;
   igst_rate: number;
   igst_amount: number;
+  cgst_amount: number;
+  sgst_amount: number;
+  tax_mode: InvoiceTaxMode;
   total_amount: number;
   total_amount_words: string | null;
   status: InvoiceStatus;

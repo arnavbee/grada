@@ -275,6 +275,9 @@ function buildInvoice(status: Invoice["status"], fileUrl: string | null = null):
     subtotal: 4990,
     igst_rate: 5,
     igst_amount: 249.5,
+    cgst_amount: 0,
+    sgst_amount: 0,
+    tax_mode: "interstate",
     total_amount: 5239.5,
     total_amount_words: "Five Thousand Two Hundred Thirty Nine and Fifty Paisa only",
     status,
@@ -540,6 +543,26 @@ describe("received PO dashboard flows", () => {
         },
       });
     });
+  });
+
+  it("shows CGST + SGST for intrastate invoices", async () => {
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock.mockResolvedValue(null);
+    getOptionalPackingListMock.mockResolvedValue(null);
+    getBrandProfileMock.mockResolvedValue(buildBrandProfile());
+    getOptionalInvoiceMock.mockResolvedValue({
+      ...buildInvoice("draft"),
+      tax_mode: "intrastate",
+      igst_amount: 0,
+      cgst_amount: 124.75,
+      sgst_amount: 124.75,
+    });
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    await openDocumentsTab("Invoice");
+    expect(await screen.findByText("CGST + SGST")).toBeTruthy();
+    expect(screen.getByText("AED 249.50")).toBeTruthy();
   });
 
   it("uses resolved file URLs from document cards when downloads are available", async () => {

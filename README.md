@@ -10,6 +10,8 @@ Wholesale operations monorepo for catalog management, PO building, received mark
 - Settings: brand profile, PO-builder defaults, invoice defaults, and carton-capacity rules.
 - Admin: super-admin analytics and tenancy-aware operational insights.
 
+See [Current Product Features](/Users/arnavbsingh/Downloads/kira-web/docs/current-product-features.md) for a fuller shareable feature overview.
+
 ## Workspace layout
 
 - `apps/web`: Next.js 14 App Router frontend

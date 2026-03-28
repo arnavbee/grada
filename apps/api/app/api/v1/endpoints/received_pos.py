@@ -23,6 +23,7 @@ from app.schemas.invoice import (
     InvoiceDetails,
     InvoiceGeneratePdfResponse,
     InvoiceResponse,
+    InvoiceTaxMode,
     InvoiceUpdateRequest,
 )
 from app.schemas.packing_list import (
@@ -83,6 +84,9 @@ def _json_loads(raw: str | None) -> dict[str, object]:
 
 def _to_invoice_response(record: Invoice) -> InvoiceResponse:
     details = InvoiceDetails(**_json_loads(record.details_json))
+    tax_mode = _resolve_invoice_tax_mode(details)
+    cgst_amount = _money(sum(float(line_item.cgst_amount or 0) for line_item in record.line_items))
+    sgst_amount = _money(sum(float(line_item.sgst_amount or 0) for line_item in record.line_items))
     return InvoiceResponse(
         id=record.id,
         received_po_id=record.received_po_id,
@@ -96,6 +100,9 @@ def _to_invoice_response(record: Invoice) -> InvoiceResponse:
         subtotal=float(record.subtotal),
         igst_rate=float(record.igst_rate),
         igst_amount=float(record.igst_amount),
+        cgst_amount=cgst_amount,
+        sgst_amount=sgst_amount,
+        tax_mode=tax_mode,
         total_amount=float(record.total_amount),
         total_amount_words=record.total_amount_words,
         status=record.status,
@@ -263,30 +270,62 @@ def _money(value: float) -> float:
     return round(float(value or 0), 2)
 
 
+def _gst_state_code(value: str | None) -> str | None:
+    normalized = ''.join(ch for ch in str(value or '').strip() if not ch.isspace())
+    if len(normalized) < 2 or not normalized[:2].isdigit():
+        return None
+    return normalized[:2]
+
+
+def _resolve_invoice_tax_mode(details: InvoiceDetails) -> InvoiceTaxMode:
+    supplier_state_code = _gst_state_code(details.gst_number)
+    destination_state_code = _gst_state_code(details.ship_to_gst) or _gst_state_code(details.bill_to_gst)
+    if supplier_state_code and destination_state_code and supplier_state_code == destination_state_code:
+        return 'intrastate'
+    return 'interstate'
+
+
 def _invoice_line_item_rows(
     received_po: ReceivedPO,
     line_items: list[ReceivedPOLineItem],
     company_settings: CompanySettings,
     *,
+    invoice_details: InvoiceDetails,
     igst_rate: float,
-) -> tuple[list[InvoiceLineItem], int, float, float, float, str]:
+) -> tuple[list[InvoiceLineItem], int, float, float, float, float, float, str, InvoiceTaxMode]:
     brand_profile = _brand_profile(company_settings)
     po_defaults = _po_builder_defaults(company_settings)
     default_fabric = str(po_defaults.get('default_fabric_composition') or '100% Polyester').strip()
     origin_country = str(brand_profile.get('origin_country') or '').strip()
     origin_state = str(brand_profile.get('origin_state') or '').strip()
     origin_district = str(brand_profile.get('origin_district') or '').strip()
+    tax_mode = _resolve_invoice_tax_mode(invoice_details)
     rows: list[InvoiceLineItem] = []
     total_quantity = 0
     subtotal = 0.0
+    invoice_igst_amount = 0.0
+    invoice_cgst_amount = 0.0
+    invoice_sgst_amount = 0.0
     for index, line_item in enumerate(line_items):
         quantity = int(line_item.quantity or 0)
         unit_price = _money(float(line_item.po_price or 0))
         net_taxable_amount = _money(quantity * unit_price)
-        igst_amount = _money(net_taxable_amount * igst_rate / 100)
-        total_amount = _money(net_taxable_amount + igst_amount)
+        igst_amount = 0.0
+        cgst_amount = 0.0
+        sgst_amount = 0.0
+        if tax_mode == 'intrastate':
+            half_rate = igst_rate / 2
+            cgst_amount = _money(net_taxable_amount * half_rate / 100)
+            sgst_amount = _money(net_taxable_amount * half_rate / 100)
+        else:
+            igst_amount = _money(net_taxable_amount * igst_rate / 100)
+        total_gst_amount = _money(igst_amount + cgst_amount + sgst_amount)
+        total_amount = _money(net_taxable_amount + total_gst_amount)
         total_quantity += quantity
         subtotal = _money(subtotal + net_taxable_amount)
+        invoice_igst_amount = _money(invoice_igst_amount + igst_amount)
+        invoice_cgst_amount = _money(invoice_cgst_amount + cgst_amount)
+        invoice_sgst_amount = _money(invoice_sgst_amount + sgst_amount)
         rows.append(
             InvoiceLineItem(
                 id=str(uuid4()),
@@ -308,17 +347,26 @@ def _invoice_line_item_rows(
                 net_taxable_amount=net_taxable_amount,
                 gst_rate=igst_rate,
                 igst_amount=igst_amount,
-                cgst_amount=0.0,
-                sgst_amount=0.0,
-                total_gst_amount=igst_amount,
+                cgst_amount=cgst_amount,
+                sgst_amount=sgst_amount,
+                total_gst_amount=total_gst_amount,
                 total_amount=total_amount,
                 sort_order=index,
             )
         )
-    invoice_igst_amount = _money(subtotal * igst_rate / 100)
-    total_amount = _money(subtotal + invoice_igst_amount)
+    total_amount = _money(subtotal + invoice_igst_amount + invoice_cgst_amount + invoice_sgst_amount)
     total_amount_words = convert_to_words(total_amount)
-    return rows, total_quantity, subtotal, invoice_igst_amount, total_amount, total_amount_words
+    return (
+        rows,
+        total_quantity,
+        subtotal,
+        invoice_igst_amount,
+        invoice_cgst_amount,
+        invoice_sgst_amount,
+        total_amount,
+        total_amount_words,
+        tax_mode,
+    )
 
 
 def _invoice_details_from_record(
@@ -342,10 +390,21 @@ def _refresh_invoice_snapshot(
 ) -> None:
     igst_rate = float(invoice.igst_rate or _get_default_igst_rate(company_settings))
     invoice_details = details_override or _invoice_details_from_record(invoice, company_settings, received_po)
-    line_item_rows, total_quantity, subtotal, igst_amount, total_amount, total_amount_words = _invoice_line_item_rows(
+    (
+        line_item_rows,
+        total_quantity,
+        subtotal,
+        igst_amount,
+        _cgst_amount,
+        _sgst_amount,
+        total_amount,
+        total_amount_words,
+        _tax_mode,
+    ) = _invoice_line_item_rows(
         received_po,
         list(received_po.items),
         company_settings,
+        invoice_details=invoice_details,
         igst_rate=igst_rate,
     )
     _apply_invoice_details_to_line_items(line_item_rows, invoice_details)
@@ -736,14 +795,24 @@ def create_invoice_draft(
 
     company_settings = _get_company_settings(db, current_user.company_id)
     igst_rate = _get_default_igst_rate(company_settings)
-    line_item_rows, total_quantity, subtotal, igst_amount, total_amount, total_amount_words = _invoice_line_item_rows(
+    invoice_details = _resolve_invoice_details(payload.details, company_settings, record)
+    (
+        line_item_rows,
+        total_quantity,
+        subtotal,
+        igst_amount,
+        _cgst_amount,
+        _sgst_amount,
+        total_amount,
+        total_amount_words,
+        _tax_mode,
+    ) = _invoice_line_item_rows(
         record,
         list(record.items),
         company_settings,
+        invoice_details=invoice_details,
         igst_rate=igst_rate,
     )
-
-    invoice_details = _resolve_invoice_details(payload.details, company_settings, record)
     _apply_invoice_details_to_line_items(line_item_rows, invoice_details)
     invoice_prefix = str(company_settings.invoice_prefix or '').strip()
     if invoice_prefix == 'INV' and not _brand_profile(company_settings):
@@ -808,7 +877,7 @@ def update_invoice(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles('admin', 'manager', 'operator')),
 ) -> InvoiceResponse:
-    _get_received_po_or_404(db, current_user.company_id, received_po_id)
+    received_po = _get_received_po_or_404(db, current_user.company_id, received_po_id)
     invoice = _get_invoice_or_404(db, current_user.company_id, received_po_id)
     invoice.gross_weight = payload.gross_weight
     if payload.number_of_cartons is not None:
@@ -816,8 +885,14 @@ def update_invoice(
     if payload.export_mode is not None:
         invoice.export_mode = payload.export_mode
     if payload.details is not None:
-        invoice.details_json = payload.details.model_dump_json()
-        _apply_invoice_details_to_line_items(invoice.line_items, payload.details)
+        company_settings = _get_company_settings(db, current_user.company_id)
+        _refresh_invoice_snapshot(
+            db,
+            invoice,
+            received_po,
+            company_settings,
+            details_override=payload.details,
+        )
     log_audit(
         db,
         action='received_po.invoice.update',

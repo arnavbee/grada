@@ -1850,6 +1850,9 @@ def _build_invoice_pdf(
 ) -> bytes:
     profile = _invoice_profile(invoice, company_settings)
     marketplace_name = profile['marketplace_name'] or str(received_po.distributor or '').strip()
+    total_cgst_amount = sum(float(row.cgst_amount or 0) for row in line_items)
+    total_sgst_amount = sum(float(row.sgst_amount or 0) for row in line_items)
+    total_split_gst_amount = total_cgst_amount + total_sgst_amount
     styles = _invoice_styles()
     buffer = BytesIO()
     document = SimpleDocTemplate(
@@ -2063,8 +2066,8 @@ def _build_invoice_pdf(
             _invoice_currency(float(invoice.subtotal), trim_zero_decimals=True),
             '',
             _invoice_currency(float(invoice.igst_amount), trim_zero_decimals=True),
-            '0',
-            _invoice_currency(float(invoice.igst_amount), trim_zero_decimals=True),
+            _invoice_currency(float(total_split_gst_amount), trim_zero_decimals=True),
+            _invoice_currency(float(invoice.igst_amount) + total_split_gst_amount, trim_zero_decimals=True),
             _invoice_currency(float(invoice.total_amount), trim_zero_decimals=True),
         ]
     )

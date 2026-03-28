@@ -1014,9 +1014,15 @@ export function ReceivedPODocumentsView({
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.12em] text-kira-midgray">IGST</p>
+                      <p className="text-xs uppercase tracking-[0.12em] text-kira-midgray">
+                        {invoice.tax_mode === "intrastate" ? "CGST + SGST" : "IGST"}
+                      </p>
                       <p className="mt-1 text-kira-black dark:text-white">
-                        {formatDocumentCurrency(invoice.igst_amount)}
+                        {formatDocumentCurrency(
+                          invoice.tax_mode === "intrastate"
+                            ? invoice.cgst_amount + invoice.sgst_amount
+                            : invoice.igst_amount,
+                        )}
                       </p>
                     </div>
                     <div>

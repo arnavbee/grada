@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 InvoiceStatus = Literal['draft', 'final', 'failed']
 ExportMode = Literal['Air', 'Sea', 'Road']
+InvoiceTaxMode = Literal['interstate', 'intrastate']
 
 
 class InvoiceCreateResponse(BaseModel):
@@ -104,6 +105,9 @@ class InvoiceResponse(BaseModel):
     subtotal: float
     igst_rate: float
     igst_amount: float
+    cgst_amount: float
+    sgst_amount: float
+    tax_mode: InvoiceTaxMode
     total_amount: float
     total_amount_words: str | None
     status: InvoiceStatus
