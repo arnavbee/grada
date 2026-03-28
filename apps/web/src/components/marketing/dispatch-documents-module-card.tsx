@@ -17,10 +17,19 @@ export function DispatchDocumentsModuleCard({
   title,
 }: DispatchDocumentsModuleCardProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewRun, setPreviewRun] = useState(0);
 
+  const clearCloseTimeout = (): void => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  };
+
   const openPreview = (): void => {
+    clearCloseTimeout();
     setIsPreviewOpen((current) => {
       if (current) {
         return current;
@@ -32,7 +41,11 @@ export function DispatchDocumentsModuleCard({
   };
 
   const closePreview = (): void => {
-    setIsPreviewOpen(false);
+    clearCloseTimeout();
+    closeTimeoutRef.current = setTimeout(() => {
+      setIsPreviewOpen(false);
+      closeTimeoutRef.current = null;
+    }, 140);
   };
 
   const handleBlurCapture = (event: FocusEvent<HTMLDivElement>): void => {
@@ -76,9 +89,11 @@ export function DispatchDocumentsModuleCard({
       <div
         className={`mt-5 overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-[#fbf7f0] transition-all duration-500 ease-out md:max-h-0 md:opacity-0 lg:absolute lg:right-[calc(100%+1rem)] lg:top-1/2 lg:z-50 lg:mt-0 lg:w-[30rem] lg:max-h-none lg:-translate-y-1/2 lg:-translate-x-2 lg:scale-[0.98] lg:shadow-2xl lg:transition-[opacity,transform] lg:duration-300 lg:ease-out ${
           isPreviewOpen
-            ? "md:max-h-[46rem] md:opacity-100 lg:pointer-events-none lg:translate-x-0 lg:scale-100 lg:opacity-100"
+            ? "md:max-h-[46rem] md:opacity-100 lg:pointer-events-auto lg:translate-x-0 lg:scale-100 lg:opacity-100"
             : "lg:pointer-events-none"
         }`}
+        onMouseEnter={openPreview}
+        onMouseLeave={closePreview}
       >
         <div className="p-3 md:p-4">
           <div className="overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-[#1a1a18]">
