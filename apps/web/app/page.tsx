@@ -437,7 +437,9 @@ export default function LandingPage(): JSX.Element {
 
       <section className="bg-[#0d0c0a] px-5 py-24 text-center md:px-10">
         <div className="mx-auto max-w-4xl">
-          <div className={`${playfair.className} text-8xl leading-[0.6] text-[#c9a84c]`}>"</div>
+          <div className={`${playfair.className} text-8xl leading-[0.6] text-[#c9a84c]`}>
+            &quot;
+          </div>
           <blockquote
             className={`${playfair.className} mx-auto mt-4 max-w-3xl text-[clamp(1.6rem,3vw,2.4rem)] font-normal italic leading-[1.45] tracking-[-0.02em] text-[#faf8f4]`}
           >
