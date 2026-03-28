@@ -8,6 +8,7 @@ import { DocumentCard } from "@/src/components/received-po/DocumentCard";
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
+import { normalizeStickerAssetUrlForPdf } from "@/src/lib/sticker-asset-pdf";
 import {
   type BarcodeJob,
   type ExportMode,
@@ -33,6 +34,8 @@ import {
   getStickerTemplate,
   listStickerTemplates,
   resolveStickerAssetUrl,
+  updateStickerTemplate,
+  uploadStickerImage,
   type StickerElement,
   type StickerTemplate,
 } from "@/src/lib/sticker-templates";
@@ -261,6 +264,18 @@ async function loadTemplatesWithElements(): Promise<StickerTemplate[]> {
     }),
   );
   return fullTemplates;
+}
+
+function buildTemplateElementPayload(template: StickerTemplate) {
+  return template.elements.map((element, index) => ({
+    element_type: element.element_type,
+    x_mm: element.x_mm,
+    y_mm: element.y_mm,
+    width_mm: element.width_mm,
+    height_mm: element.height_mm,
+    z_index: element.z_index ?? index,
+    properties: element.properties,
+  }));
 }
 const DOC_INPUT_CLASS = "kira-field w-full";
 const DOC_TEXTAREA_CLASS = "kira-textarea min-h-24 w-full";
@@ -506,6 +521,64 @@ export function ReceivedPODocumentsView({
     }));
   };
 
+  const refreshCustomTemplateImagesForPdf = async (templateId: string): Promise<void> => {
+    const template = await getStickerTemplate(templateId);
+    let changed = false;
+
+    const nextElements = await Promise.all(
+      template.elements.map(async (element) => {
+        if (element.element_type !== "image") {
+          return element;
+        }
+
+        const rawAssetUrl = String(element.properties.asset_url ?? "").trim();
+        if (!rawAssetUrl) {
+          return element;
+        }
+
+        const resolvedAssetUrl = resolveStickerAssetUrl(rawAssetUrl);
+        if (!resolvedAssetUrl) {
+          return element;
+        }
+
+        try {
+          const normalizedFile = await normalizeStickerAssetUrlForPdf(
+            resolvedAssetUrl,
+            `${template.name}-${element.id}`,
+          );
+          const uploaded = await uploadStickerImage(normalizedFile);
+          if (!uploaded.url || uploaded.url === rawAssetUrl) {
+            return element;
+          }
+          changed = true;
+          return {
+            ...element,
+            properties: {
+              ...element.properties,
+              asset_url: uploaded.url,
+            },
+          };
+        } catch {
+          return element;
+        }
+      }),
+    );
+
+    if (!changed) {
+      return;
+    }
+
+    const savedTemplate = await updateStickerTemplate(template.id, {
+      elements: buildTemplateElementPayload({
+        ...template,
+        elements: nextElements,
+      }),
+    });
+    setStickerTemplates((current) =>
+      current.map((item) => (item.id === savedTemplate.id ? savedTemplate : item)),
+    );
+  };
+
   const handleGenerateBarcodes = async (): Promise<void> => {
     try {
       setActiveTab("barcode");
@@ -514,6 +587,10 @@ export function ReceivedPODocumentsView({
       setStatusLine(null);
       const templateKind = selectedBarcodeTemplate === "styli" ? "styli" : "custom";
       const templateId = templateKind === "custom" ? selectedBarcodeTemplate : null;
+      if (templateId) {
+        setStatusLine("Preparing template images for PDF...");
+        await refreshCustomTemplateImagesForPdf(templateId);
+      }
       const createdJob = await createBarcodeJob(
         receivedPoId,
         templateKind === "styli"

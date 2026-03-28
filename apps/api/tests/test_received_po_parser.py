@@ -1,25 +1,30 @@
 from app.services.received_po_parser import _extract_line_items_from_rows
 
 
-def test_extract_line_items_maps_model_code_to_model_number() -> None:
+def test_extract_line_items_accepts_total_as_quantity_header() -> None:
     rows = [
-        ['Brand Style Code', 'Model Code', 'Option ID', 'SKU ID', 'Size', 'Quantity'],
-        ['HRDS25001', 'IN000090128', '7015079228', 'HRDS25001-A-BLACK-M', 'M', '7'],
+        ['Booked By', '', 'Shipment Terms', 'FOB', 'PO', '70058628'],
+        ['Supplier', 'HOUSE OF RAELI', 'Payment Terms', 'TT', 'PO Date', '2026-01-29 06:33:20'],
+        [
+            'Vendor Style Number',
+            'Style Id',
+            'Styli Option ID',
+            'Styli SKU',
+            'Colour',
+            'Size',
+            'Total',
+            'PO Price',
+        ],
+        ['MSDR106MXSOBK-A-Black', '70328991', '7032899101', '703289910102', 'Black', 'S', '1', '600'],
+        ['MSDR106MXSOBK-A-Black', '70328991', '7032899101', '703289910103', 'Black', 'M', '2', '600'],
     ]
 
     items = _extract_line_items_from_rows(rows)
 
-    assert len(items) == 1
-    assert items[0]['model_number'] == 'IN000090128'
-
-
-def test_extract_line_items_maps_knitted_woven_from_po_column() -> None:
-    rows = [
-        ['Brand Style Code', 'SKU ID', 'Knitted / Wovan', 'Size', 'Quantity'],
-        ['HRDS25001', 'HRDS25001-A-BLACK-M', 'Knitted', 'M', '7'],
-    ]
-
-    items = _extract_line_items_from_rows(rows)
-
-    assert len(items) == 1
-    assert items[0]['knitted_woven'] == 'Knitted'
+    assert len(items) == 2
+    assert items[0]['brand_style_code'] == 'MSDR106MXSOBK-A-Black'
+    assert items[0]['styli_style_id'] == '70328991'
+    assert items[0]['option_id'] == '7032899101'
+    assert items[0]['sku_id'] == '703289910102'
+    assert items[0]['quantity'] == 1
+    assert items[1]['quantity'] == 2

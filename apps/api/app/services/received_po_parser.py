@@ -53,6 +53,7 @@ LINE_ITEM_FIELD_ALIASES = {
         'qty',
         'qty.',
         'qnty',
+        'total',
         'pieces',
         'unit quantity',
         'total qty',

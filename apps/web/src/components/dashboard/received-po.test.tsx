@@ -36,6 +36,9 @@ const {
   generatePackingListPdfMock,
   resolveFileUrlMock,
   listStickerTemplatesMock,
+  getStickerTemplateMock,
+  updateStickerTemplateMock,
+  uploadStickerImageMock,
   getBrandProfileMock,
 } = vi.hoisted(() => ({
   pushMock: vi.fn(),
@@ -58,6 +61,9 @@ const {
     url ? `https://files.example.test${url}` : null,
   ),
   listStickerTemplatesMock: vi.fn(),
+  getStickerTemplateMock: vi.fn(),
+  updateStickerTemplateMock: vi.fn(),
+  uploadStickerImageMock: vi.fn(),
   getBrandProfileMock: vi.fn(),
 }));
 
@@ -116,9 +122,18 @@ vi.mock("@/src/lib/received-po", async () => {
   };
 });
 
-vi.mock("@/src/lib/sticker-templates", () => ({
-  listStickerTemplates: listStickerTemplatesMock,
-}));
+vi.mock("@/src/lib/sticker-templates", async () => {
+  const actual = await vi.importActual<typeof import("@/src/lib/sticker-templates")>(
+    "@/src/lib/sticker-templates",
+  );
+  return {
+    ...actual,
+    listStickerTemplates: listStickerTemplatesMock,
+    getStickerTemplate: getStickerTemplateMock,
+    updateStickerTemplate: updateStickerTemplateMock,
+    uploadStickerImage: uploadStickerImageMock,
+  };
+});
 
 vi.mock("@/src/lib/settings", () => ({
   getBrandProfile: getBrandProfileMock,
@@ -336,6 +351,9 @@ describe("received PO dashboard flows", () => {
     resolveFileUrlMock.mockClear();
     listStickerTemplatesMock.mockReset();
     listStickerTemplatesMock.mockResolvedValue([]);
+    getStickerTemplateMock.mockReset();
+    updateStickerTemplateMock.mockReset();
+    uploadStickerImageMock.mockReset();
     getBrandProfileMock.mockReset();
     getBrandProfileMock.mockResolvedValue(buildBrandProfile());
   });
@@ -572,6 +590,20 @@ describe("received PO dashboard flows", () => {
         elements: [],
       },
     ]);
+    getStickerTemplateMock.mockResolvedValue({
+      id: "template_2",
+      company_id: "co_1",
+      name: "new-one",
+      width_mm: 44,
+      height_mm: 74,
+      border_color: "#E34A93",
+      border_radius_mm: 2,
+      background_color: "#FFFFFF",
+      is_default: false,
+      created_at: "2026-03-24T00:00:00+00:00",
+      updated_at: "2026-03-24T00:00:00+00:00",
+      elements: [],
+    });
     createBarcodeJobMock.mockResolvedValue({
       job_id: "job_2",
       status: "pending",

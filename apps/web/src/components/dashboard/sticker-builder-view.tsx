@@ -21,6 +21,7 @@ import {
   type StickerElementType,
   type StickerTemplate,
 } from "@/src/lib/sticker-templates";
+import { normalizeStickerAssetFileForPdf } from "@/src/lib/sticker-asset-pdf";
 import {
   useStickerBuilderStore,
   type StickerTemplateDraft,
@@ -109,50 +110,6 @@ interface ResizeState {
   startX: number;
   startY: number;
   origin: StickerElement;
-}
-
-async function rasterizeSvgStickerAsset(file: File): Promise<File> {
-  if (typeof window === "undefined" || file.type !== "image/svg+xml") {
-    return file;
-  }
-
-  const svgMarkup = await file.text();
-  const encodedSvg = window.btoa(unescape(encodeURIComponent(svgMarkup)));
-  const imageUrl = `data:image/svg+xml;base64,${encodedSvg}`;
-
-  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const nextImage = new window.Image();
-    nextImage.onload = () => resolve(nextImage);
-    nextImage.onerror = () => reject(new Error("Unable to read SVG sticker asset."));
-    nextImage.src = imageUrl;
-  });
-
-  const width = Math.max(1, Math.round(image.width || 512));
-  const height = Math.max(1, Math.round(image.height || 512));
-  const canvas = window.document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-
-  const context = canvas.getContext("2d");
-  if (!context) {
-    throw new Error("Unable to prepare SVG sticker asset for barcode PDFs.");
-  }
-
-  context.clearRect(0, 0, width, height);
-  context.drawImage(image, 0, 0, width, height);
-
-  const pngBlob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        resolve(blob);
-        return;
-      }
-      reject(new Error("Unable to convert SVG sticker asset to PNG."));
-    }, "image/png");
-  });
-
-  const normalizedName = file.name.replace(/\.svg$/i, "") || "sticker-asset";
-  return new File([pngBlob], `${normalizedName}.png`, { type: "image/png" });
 }
 
 async function loadTemplatesWithElements(): Promise<StickerTemplate[]> {
@@ -1263,13 +1220,13 @@ export function StickerBuilderView(): JSX.Element {
       return;
     }
     try {
-      const uploadFile = await rasterizeSvgStickerAsset(file);
+      const uploadFile = await normalizeStickerAssetFileForPdf(file);
       const uploaded = await uploadStickerImage(uploadFile);
       handleSelectedPropertyUpdate("asset_url", uploaded.url);
       setStatusLine(
         uploadFile === file
           ? "Image uploaded to sticker assets."
-          : "SVG image converted to PNG and uploaded to sticker assets.",
+          : "Image converted to PNG and uploaded to sticker assets.",
       );
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Failed to upload image.");
