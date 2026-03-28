@@ -62,27 +62,22 @@ export function ReceivedPoProcessingModuleCard({
     <div
       className="group relative z-0 h-full overflow-visible hover:z-40 focus-within:z-40"
       onBlurCapture={handleBlurCapture}
+      onFocusCapture={openPreview}
+      onMouseEnter={openPreview}
       onMouseLeave={closePreview}
       ref={containerRef}
     >
       <Card
+        aria-label="Received PO Processing module with infographic preview"
         className="animate-enter h-full p-5 transition-transform duration-300 hover:-translate-y-1"
         style={{ animationDelay: `${120 + index * 80}ms` }}
+        tabIndex={0}
       >
         <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Module {index + 1}</p>
         <h2 className="mt-2 text-2xl">{title}</h2>
         <p className="mt-2 text-kira-darkgray">
-          Upload marketplace{" "}
-          <button
-            className="kira-focus-ring rounded-sm bg-kira-brown/12 px-1.5 py-0.5 font-semibold text-kira-black transition-colors hover:bg-kira-brown/20"
-            onFocus={openPreview}
-            onMouseEnter={openPreview}
-            type="button"
-          >
-            POs
-          </button>{" "}
-          in PDF, XLS, or XLSX, review parsed rows, and confirm one clean source of truth before ops
-          moves downstream.
+          Upload marketplace POs in PDF, XLS, or XLSX, review parsed rows, and confirm one clean
+          source of truth before ops moves downstream.
         </p>
       </Card>
 
