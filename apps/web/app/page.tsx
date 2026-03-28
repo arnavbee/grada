@@ -5,7 +5,7 @@ import { Card } from "@/src/components/ui/card";
 import { FooterBrand } from "@/src/components/FooterBrand";
 import { GridBackground } from "@/src/components/GridBackground";
 
-const smartCatalogInfographicSrc = "/marketing/grada-smart-catalog-infographic.svg";
+const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
 
 const modules = [
   {
@@ -202,7 +202,7 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-6">
+      <section className="grid grid-cols-1 gap-4 overflow-visible md:grid-cols-2 xl:grid-cols-6">
         {modules.map((module, index) => {
           const isSmartCatalog = module.title === "Smart Catalog";
 
@@ -212,7 +212,7 @@ export default function LandingPage(): JSX.Element {
                 isSmartCatalog ? "Smart Catalog module with infographic preview" : undefined
               }
               className={`animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 ${
-                isSmartCatalog ? "group md:col-span-2 xl:col-span-3" : "xl:col-span-1"
+                isSmartCatalog ? "group relative overflow-visible" : "xl:col-span-1"
               }`}
               key={module.title}
               style={{ animationDelay: `${120 + index * 80}ms` }}
@@ -228,7 +228,7 @@ export default function LandingPage(): JSX.Element {
                   <p className="mt-4 text-xs uppercase tracking-[0.08em] text-kira-midgray">
                     Hover or focus to preview the AI extraction visual
                   </p>
-                  <div className="mt-5 overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-[#fbf7f0] md:mt-0 md:max-h-0 md:opacity-0 md:transition-all md:duration-500 md:ease-out md:group-hover:mt-5 md:group-hover:max-h-[58rem] md:group-hover:opacity-100 md:group-focus-within:mt-5 md:group-focus-within:max-h-[58rem] md:group-focus-within:opacity-100">
+                  <div className="mt-5 overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-[#fbf7f0] md:absolute md:left-0 md:top-[calc(100%+1rem)] md:z-20 md:mt-0 md:w-[calc(200%+1rem)] md:max-h-[0] md:translate-y-3 md:opacity-0 md:shadow-2xl md:transition-all md:duration-500 md:ease-out md:group-hover:max-h-[46rem] md:group-hover:translate-y-0 md:group-hover:opacity-100 md:group-focus-within:max-h-[46rem] md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100 xl:left-[calc(100%+1rem)] xl:top-0 xl:w-[30rem]">
                     <div className="border-b border-kira-warmgray/35 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
                         Inside Smart Catalog
@@ -242,11 +242,12 @@ export default function LandingPage(): JSX.Element {
                       <div className="kira-infographic-stage">
                         <div className="kira-infographic-chip">Live workflow preview</div>
                         <div className="kira-infographic-frame">
-                          <img
-                            alt="Smart Catalog infographic showing AI attribute extraction and review workflow"
-                            className="w-full rounded-[1.25rem]"
+                          <iframe
+                            aria-label="Animated Smart Catalog workflow preview"
+                            className="kira-infographic-embed"
                             loading="lazy"
-                            src={smartCatalogInfographicSrc}
+                            src={smartCatalogAnimationSrc}
+                            title="Animated Smart Catalog workflow preview"
                           />
                         </div>
                       </div>

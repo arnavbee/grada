@@ -380,15 +380,19 @@ small {
   border-radius: 1.35rem;
   border: 1px solid rgba(var(--kira-warmgray-rgb), 0.45);
   background: rgba(196, 139, 42, 0.08);
+  min-height: 24rem;
   padding-top: 2.75rem;
   transform-origin: center top;
   animation: kira-infographic-drift 5.8s ease-in-out infinite;
 }
 
-.kira-infographic-frame img {
+.kira-infographic-embed {
   display: block;
   width: 100%;
-  height: auto;
+  min-height: 20rem;
+  height: 100%;
+  border: 0;
+  background: #c48b2a;
 }
 
 @media (prefers-reduced-motion: reduce) {
