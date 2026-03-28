@@ -1,0 +1,459 @@
+
+<style>
+:root{--anim-speed:0.55}
+html,body{width:100%;height:100%}
+body{margin:0}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideRight{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes stampIn{0%{opacity:0;transform:scale(1.5) rotate(-8deg)}70%{transform:scale(0.93) rotate(-5.5deg)}100%{opacity:1;transform:scale(1) rotate(-6deg)}}
+@keyframes barFill{from{width:0%}to{width:100%}}
+@keyframes scanLine{from{top:0%}to{top:100%}}
+@keyframes countNum{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow{0%,100%{opacity:0.5}50%{opacity:1}}
+@keyframes phaseSlideIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes phaseSlideOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-14px)}}
+@keyframes progressFill{from{width:0%}to{width:var(--pw)}}
+@keyframes dotPop{0%{transform:scale(0)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
+@keyframes lineGrow{from{transform:scaleX(0);transform-origin:left}to{transform:scaleX(1);transform-origin:left}}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+.root{background:#1C1A14;font-family:Georgia,'Times New Roman',serif;color:#F0EAD8;overflow:hidden;position:relative;min-height:100%}
+
+.phase-bar{display:flex;align-items:center;padding:0 36px;border-bottom:1px solid rgba(240,234,216,0.1);background:rgba(0,0,0,0.1)}
+.phase-dot-wrap{display:flex;align-items:center;gap:0;flex:1}
+.phase-step{display:flex;align-items:center;gap:0;flex:1}
+.phase-step:last-child{flex:0 0 auto}
+.pdot{width:8px;height:8px;border-radius:50%;background:rgba(240,234,216,0.15);border:1px solid rgba(240,234,216,0.2);transition:background 0.4s,border-color 0.4s;flex-shrink:0}
+.pdot.active{background:#C48B2A;border-color:#C48B2A;box-shadow:0 0 0 3px rgba(196,139,42,0.2)}
+.pdot.done{background:rgba(240,234,216,0.4);border-color:rgba(240,234,216,0.4)}
+.pline{flex:1;height:1px;background:rgba(240,234,216,0.1);margin:0 6px;position:relative;overflow:hidden}
+.pline-fill{position:absolute;top:0;left:0;height:100%;width:0%;background:#C48B2A;transition:width 0.6s ease}
+.phase-label{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:rgba(240,234,216,0.28);padding:11px 0 10px 10px;transition:color 0.4s;white-space:nowrap}
+.phase-label.active{color:#C48B2A}
+.phase-label.done{color:rgba(240,234,216,0.45)}
+
+.stage-area{position:relative;min-height:400px;overflow:hidden}
+.stage{position:absolute;top:0;left:0;right:0;padding:28px 36px;opacity:0;pointer-events:none}
+.stage.entering{animation:phaseSlideIn 0.5s ease forwards}
+.stage.leaving{animation:phaseSlideOut 0.4s ease forwards}
+.stage.active{opacity:1;pointer-events:auto}
+
+.slabel{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(240,234,216,0.28);margin-bottom:18px;font-style:italic}
+
+.upload-zone{border:1px dashed rgba(240,234,216,0.28);border-radius:4px;padding:24px;display:flex;align-items:center;gap:24px;position:relative;overflow:hidden;margin-bottom:16px}
+.scan-beam{position:absolute;left:0;right:0;height:1.5px;background:rgba(240,234,216,0.45);top:0;display:none}
+.scan-beam.on{display:block;animation:scanLine 1.4s linear infinite}
+.file-icon{width:48px;height:60px;border:1.5px solid rgba(240,234,216,0.5);border-radius:3px;flex-shrink:0;position:relative;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;animation:pulse 2s ease-in-out infinite}
+.file-icon::after{content:'';position:absolute;top:-1px;right:-1px;width:13px;height:13px;border-bottom:1.5px solid rgba(240,234,216,0.5);border-left:1.5px solid rgba(240,234,216,0.5);background:#1C1A14}
+.file-lines{display:flex;flex-direction:column;gap:4px}
+.fl{height:2px;background:rgba(240,234,216,0.3);border-radius:1px}
+.upload-info h3{font-size:14px;font-weight:700;color:#F0EAD8;margin-bottom:4px}
+.upload-info p{font-size:11px;color:rgba(240,234,216,0.45);font-style:italic;line-height:1.5}
+.fmt-pills{display:flex;gap:7px;margin-top:10px}
+.fpill{font-size:9px;letter-spacing:1px;padding:3px 8px;border:1px solid rgba(240,234,216,0.3);border-radius:2px;color:rgba(240,234,216,0.6)}
+
+.parse-rows{display:flex;flex-direction:column;gap:10px}
+.pr{display:flex;align-items:center;gap:12px}
+.pr-lbl{font-size:11px;font-style:italic;color:rgba(240,234,216,0.55);min-width:150px}
+.pr-track{flex:1;height:2px;background:rgba(240,234,216,0.1);border-radius:1px;overflow:hidden}
+.pr-fill{height:100%;width:0%;background:#C48B2A;border-radius:1px}
+.pr-pct{font-size:10px;color:rgba(240,234,216,0.35);min-width:30px;text-align:right}
+
+.inv-shell{border:1px solid rgba(240,234,216,0.15);border-radius:4px;overflow:hidden;background:rgba(240,234,216,0.02)}
+.inv-top{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px;border-bottom:1px solid rgba(240,234,216,0.08)}
+.inv-brand h2{font-size:15px;font-weight:700;color:#F0EAD8}
+.inv-brand p{font-size:10px;color:rgba(240,234,216,0.35);margin-top:3px;font-style:italic;line-height:1.5}
+.inv-meta-r{text-align:right}
+.imr{font-size:10px;color:rgba(240,234,216,0.38);margin-bottom:2px}
+.imr span{color:rgba(240,234,216,0.75);margin-left:6px}
+.inv-parties{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid rgba(240,234,216,0.08)}
+.iparty{padding:12px 20px}
+.iparty+.iparty{border-left:1px solid rgba(240,234,216,0.06)}
+.iparty-l{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,234,216,0.25);margin-bottom:5px}
+.iparty-n{font-size:11.5px;font-weight:700;color:rgba(240,234,216,0.8);margin-bottom:2px}
+.iparty-a{font-size:10px;color:rgba(240,234,216,0.35);font-style:italic;line-height:1.4}
+.inv-tbl{width:100%;border-collapse:collapse;font-size:10.5px;border-bottom:1px solid rgba(240,234,216,0.08)}
+.inv-tbl th{text-align:left;padding:8px 20px;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,234,216,0.25);font-weight:400;background:rgba(0,0,0,0.12);border-bottom:1px solid rgba(240,234,216,0.06)}
+.inv-tbl td{padding:8px 20px;color:rgba(240,234,216,0.65);border-bottom:1px solid rgba(240,234,216,0.04);font-style:italic}
+.inv-tbl td.m{font-style:normal;font-size:10px}
+.inv-tbl tr.hl td{background:rgba(196,139,42,0.06)}
+.inv-tax{display:grid;grid-template-columns:1fr 1fr}
+.itax-l{padding:12px 20px;border-right:1px solid rgba(240,234,216,0.06)}
+.taxrow{display:flex;justify-content:space-between;font-size:10.5px;padding:3px 0;border-bottom:1px solid rgba(240,234,216,0.04)}
+.taxrow:last-child{border-bottom:none;font-weight:700;color:#F0EAD8;padding-top:6px;margin-top:3px;border-top:1px solid rgba(240,234,216,0.12)}
+.taxrow span{color:rgba(240,234,216,0.4);font-style:italic}
+.tbadge{display:inline-block;font-size:8px;letter-spacing:1px;padding:2px 8px;border-radius:2px;margin-bottom:8px;font-family:Georgia,serif}
+.tbadge.igst{background:rgba(196,139,42,0.15);color:#C48B2A;border:1px solid rgba(196,139,42,0.3)}
+.itax-r{padding:12px 20px;display:flex;align-items:flex-end;justify-content:flex-end}
+.stamp{width:64px;height:50px;border:2px solid rgba(196,139,42,0.55);border-radius:3px;display:flex;align-items:center;justify-content:center;opacity:0}
+.stamp.in{animation:stampIn 0.55s cubic-bezier(0.22,1,0.36,1) 0.2s forwards}
+.stamp-txt{font-size:9px;font-weight:700;letter-spacing:1.5px;color:rgba(196,139,42,0.7);text-transform:uppercase;text-align:center;line-height:1.4}
+.inv-foot{padding:10px 20px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(240,234,216,0.06)}
+.words{font-size:9.5px;font-style:italic;color:rgba(240,234,216,0.3);max-width:360px;line-height:1.5}
+
+.gst-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.gc{border:1px solid rgba(240,234,216,0.1);border-radius:4px;padding:16px}
+.gc h3{font-size:12px;font-weight:700;color:#F0EAD8;margin-bottom:5px}
+.gc p{font-size:10.5px;color:rgba(240,234,216,0.42);font-style:italic;line-height:1.6}
+.gpill{display:inline-block;font-size:8px;letter-spacing:1px;padding:2px 8px;border-radius:2px;margin-bottom:8px;font-family:Georgia,serif}
+.gpill.ig{background:rgba(196,139,42,0.15);color:#C48B2A;border:1px solid rgba(196,139,42,0.3)}
+.gpill.sp{background:rgba(29,158,117,0.12);color:#1D9E75;border:1px solid rgba(29,158,117,0.25)}
+.gst-live{border:1px solid rgba(240,234,216,0.1);border-radius:4px;padding:16px 20px}
+.gst-live-row{display:flex;gap:10px;flex-wrap:wrap}
+.gbox{border:1px solid rgba(240,234,216,0.1);border-radius:3px;padding:10px 14px;flex:1;min-width:90px}
+.gbox-l{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,234,216,0.25);margin-bottom:3px}
+.gbox-v{font-size:14px;color:#F0EAD8;font-weight:700}
+.gbox-s{font-size:9px;color:rgba(240,234,216,0.3);font-style:italic;margin-top:1px}
+
+.log-box{border:1px solid rgba(240,234,216,0.1);border-radius:4px;overflow:hidden}
+.log-head{padding:8px 14px;background:rgba(0,0,0,0.2);font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,234,216,0.25)}
+.log-body{padding:12px 14px;font-size:10.5px;font-style:italic;color:rgba(240,234,216,0.4);line-height:2.1}
+.log-line{opacity:0}
+.log-line.lit{animation:fadeIn 0.3s ease forwards}
+.log-line.done{color:#C48B2A;font-style:normal}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(240,234,216,0.08);border-bottom:1px solid rgba(240,234,216,0.08)}
+.sstat{padding:18px 36px;border-right:1px solid rgba(240,234,216,0.06)}
+.sstat:last-child{border-right:none}
+.sstat-n{font-size:26px;font-weight:700;color:#C48B2A;line-height:1;margin-bottom:3px;letter-spacing:-1px}
+.sstat-l{font-size:9px;color:rgba(240,234,216,0.28);font-style:italic;letter-spacing:0.5px}
+
+.ticker-wrap{overflow:hidden;padding:8px 0;background:rgba(0,0,0,0.12);border-top:1px solid rgba(240,234,216,0.06)}
+.ticker-inner{display:flex;white-space:nowrap;animation:ticker 22s linear infinite}
+.ti{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,234,216,0.18);padding:0 32px;font-style:italic}
+
+.foot{display:flex;justify-content:space-between;align-items:center;padding:12px 36px;border-top:1px solid rgba(240,234,216,0.07)}
+.foot span{font-size:9px;letter-spacing:1px;color:rgba(240,234,216,0.18);text-transform:uppercase}
+.progress-dots{display:flex;gap:6px;align-items:center}
+.pdot-sm{width:5px;height:5px;border-radius:50%;background:rgba(240,234,216,0.15);transition:background 0.3s}
+.pdot-sm.active{background:#C48B2A}
+</style>
+
+<div class="root">
+
+<div class="phase-bar">
+  <div class="phase-dot-wrap">
+    <div class="phase-step">
+      <div class="pdot active" id="dot0"></div>
+      <div class="pline"><div class="pline-fill" id="pl0"></div></div>
+      <div class="phase-label active" id="lbl0">Upload PO</div>
+    </div>
+    <div class="phase-step">
+      <div class="pdot" id="dot1"></div>
+      <div class="pline"><div class="pline-fill" id="pl1"></div></div>
+      <div class="phase-label" id="lbl1">Parse</div>
+    </div>
+    <div class="phase-step">
+      <div class="pdot" id="dot2"></div>
+      <div class="pline"><div class="pline-fill" id="pl2"></div></div>
+      <div class="phase-label" id="lbl2">Invoice draft</div>
+    </div>
+    <div class="phase-step">
+      <div class="pdot" id="dot3"></div>
+      <div class="pline"><div class="pline-fill" id="pl3"></div></div>
+      <div class="phase-label" id="lbl3">GST engine</div>
+    </div>
+    <div class="phase-step">
+      <div class="pdot" id="dot4"></div>
+      <div class="pline"><div class="pline-fill" id="pl4"></div></div>
+      <div class="phase-label" id="lbl4">PDF ready</div>
+    </div>
+    <div class="phase-step" style="flex:0 0 auto">
+      <div class="pdot" id="dot5"></div>
+      <div class="phase-label" id="lbl5">Done</div>
+    </div>
+  </div>
+</div>
+
+<div class="stage-area">
+
+  <div class="stage active" id="s0">
+    <div class="slabel">Stage 01 — Upload your marketplace PO</div>
+    <div class="upload-zone">
+      <div class="scan-beam on"></div>
+      <div class="file-icon">
+        <div class="file-lines">
+          <div class="fl" style="width:26px"></div>
+          <div class="fl" style="width:20px"></div>
+          <div class="fl" style="width:24px"></div>
+          <div class="fl" style="width:16px"></div>
+        </div>
+      </div>
+      <div class="upload-info">
+        <h3>STL-2026-0042.xlsx</h3>
+        <p>Styli marketplace PO — vendor format detected automatically. Quantity aliases resolved. No manual mapping required.</p>
+        <div class="fmt-pills">
+          <span class="fpill">PDF</span>
+          <span class="fpill">XLS</span>
+          <span class="fpill">XLSX</span>
+        </div>
+      </div>
+      <div style="font-size:9px;letter-spacing:1px;color:rgba(240,234,216,0.35);animation:pulse 1.4s ease-in-out infinite;font-style:italic;flex-shrink:0">SCANNING</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <div style="border:1px solid rgba(240,234,216,0.1);border-radius:4px;padding:12px 16px;flex:1">
+        <div style="font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,234,216,0.25);margin-bottom:5px">Vendor support</div>
+        <div style="font-size:11px;color:rgba(240,234,216,0.7);font-style:italic">Styli, Myntra, Ajio, Amazon IN, Flipkart, Nykaa</div>
+      </div>
+      <div style="border:1px solid rgba(240,234,216,0.1);border-radius:4px;padding:12px 16px;flex:1">
+        <div style="font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,234,216,0.25);margin-bottom:5px">Processing</div>
+        <div style="font-size:11px;color:rgba(240,234,216,0.7);font-style:italic">Durable background job — no waiting</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" id="s1">
+    <div class="slabel">Stage 02 — Background parsing engine</div>
+    <div class="parse-rows" id="parseRows">
+      <div class="pr"><span class="pr-lbl">Header extraction</span><div class="pr-track"><div class="pr-fill" id="bar0"></div></div><span class="pr-pct" id="pct0">0%</span></div>
+      <div class="pr"><span class="pr-lbl">Line item parsing</span><div class="pr-track"><div class="pr-fill" id="bar1"></div></div><span class="pr-pct" id="pct1">0%</span></div>
+      <div class="pr"><span class="pr-lbl">Qty alias mapping</span><div class="pr-track"><div class="pr-fill" id="bar2"></div></div><span class="pr-pct" id="pct2">0%</span></div>
+      <div class="pr"><span class="pr-lbl">Vendor format detect</span><div class="pr-track"><div class="pr-fill" id="bar3"></div></div><span class="pr-pct" id="pct3">0%</span></div>
+      <div class="pr"><span class="pr-lbl">Validation pass</span><div class="pr-track"><div class="pr-fill" id="bar4"></div></div><span class="pr-pct" id="pct4">0%</span></div>
+    </div>
+    <div style="margin-top:16px;font-size:10px;color:rgba(240,234,216,0.25);font-style:italic;border-top:1px solid rgba(240,234,216,0.07);padding-top:12px">
+      job_po_9f3a21c — 14 line items extracted — 348 units total
+    </div>
+  </div>
+
+  <div class="stage" id="s2">
+    <div class="slabel">Stage 03 — Invoice draft auto-populated from PO</div>
+    <div class="inv-shell">
+      <div class="inv-top">
+        <div class="inv-brand">
+          <h2>House of Raeli</h2>
+          <p>GSTIN: 29AABCH1234M1Z5 &nbsp;·&nbsp; PAN: AABCH1234M<br>Origin: Bengaluru, Karnataka</p>
+        </div>
+        <div class="inv-meta-r">
+          <div class="imr">Invoice no.<span>INV-HOR-2026-0042</span></div>
+          <div class="imr">Date<span>28 March 2026</span></div>
+          <div class="imr">PO ref.<span>STL-2026-0042</span></div>
+          <div class="imr">Tax type<span style="color:#C48B2A">IGST</span></div>
+        </div>
+      </div>
+      <div class="inv-parties">
+        <div class="iparty">
+          <div class="iparty-l">Supplier</div>
+          <div class="iparty-n">House of Raeli Pvt. Ltd.</div>
+          <div class="iparty-a">12, Brigade Road<br>Bengaluru 560025, KA</div>
+        </div>
+        <div class="iparty">
+          <div class="iparty-l">Bill to</div>
+          <div class="iparty-n">Styli Fashion India</div>
+          <div class="iparty-a">Plot 44, Sector 18<br>Gurugram 122001, HR</div>
+        </div>
+        <div class="iparty">
+          <div class="iparty-l">Ship to</div>
+          <div class="iparty-n">Styli Warehouse</div>
+          <div class="iparty-a">Khasra 312, NH-48<br>Gurugram 122016, HR</div>
+        </div>
+      </div>
+      <table class="inv-tbl">
+        <thead><tr><th>Style code</th><th>Description</th><th>Qty</th><th>Unit price</th><th>Amount</th></tr></thead>
+        <tbody>
+          <tr class="hl"><td class="m">KRT-DSR-FL-001</td><td>Floral kurta, dusty rose</td><td class="m">64</td><td class="m">₹485</td><td class="m">₹31,040</td></tr>
+          <tr><td class="m">KRT-SLD-BL-002</td><td>Solid kurta, navy blue</td><td class="m">52</td><td class="m">₹420</td><td class="m">₹21,840</td></tr>
+          <tr><td class="m">DRS-PRN-GN-007</td><td>Printed dress, sage green</td><td class="m">52</td><td class="m">₹510</td><td class="m">₹26,520</td></tr>
+          <tr style="opacity:0.3"><td colspan="5" style="text-align:center;font-style:italic;font-size:10px;padding:6px">+ 11 more line items · 180 units · ₹84,600</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="stage" id="s3">
+    <div class="slabel">Stage 04 — Automatic GST detection</div>
+    <div class="gst-cards">
+      <div class="gc">
+        <div class="gpill ig">Interstate</div>
+        <h3>IGST applied</h3>
+        <p>Supplier (KA) and buyer (HR) states differ — Grada applies a single IGST rate automatically from brand profile settings.</p>
+      </div>
+      <div class="gc">
+        <div class="gpill sp">Intrastate</div>
+        <h3>CGST + SGST split</h3>
+        <p>Same-state transactions auto-split the applicable rate equally into CGST and SGST — both appear as separate line items.</p>
+      </div>
+    </div>
+    <div class="gst-live">
+      <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,234,216,0.25);margin-bottom:12px;font-style:italic">Live calculation — this PO</div>
+      <div class="gst-live-row">
+        <div class="gbox"><div class="gbox-l">Subtotal</div><div class="gbox-v">₹1,64,000</div><div class="gbox-s">14 line items</div></div>
+        <div class="gbox"><div class="gbox-l">IGST</div><div class="gbox-v">₹8,200</div><div class="gbox-s">@ 5% interstate</div></div>
+        <div class="gbox" style="border-color:rgba(196,139,42,0.22)"><div class="gbox-l">Total</div><div class="gbox-v" style="color:#C48B2A">₹1,72,200</div><div class="gbox-s">incl. tax</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" id="s4">
+    <div class="slabel">Stage 05 — Durable PDF generation</div>
+    <div class="log-box" style="margin-bottom:14px">
+      <div class="log-head">Generation log — job_inv_4a92f1</div>
+      <div class="log-body">
+        <div class="log-line" id="ll0">snapshot refreshed — 14 line items — ₹1,64,000 subtotal</div>
+        <div class="log-line" id="ll1">GST engine — state 29 (KA) → state 06 (HR) — IGST @ 5%</div>
+        <div class="log-line" id="ll2">amount in words generated — ₹1,72,200</div>
+        <div class="log-line" id="ll3">brand stamp applied — INV-HOR-2026-0042</div>
+        <div class="log-line" id="ll4">PDF rendered — 2 pages — uploading to R2...</div>
+        <div class="log-line done" id="ll5">status: completed ✓ — download ready</div>
+      </div>
+    </div>
+    <div class="inv-shell">
+      <div class="inv-top">
+        <div class="inv-brand"><h2>House of Raeli</h2><p>GSTIN: 29AABCH1234M1Z5 · INV-HOR-2026-0042 · 28 March 2026</p></div>
+        <div class="inv-meta-r"><div class="imr">Status<span style="color:#C48B2A">PDF ready</span></div><div class="imr">Storage<span>Cloudflare R2</span></div></div>
+      </div>
+      <div class="inv-tax">
+        <div class="itax-l">
+          <div class="tbadge igst">IGST — Interstate (KA → HR)</div>
+          <div class="taxrow"><span>Subtotal</span><strong>₹1,64,000</strong></div>
+          <div class="taxrow"><span>IGST @ 5%</span><strong>₹8,200</strong></div>
+          <div class="taxrow"><span>Total</span><strong>₹1,72,200</strong></div>
+        </div>
+        <div class="itax-r">
+          <div class="stamp in" id="finalStamp"><div class="stamp-txt">TAX<br>INVOICE</div></div>
+        </div>
+      </div>
+      <div class="inv-foot">
+        <div class="words">Amount in words: One Lakh Seventy-Two Thousand Two Hundred Rupees Only</div>
+        <div style="font-size:9px;color:rgba(240,234,216,0.2);font-style:italic">PDF · R2 · Always downloadable</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="stats-row">
+  <div class="sstat"><div class="sstat-n">2</div><div class="sstat-l">tax modes auto-detected</div></div>
+  <div class="sstat"><div class="sstat-n">0</div><div class="sstat-l">manual tax entry</div></div>
+  <div class="sstat"><div class="sstat-n">1</div><div class="sstat-l">snapshot before every PDF</div></div>
+  <div class="sstat"><div class="sstat-n">∞</div><div class="sstat-l">invoices, always downloadable</div></div>
+</div>
+
+<div class="ticker-wrap">
+  <div class="ticker-inner">
+    <span class="ti">Upload PO</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">Background parse</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">Invoice draft</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">GST detection</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">Snapshot refresh</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">PDF generated</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">Stored in R2</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">Upload PO</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">Background parse</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">Invoice draft</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">GST detection</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">Snapshot refresh</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">PDF generated</span><span class="ti" style="opacity:0.4">·</span>
+    <span class="ti">Stored in R2</span><span class="ti" style="opacity:0.4">·</span>
+  </div>
+</div>
+
+<div class="foot">
+  <span>Grada — Commercial Invoices</span>
+  <div class="progress-dots">
+    <div class="pdot-sm active" id="pd0"></div>
+    <div class="pdot-sm" id="pd1"></div>
+    <div class="pdot-sm" id="pd2"></div>
+    <div class="pdot-sm" id="pd3"></div>
+    <div class="pdot-sm" id="pd4"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+var cur = 0;
+var stages = 5;
+var durations = [3200, 3400, 3800, 3600, 5000];
+var timer;
+
+function setPhase(n) {
+  for (var i = 0; i < stages; i++) {
+    var dot = document.getElementById('dot' + i);
+    var lbl = document.getElementById('lbl' + i);
+    var pd  = document.getElementById('pd' + i);
+    if (!dot) continue;
+    if (i < n) {
+      dot.className = 'pdot done';
+      lbl.className = 'phase-label done';
+      if (document.getElementById('pl' + i)) document.getElementById('pl' + i).style.width = '100%';
+    } else if (i === n) {
+      dot.className = 'pdot active';
+      lbl.className = 'phase-label active';
+    } else {
+      dot.className = 'pdot';
+      lbl.className = 'phase-label';
+      if (document.getElementById('pl' + i)) document.getElementById('pl' + i).style.width = '0%';
+    }
+    if (pd) pd.className = 'pdot-sm' + (i === n ? ' active' : '');
+  }
+  var dot5 = document.getElementById('dot5');
+  var lbl5 = document.getElementById('lbl5');
+  if (n >= stages) { dot5.className = 'pdot done'; lbl5.className = 'phase-label done'; }
+  else { dot5.className = 'pdot'; lbl5.className = 'phase-label'; }
+}
+
+function showStage(n) {
+  for (var i = 0; i < stages; i++) {
+    var s = document.getElementById('s' + i);
+    s.className = 'stage';
+  }
+  var next = document.getElementById('s' + n);
+  next.className = 'stage entering active';
+  setPhase(n);
+
+  if (n === 1) animateBars();
+  if (n === 4) animateLogs();
+  if (document.getElementById('pl' + n)) {
+    var fill = document.getElementById('pl' + n);
+    fill.style.transition = 'none';
+    fill.style.width = '0%';
+    setTimeout(function(f){ f.style.transition = 'width ' + (durations[n] * 0.85) + 'ms linear'; f.style.width = '100%'; }, 60, fill);
+  }
+}
+
+function animateBars() {
+  for (var i = 0; i < 5; i++) {
+    (function(idx) {
+      var bar = document.getElementById('bar' + idx);
+      var pct = document.getElementById('pct' + idx);
+      if (!bar) return;
+      bar.style.transition = 'none'; bar.style.width = '0%';
+      setTimeout(function() {
+        bar.style.transition = 'width 0.7s ease';
+        bar.style.width = '100%';
+        var start = Date.now();
+        var tick = setInterval(function() {
+          var p = Math.min(100, Math.round((Date.now() - start) / 700 * 100));
+          pct.textContent = p + '%';
+          if (p >= 100) clearInterval(tick);
+        }, 16);
+      }, 200 + idx * 220);
+    })(i);
+  }
+}
+
+function animateLogs() {
+  for (var i = 0; i < 6; i++) {
+    (function(idx) {
+      setTimeout(function() {
+        var el = document.getElementById('ll' + idx);
+        if (el) el.classList.add('lit');
+      }, 400 + idx * 600);
+    })(i);
+  }
+}
+
+function advance() {
+  cur = (cur + 1) % stages;
+  showStage(cur);
+  timer = setTimeout(advance, durations[cur]);
+}
+
+showStage(0);
+timer = setTimeout(advance, durations[0]);
+</script>

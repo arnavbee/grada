@@ -6,18 +6,21 @@ import { useRef, useState } from "react";
 import { Card } from "@/src/components/ui/card";
 
 interface DispatchDocumentsModuleCardProps {
-  animationSrc: string;
+  barcodeAnimationSrc: string;
+  invoiceAnimationSrc: string;
   index: number;
   title: string;
 }
 
 export function DispatchDocumentsModuleCard({
-  animationSrc,
+  barcodeAnimationSrc,
+  invoiceAnimationSrc,
   index,
   title,
 }: DispatchDocumentsModuleCardProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [previewKind, setPreviewKind] = useState<"barcode" | "invoice">("barcode");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewRun, setPreviewRun] = useState(0);
 
@@ -28,10 +31,11 @@ export function DispatchDocumentsModuleCard({
     }
   };
 
-  const openPreview = (): void => {
+  const openPreview = (kind: "barcode" | "invoice"): void => {
     clearCloseTimeout();
+    setPreviewKind((current) => (current === kind ? current : kind));
     setIsPreviewOpen((current) => {
-      if (current) {
+      if (current && previewKind === kind) {
         return current;
       }
 
@@ -75,14 +79,23 @@ export function DispatchDocumentsModuleCard({
           Generate{" "}
           <button
             className="kira-focus-ring rounded-sm bg-kira-brown/12 px-1.5 py-0.5 font-semibold text-kira-black transition-colors hover:bg-kira-brown/20"
-            onFocus={openPreview}
-            onMouseEnter={openPreview}
+            onFocus={() => openPreview("barcode")}
+            onMouseEnter={() => openPreview("barcode")}
             type="button"
           >
             barcodes
           </button>
-          , GST invoices, packing lists, and sticker outputs from the same confirmed PO instead of
-          rebuilding each document by hand.
+          ,{" "}
+          <button
+            className="kira-focus-ring rounded-sm bg-kira-brown/12 px-1.5 py-0.5 font-semibold text-kira-black transition-colors hover:bg-kira-brown/20"
+            onFocus={() => openPreview("invoice")}
+            onMouseEnter={() => openPreview("invoice")}
+            type="button"
+          >
+            GST invoices
+          </button>
+          , packing lists, and sticker outputs from the same confirmed PO instead of rebuilding each
+          document by hand.
         </p>
       </Card>
 
@@ -92,18 +105,32 @@ export function DispatchDocumentsModuleCard({
             ? "md:max-h-[46rem] md:opacity-100 lg:pointer-events-auto lg:translate-x-0 lg:scale-100 lg:opacity-100"
             : "lg:pointer-events-none"
         }`}
-        onMouseEnter={openPreview}
+        onMouseEnter={() => openPreview(previewKind)}
         onMouseLeave={closePreview}
       >
         <div className="p-3 md:p-4">
-          <div className="overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-[#1a1a18]">
+          <div
+            className={`overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 ${
+              previewKind === "invoice" ? "bg-[#1c1a14]" : "bg-[#1a1a18]"
+            }`}
+          >
             <iframe
-              aria-label="Animated barcode generation workflow preview"
+              aria-label={
+                previewKind === "invoice"
+                  ? "Animated commercial invoice workflow preview"
+                  : "Animated barcode generation workflow preview"
+              }
               className="kira-infographic-embed"
               key={previewRun}
               loading="lazy"
-              src={`${animationSrc}?preview=${previewRun}`}
-              title="Animated barcode generation workflow preview"
+              src={`${
+                previewKind === "invoice" ? invoiceAnimationSrc : barcodeAnimationSrc
+              }?preview=${previewRun}`}
+              title={
+                previewKind === "invoice"
+                  ? "Animated commercial invoice workflow preview"
+                  : "Animated barcode generation workflow preview"
+              }
             />
           </div>
         </div>

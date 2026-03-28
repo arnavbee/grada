@@ -10,6 +10,7 @@ import { SmartCatalogModuleCard } from "@/src/components/marketing/smart-catalog
 
 const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
 const barcodeAnimationSrc = "/marketing/grada-barcode-animated.html";
+const commercialInvoicesAnimationSrc = "/marketing/grada-commercial-invoices-autoplay.html";
 const receivedPoProcessingAnimationSrc = "/marketing/grada-received-po-processing-animated.html";
 
 const modules = [
@@ -239,8 +240,9 @@ export default function LandingPage(): JSX.Element {
           if (isDispatchDocuments) {
             return (
               <DispatchDocumentsModuleCard
-                animationSrc={barcodeAnimationSrc}
+                barcodeAnimationSrc={barcodeAnimationSrc}
                 index={index}
+                invoiceAnimationSrc={commercialInvoicesAnimationSrc}
                 key={module.title}
                 title={module.title}
               />
