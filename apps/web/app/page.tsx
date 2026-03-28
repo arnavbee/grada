@@ -202,7 +202,7 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 overflow-visible md:grid-cols-2 xl:grid-cols-6">
+      <section className="grid grid-cols-1 gap-4 overflow-visible md:grid-cols-2 xl:grid-cols-4">
         {modules.map((module, index) => {
           const isSmartCatalog = module.title === "Smart Catalog";
 
@@ -211,8 +211,10 @@ export default function LandingPage(): JSX.Element {
               aria-label={
                 isSmartCatalog ? "Smart Catalog module with infographic preview" : undefined
               }
-              className={`animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 ${
-                isSmartCatalog ? "group relative overflow-visible" : "xl:col-span-1"
+              className={`animate-enter h-full p-5 transition-transform duration-300 hover:-translate-y-1 ${
+                isSmartCatalog
+                  ? "group relative z-0 overflow-visible hover:z-40 focus-within:z-40"
+                  : ""
               }`}
               key={module.title}
               style={{ animationDelay: `${120 + index * 80}ms` }}
@@ -228,7 +230,7 @@ export default function LandingPage(): JSX.Element {
                   <p className="mt-4 text-xs uppercase tracking-[0.08em] text-kira-midgray">
                     Hover or focus to preview the AI extraction visual
                   </p>
-                  <div className="mt-5 overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-[#fbf7f0] md:absolute md:left-0 md:top-[calc(100%+1rem)] md:z-20 md:mt-0 md:w-[calc(200%+1rem)] md:max-h-[0] md:translate-y-3 md:opacity-0 md:shadow-2xl md:transition-all md:duration-500 md:ease-out md:group-hover:max-h-[46rem] md:group-hover:translate-y-0 md:group-hover:opacity-100 md:group-focus-within:max-h-[46rem] md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100 xl:left-[calc(100%+1rem)] xl:top-0 xl:w-[30rem]">
+                  <div className="mt-5 overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-[#fbf7f0] md:max-h-0 md:opacity-0 md:transition-all md:duration-500 md:ease-out md:group-hover:max-h-[46rem] md:group-hover:opacity-100 md:group-focus-within:max-h-[46rem] md:group-focus-within:opacity-100 lg:absolute lg:left-[calc(100%+1rem)] lg:top-1/2 lg:z-50 lg:mt-0 lg:w-[30rem] lg:max-h-none lg:-translate-y-1/2 lg:translate-x-2 lg:scale-[0.98] lg:opacity-0 lg:shadow-2xl lg:transition-[opacity,transform] lg:duration-300 lg:ease-out lg:pointer-events-none lg:group-hover:pointer-events-auto lg:group-hover:translate-x-0 lg:group-hover:scale-100 lg:group-hover:opacity-100 lg:group-focus-within:pointer-events-auto lg:group-focus-within:translate-x-0 lg:group-focus-within:scale-100 lg:group-focus-within:opacity-100">
                     <div className="border-b border-kira-warmgray/35 px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
                         Inside Smart Catalog
