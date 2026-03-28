@@ -213,6 +213,22 @@ def test_received_po_upload_list_get_edit_confirm_and_barcode_job() -> None:
     assert barcode_status.json()['id'] == job_id
     assert barcode_status.json()['total_stickers'] == 1
 
+    second_barcode_job = client.post(f'/api/v1/received-pos/{received_po_id}/barcode', headers=headers)
+    assert second_barcode_job.status_code == 201
+    second_job_id = second_barcode_job.json()['job_id']
+
+    latest_barcode_status = client.get(f'/api/v1/received-pos/{received_po_id}/barcode/status', headers=headers)
+    assert latest_barcode_status.status_code == 200
+    assert latest_barcode_status.json()['id'] == second_job_id
+
+    first_barcode_status = client.get(
+        f'/api/v1/received-pos/{received_po_id}/barcode/jobs/{job_id}',
+        headers=headers,
+    )
+    assert first_barcode_status.status_code == 200
+    assert first_barcode_status.json()['id'] == job_id
+    assert first_barcode_status.json()['received_po_id'] == received_po_id
+
 
 def test_received_po_upload_parses_excel_into_line_items() -> None:
     headers = _auth_headers()

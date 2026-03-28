@@ -269,6 +269,10 @@ export async function getBarcodeJobStatus(receivedPoId: string): Promise<Barcode
   return apiRequest<BarcodeJob>(`/received-pos/${receivedPoId}/barcode/status`);
 }
 
+export async function getBarcodeJob(receivedPoId: string, jobId: string): Promise<BarcodeJob> {
+  return apiRequest<BarcodeJob>(`/received-pos/${receivedPoId}/barcode/jobs/${jobId}`);
+}
+
 export async function getInvoice(receivedPoId: string): Promise<Invoice> {
   return apiRequest<Invoice>(`/received-pos/${receivedPoId}/invoice`);
 }
@@ -386,9 +390,14 @@ export async function getOptionalPackingList(receivedPoId: string): Promise<Pack
   }
 }
 
-export async function getOptionalBarcodeJob(receivedPoId: string): Promise<BarcodeJob | null> {
+export async function getOptionalBarcodeJob(
+  receivedPoId: string,
+  jobId?: string | null,
+): Promise<BarcodeJob | null> {
   try {
-    return await getBarcodeJobStatus(receivedPoId);
+    return jobId
+      ? await getBarcodeJob(receivedPoId, jobId)
+      : await getBarcodeJobStatus(receivedPoId);
   } catch (error) {
     if (error instanceof Error && error.message === "Barcode job not found.") {
       return null;

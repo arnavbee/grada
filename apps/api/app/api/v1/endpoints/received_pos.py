@@ -677,6 +677,24 @@ def get_barcode_job_status(
     return BarcodeJobResponse.model_validate(job)
 
 
+@router.get('/{received_po_id}/barcode/jobs/{job_id}', response_model=BarcodeJobResponse)
+def get_barcode_job(
+    received_po_id: str,
+    job_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> BarcodeJobResponse:
+    _get_received_po_or_404(db, current_user.company_id, received_po_id)
+    job = (
+        db.query(BarcodeJob)
+        .filter(BarcodeJob.id == job_id, BarcodeJob.received_po_id == received_po_id)
+        .first()
+    )
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Barcode job not found.')
+    return BarcodeJobResponse.model_validate(job)
+
+
 @router.post('/{received_po_id}/invoice', response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
 def create_invoice_draft(
     received_po_id: str,

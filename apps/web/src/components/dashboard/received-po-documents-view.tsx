@@ -303,6 +303,7 @@ export function ReceivedPODocumentsView({
   const requestedTemplateId = searchParams.get("templateId");
   const [receivedPO, setReceivedPO] = useState<ReceivedPO | null>(null);
   const [barcodeJob, setBarcodeJob] = useState<BarcodeJob | null>(null);
+  const [activeBarcodeJobId, setActiveBarcodeJobId] = useState<string | null>(null);
   const [stickerTemplates, setStickerTemplates] = useState<StickerTemplate[]>([]);
   const [selectedBarcodeTemplate, setSelectedBarcodeTemplate] = useState<string>("styli");
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
@@ -369,6 +370,7 @@ export function ReceivedPODocumentsView({
         const defaultTemplateId = nextTemplates.find((template) => template.is_default)?.id ?? null;
         setReceivedPO(nextReceivedPO);
         setBarcodeJob(nextBarcodeJob);
+        setActiveBarcodeJobId(nextBarcodeJob?.id ?? null);
         setStickerTemplates(nextTemplates);
         setSelectedBarcodeTemplate(
           requestedTemplateId &&
@@ -405,12 +407,17 @@ export function ReceivedPODocumentsView({
   }, [receivedPoId, requestedTemplateId]);
 
   useEffect(() => {
-    if (!barcodeJob || !["pending", "generating"].includes(barcodeJob.status)) {
+    const targetBarcodeJobId = activeBarcodeJobId ?? barcodeJob?.id ?? null;
+    if (
+      !barcodeJob ||
+      !targetBarcodeJobId ||
+      !["pending", "generating"].includes(barcodeJob.status)
+    ) {
       return undefined;
     }
     const interval = window.setInterval(async () => {
       try {
-        const nextBarcodeJob = await getOptionalBarcodeJob(receivedPoId);
+        const nextBarcodeJob = await getOptionalBarcodeJob(receivedPoId, targetBarcodeJobId);
         if (nextBarcodeJob) {
           setBarcodeJob(nextBarcodeJob);
           if (!["pending", "generating"].includes(nextBarcodeJob.status)) {
@@ -422,7 +429,7 @@ export function ReceivedPODocumentsView({
       }
     }, 2000);
     return () => window.clearInterval(interval);
-  }, [barcodeJob, receivedPoId]);
+  }, [activeBarcodeJobId, barcodeJob, receivedPoId]);
 
   useEffect(() => {
     if (!invoice || invoice.status === "final") {
@@ -505,13 +512,27 @@ export function ReceivedPODocumentsView({
       setWorkingKey("barcodes");
       setError(null);
       setStatusLine(null);
-      await createBarcodeJob(
+      const templateKind = selectedBarcodeTemplate === "styli" ? "styli" : "custom";
+      const templateId = templateKind === "custom" ? selectedBarcodeTemplate : null;
+      const createdJob = await createBarcodeJob(
         receivedPoId,
-        selectedBarcodeTemplate === "styli"
+        templateKind === "styli"
           ? { template_kind: "styli" }
-          : { template_kind: "custom", template_id: selectedBarcodeTemplate },
+          : { template_kind: "custom", template_id: templateId },
       );
-      const nextStatus = await getOptionalBarcodeJob(receivedPoId);
+      setActiveBarcodeJobId(createdJob.job_id);
+      setBarcodeJob({
+        id: createdJob.job_id,
+        received_po_id: receivedPoId,
+        status: createdJob.status,
+        template_kind: templateKind,
+        template_id: templateId,
+        file_url: null,
+        total_stickers: receivedPO?.items.length ?? barcodeJob?.total_stickers ?? 0,
+        total_pages: 0,
+        created_at: new Date().toISOString(),
+      });
+      const nextStatus = await getOptionalBarcodeJob(receivedPoId, createdJob.job_id);
       setBarcodeJob(nextStatus);
       setStatusLine("Barcode generation started.");
     } catch (nextError) {

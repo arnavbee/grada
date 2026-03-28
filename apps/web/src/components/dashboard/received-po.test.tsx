@@ -543,6 +543,54 @@ describe("received PO dashboard flows", () => {
     openSpy.mockRestore();
   });
 
+  it("tracks the newly created barcode job and clears stale downloads while regenerating", async () => {
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock
+      .mockResolvedValueOnce(buildBarcodeJob("done", "/static/generated/barcodes/old.pdf"))
+      .mockResolvedValueOnce({
+        ...buildBarcodeJob("pending"),
+        id: "job_2",
+        template_kind: "custom",
+        template_id: "template_2",
+        file_url: null,
+      });
+    getOptionalInvoiceMock.mockResolvedValue(null);
+    getOptionalPackingListMock.mockResolvedValue(null);
+    listStickerTemplatesMock.mockResolvedValue([
+      {
+        id: "template_2",
+        company_id: "co_1",
+        name: "new-one",
+        width_mm: 44,
+        height_mm: 74,
+        border_color: "#E34A93",
+        border_radius_mm: 2,
+        background_color: "#FFFFFF",
+        is_default: false,
+        created_at: "2026-03-24T00:00:00+00:00",
+        updated_at: "2026-03-24T00:00:00+00:00",
+        elements: [],
+      },
+    ]);
+    createBarcodeJobMock.mockResolvedValue({
+      job_id: "job_2",
+      status: "pending",
+    });
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    expect(await screen.findByRole("button", { name: "Download PDF" })).toBeTruthy();
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Generate barcodes" }));
+
+    await waitFor(() => {
+      expect(createBarcodeJobMock).toHaveBeenCalledWith("po_1", { template_kind: "styli" });
+      expect(getOptionalBarcodeJobMock).toHaveBeenLastCalledWith("po_1", "job_2");
+    });
+    expect(screen.queryByRole("button", { name: "Download PDF" })).toBeNull();
+    expect(screen.getByText("Barcode generation started.")).toBeTruthy();
+  });
+
   it("stops invoice PDF polling and shows an error when generation fails", async () => {
     vi.useFakeTimers();
     getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
