@@ -5,10 +5,12 @@ import { Card } from "@/src/components/ui/card";
 import { FooterBrand } from "@/src/components/FooterBrand";
 import { GridBackground } from "@/src/components/GridBackground";
 import { DispatchDocumentsModuleCard } from "@/src/components/marketing/dispatch-documents-module-card";
+import { ReceivedPoProcessingModuleCard } from "@/src/components/marketing/received-po-processing-module-card";
 import { SmartCatalogModuleCard } from "@/src/components/marketing/smart-catalog-module-card";
 
 const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
 const barcodeAnimationSrc = "/marketing/grada-barcode-animated.html";
+const receivedPoProcessingAnimationSrc = "/marketing/grada-received-po-processing-animated.html";
 
 const modules = [
   {
@@ -208,6 +210,7 @@ export default function LandingPage(): JSX.Element {
       <section className="grid grid-cols-1 gap-4 overflow-visible md:grid-cols-2 xl:grid-cols-4">
         {modules.map((module, index) => {
           const isSmartCatalog = module.title === "Smart Catalog";
+          const isReceivedPoProcessing = module.title === "Received PO Processing";
           const isDispatchDocuments = module.title === "Dispatch Documents";
 
           if (isSmartCatalog) {
@@ -215,6 +218,17 @@ export default function LandingPage(): JSX.Element {
               <SmartCatalogModuleCard
                 animationSrc={smartCatalogAnimationSrc}
                 detail={module.detail}
+                index={index}
+                key={module.title}
+                title={module.title}
+              />
+            );
+          }
+
+          if (isReceivedPoProcessing) {
+            return (
+              <ReceivedPoProcessingModuleCard
+                animationSrc={receivedPoProcessingAnimationSrc}
                 index={index}
                 key={module.title}
                 title={module.title}
