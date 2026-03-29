@@ -13,7 +13,17 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FooterBrand } from "@/src/components/FooterBrand";
 import { GridBackground } from "@/src/components/GridBackground";
+import { DispatchDocumentsModuleCard } from "@/src/components/marketing/dispatch-documents-module-card";
+import { MarketplaceExportsModuleCard } from "@/src/components/marketing/marketplace-exports-module-card";
+import { ReceivedPoProcessingModuleCard } from "@/src/components/marketing/received-po-processing-module-card";
+import { SmartCatalogModuleCard } from "@/src/components/marketing/smart-catalog-module-card";
 import { Card } from "@/src/components/ui/card";
+
+const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
+const marketplaceExportsAnimationSrc = "/marketing/grada-marketplace-exports-animated.html";
+const barcodeAnimationSrc = "/marketing/grada-barcode-animated.html";
+const commercialInvoicesAnimationSrc = "/marketing/grada-commercial-invoices-autoplay.html";
+const receivedPoProcessingAnimationSrc = "/marketing/grada-received-po-processing-animated.html";
 
 const modules = [
   {
@@ -363,24 +373,52 @@ export default function LandingPage(): JSX.Element {
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {modules.map((module, index) => (
-              <Card
-                className="animate-enter h-full rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
-                key={module.title}
-                style={{ animationDelay: `${120 + index * 70}ms` }}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <Badge variant="outline">Module {module.number}</Badge>
-                  <span className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                    Connected
-                  </span>
-                </div>
-                <h3 className="mt-4 text-2xl leading-tight text-kira-black">{module.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-kira-darkgray">{module.detail}</p>
-                <Separator className="my-5" />
-                <p className="text-sm font-medium leading-6 text-kira-black">{module.highlight}</p>
-              </Card>
-            ))}
+            {modules.map((module, index) => {
+              if (module.title === "Smart Catalog") {
+                return (
+                  <SmartCatalogModuleCard
+                    animationSrc={smartCatalogAnimationSrc}
+                    detail={module.detail}
+                    index={index}
+                    key={module.title}
+                    title={module.title}
+                  />
+                );
+              }
+
+              if (module.title === "Marketplace Exports") {
+                return (
+                  <MarketplaceExportsModuleCard
+                    animationSrc={marketplaceExportsAnimationSrc}
+                    detail={module.detail}
+                    index={index}
+                    key={module.title}
+                    title={module.title}
+                  />
+                );
+              }
+
+              if (module.title === "Received PO Processing") {
+                return (
+                  <ReceivedPoProcessingModuleCard
+                    animationSrc={receivedPoProcessingAnimationSrc}
+                    index={index}
+                    key={module.title}
+                    title={module.title}
+                  />
+                );
+              }
+
+              return (
+                <DispatchDocumentsModuleCard
+                  barcodeAnimationSrc={barcodeAnimationSrc}
+                  index={index}
+                  invoiceAnimationSrc={commercialInvoicesAnimationSrc}
+                  key={module.title}
+                  title={module.title}
+                />
+              );
+            })}
           </div>
 
           <Card

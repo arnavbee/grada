@@ -62,7 +62,7 @@ export function SmartCatalogModuleCard({
 
   return (
     <div
-      className="group relative z-0 h-full overflow-visible hover:z-40 focus-within:z-40"
+      className="group h-full"
       onBlurCapture={handleBlurCapture}
       onFocusCapture={openPreview}
       onMouseEnter={openPreview}
@@ -71,37 +71,33 @@ export function SmartCatalogModuleCard({
     >
       <Card
         aria-label="Smart Catalog module with infographic preview"
-        className="animate-enter h-full p-5 transition-transform duration-300 hover:-translate-y-1"
+        className="animate-enter h-full rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
         style={{ animationDelay: `${120 + index * 80}ms` }}
         tabIndex={0}
       >
         <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Module {index + 1}</p>
-        <h2 className="mt-2 text-2xl">{title}</h2>
-        <p className="mt-2 text-kira-darkgray">{detail}</p>
-      </Card>
+        <h2 className="mt-3 text-2xl leading-tight text-kira-black">{title}</h2>
+        <p className="mt-3 text-sm leading-7 text-kira-darkgray">{detail}</p>
 
-      <div
-        className={`mt-5 overflow-hidden rounded-2xl border border-kira-warmgray/35 bg-[#fbf7f0] transition-all duration-500 ease-out md:max-h-0 md:opacity-0 lg:absolute lg:left-[calc(100%+1rem)] lg:top-1/2 lg:z-50 lg:mt-0 lg:w-[30rem] lg:max-h-none lg:-translate-y-1/2 lg:translate-x-2 lg:scale-[0.98] lg:shadow-2xl lg:transition-[opacity,transform] lg:duration-300 lg:ease-out ${
-          isPreviewOpen
-            ? "md:max-h-[46rem] md:opacity-100 lg:pointer-events-auto lg:translate-x-0 lg:scale-100 lg:opacity-100"
-            : "lg:pointer-events-none"
-        }`}
-        onMouseEnter={openPreview}
-        onMouseLeave={closePreview}
-      >
-        <div className="p-3 md:p-4">
-          <div className="overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-kira-brown">
-            <iframe
-              aria-label="Animated Smart Catalog workflow preview"
-              className="kira-infographic-embed"
-              key={previewRun}
-              loading="lazy"
-              src={`${animationSrc}?preview=${previewRun}`}
-              title="Animated Smart Catalog workflow preview"
-            />
+        <div
+          className={`mt-5 overflow-hidden rounded-[24px] border border-kira-warmgray/35 bg-[#fbf7f0] transition-all duration-300 ease-out ${
+            isPreviewOpen ? "max-h-[24rem] opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <div className="p-3">
+            <div className="h-72 overflow-hidden rounded-[1.15rem] border border-kira-warmgray/35 bg-kira-brown">
+              <iframe
+                aria-label="Animated Smart Catalog workflow preview"
+                className="kira-infographic-embed"
+                key={previewRun}
+                loading="lazy"
+                src={`${animationSrc}?preview=${previewRun}`}
+                title="Animated Smart Catalog workflow preview"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }
