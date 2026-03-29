@@ -443,7 +443,7 @@ export default function LandingPage(): JSX.Element {
 
           {workflowViews.map((view) => (
             <TabsContent className="mt-0" key={view.value} value={view.value}>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.25fr)_22rem]">
+              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.25fr)_22rem]">
                 <div className="rounded-[28px] border border-kira-warmgray/35 bg-white/60 p-6 md:p-7">
                   <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
                     {view.eyebrow}
