@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 
+import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 
 export const metadata: Metadata = {
@@ -27,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans")}>
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeToggle />

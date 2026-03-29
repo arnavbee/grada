@@ -1,3 +1,5 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -40,7 +42,7 @@
   --kira-shadow-lg: 0 24px 80px rgba(19, 28, 24, 0.12);
 }
 
-html[data-theme='dark'] {
+html[data-theme="dark"] {
   color-scheme: dark;
   --kira-ink-rgb: 242 239 232;
   --kira-muted-rgb: 179 190 181;
@@ -81,7 +83,10 @@ body {
     linear-gradient(180deg, var(--kira-bg-top) 0%, var(--kira-bg) 55%, var(--kira-bg-alt) 100%);
   color: var(--kira-ink);
   min-height: 100vh;
-  transition: background 220ms ease, color 220ms ease, border-color 220ms ease;
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    border-color 220ms ease;
 }
 
 h1 {
@@ -108,10 +113,13 @@ small {
 .surface-card {
   @apply rounded-2xl border shadow-panel backdrop-blur-sm;
   border-color: var(--kira-border);
-  background:
-    linear-gradient(180deg, var(--kira-surface-top) 0%, var(--kira-surface-bottom) 100%);
+  background: linear-gradient(180deg, var(--kira-surface-top) 0%, var(--kira-surface-bottom) 100%);
   box-shadow: var(--kira-shadow-lg);
-  transition: background 220ms ease, border-color 220ms ease, box-shadow 220ms ease, color 220ms ease;
+  transition:
+    background 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    color 220ms ease;
 }
 
 .kira-surface-elevated {
@@ -273,7 +281,12 @@ small {
   color: var(--kira-toggle-text);
   border: 1px solid var(--kira-toggle-border);
   backdrop-filter: blur(16px);
-  transition: background 220ms ease, color 220ms ease, border-color 220ms ease, transform 180ms ease, box-shadow 220ms ease;
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    border-color 220ms ease,
+    transform 180ms ease,
+    box-shadow 220ms ease;
   box-shadow:
     0 18px 48px rgba(0, 0, 0, 0.18),
     0 0 0 1px rgba(255, 255, 255, 0.04);
@@ -293,14 +306,17 @@ small {
   font-weight: 600;
   letter-spacing: 0.01em;
   color: inherit;
-  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
 }
 
 .theme-toggle-option:hover {
   background: var(--kira-toggle-hover);
 }
 
-.theme-toggle-option[data-active='true'] {
+.theme-toggle-option[data-active="true"] {
   background: var(--kira-toggle-active-bg);
   color: var(--kira-toggle-active-text);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
@@ -318,7 +334,7 @@ small {
   line-height: 1;
 }
 
-html[data-theme='dark'] [class*='bg-kira-offwhite'] {
+html[data-theme="dark"] [class*="bg-kira-offwhite"] {
   background-color: var(--kira-surface-elevated-bg) !important;
 }
 
@@ -326,5 +342,90 @@ html[data-theme='dark'] [class*='bg-kira-offwhite'] {
   * {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+@layer base {
+  .theme {
+    --font-heading: var(--font-sans);
+    --font-sans: var(--font-sans);
+  }
+  :root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+  }
+  .dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+  }
+  * {
+    border-color: var(--kira-border);
+    outline-color: color-mix(in srgb, var(--kira-accent) 50%, transparent);
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+  html {
+    font-family: var(--font-sans), "Inter", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
   }
 }
