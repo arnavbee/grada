@@ -123,9 +123,11 @@ export function DispatchDocumentsModuleCard({
               className="kira-infographic-embed"
               key={previewRun}
               loading="lazy"
+              scrolling="no"
               src={`${
                 previewKind === "invoice" ? invoiceAnimationSrc : barcodeAnimationSrc
               }?preview=${previewRun}`}
+              tabIndex={-1}
               title={
                 previewKind === "invoice"
                   ? "Animated commercial invoice workflow preview"
