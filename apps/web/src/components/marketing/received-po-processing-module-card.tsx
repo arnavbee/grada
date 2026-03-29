@@ -88,11 +88,11 @@ export function ReceivedPoProcessingModuleCard({
 
         <div
           aria-hidden={!isPreviewOpen}
-          className={`pointer-events-none absolute inset-0 p-3 transition-opacity duration-200 ${
+          className={`pointer-events-none absolute inset-0 transition-opacity duration-200 ${
             isPreviewOpen ? "opacity-100" : "opacity-0"
           }`}
         >
-          <div className="h-full overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-kira-brown">
+          <div className="h-full overflow-hidden rounded-[28px] bg-kira-brown">
             <iframe
               aria-label="Animated received PO processing workflow preview"
               className="kira-infographic-embed"
