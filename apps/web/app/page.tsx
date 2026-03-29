@@ -29,34 +29,30 @@ const modules = [
   {
     number: "01",
     title: "Smart Catalog",
-    detail:
-      "AI analyzes product images and helps your team lock category, color, fabric, composition, and style data in one shared workspace.",
-    highlight: "Build one reusable product record before export or ops work begins.",
+    detail: "Extract clean product data from images and lock one reusable record.",
+    highlight: "One product record before export or ops work begins.",
   },
   {
     number: "02",
     title: "Marketplace Exports",
-    detail:
-      "Build the catalog once, then generate channel-ready exports for Myntra, Ajio, Amazon IN, Flipkart, Nykaa, and generic workflows.",
-    highlight: "Channel-specific files without channel-specific spreadsheet drift.",
+    detail: "Generate channel-ready exports from the same approved catalog.",
+    highlight: "Channel-specific files without spreadsheet drift.",
   },
   {
     number: "03",
     title: "Received PO Processing",
-    detail:
-      "Upload marketplace POs in PDF, XLS, or XLSX, review parsed rows, and confirm one clean source of truth before ops moves downstream.",
-    highlight: "One review step before barcode, invoice, and packing work begins.",
+    detail: "Review the received PO once before downstream work starts.",
+    highlight: "One review step before barcode or invoice generation.",
   },
   {
     number: "04",
     title: "Dispatch Documents",
-    detail:
-      "Generate barcodes, GST invoices, packing lists, and sticker outputs from the same confirmed PO instead of rebuilding each document by hand.",
-    highlight: "Dispatch-ready outputs generated from approved upstream data.",
+    detail: "Generate barcodes, invoices, packing lists, and stickers from approved data.",
+    highlight: "Dispatch-ready outputs from one confirmed source.",
   },
 ];
 
-const heroBadges = ["AI ops system", "Indian fashion brands", "Catalog -> PO -> dispatch"];
+const heroBadges = ["Indian fashion brands", "Catalog -> PO -> dispatch"];
 
 const metrics = [
   { label: "Built For", value: "Indian fashion brands" },
@@ -67,55 +63,48 @@ const metrics = [
 const coverageBlocks = [
   {
     title: "One source of truth",
-    detail:
-      "Product data, PO data, and downstream documents stay connected instead of being rebuilt in separate spreadsheets.",
+    detail: "Product, PO, and dispatch data stay connected.",
   },
   {
-    title: "One workflow, not five tools",
-    detail:
-      "Catalog, exports, received PO review, barcodes, invoices, and packing lists are already connected inside the product.",
+    title: "One workflow",
+    detail: "Catalog, PO review, and dispatch outputs live in one flow.",
   },
   {
-    title: "One review before dispatch",
-    detail:
-      "Your team reviews once, confirms once, and reuses approved data everywhere downstream instead of reconciling it later.",
+    title: "One review",
+    detail: "Approve once, then reuse that data downstream.",
   },
 ];
 
 const modulePrinciples = [
-  "Catalog data is approved once and reused everywhere.",
-  "Received PO review happens before downstream document generation.",
-  "Marketplace exports and dispatch docs stay tied to the same operational record.",
+  "Approve data once.",
+  "Review PO before docs.",
+  "Keep every output tied to the same record.",
 ];
 
 const marketplaceCoverage = [
   {
     label: "Myntra",
-    detail:
-      "Export structured catalog data and keep downstream PO handling tied to the same SKU logic.",
+    detail: "Structured exports tied to the same SKU logic.",
   },
   {
     label: "Ajio",
-    detail:
-      "Channel-ready exports reduce manual remapping when teams publish or revise seasonal assortments.",
+    detail: "Channel-ready exports without manual remapping.",
   },
   {
     label: "Amazon IN",
-    detail: "Carry forward catalog data so marketplaces do not become separate spreadsheet silos.",
+    detail: "Reuse the same catalog data instead of rebuilding it.",
   },
   {
     label: "Flipkart",
-    detail: "Push marketplace-specific formats without rebuilding product attributes from scratch.",
+    detail: "Marketplace-specific formats from one source.",
   },
   {
     label: "Nykaa",
-    detail:
-      "Preserve rich attribute structure for beauty and fashion operations teams working side by side.",
+    detail: "Keep rich attribute structure intact across teams.",
   },
   {
     label: "Generic Exports",
-    detail:
-      "Handle custom retailer and internal templates from the same approved catalog foundation.",
+    detail: "Support custom retailer and internal templates.",
   },
 ];
 
@@ -125,48 +114,43 @@ const workflowViews = [
     label: "Catalog AI",
     eyebrow: "Phase 01",
     title: "Lock the product record before the business starts improvising.",
-    detail:
-      "Grada turns scattered product images and team knowledge into reusable catalog records that feed every workflow after it.",
+    detail: "Turn product images and team knowledge into one reusable catalog record.",
     bullets: [
-      "Extract category, color, fabric, composition, and style attributes from product imagery.",
-      "Keep one shared workspace for merchandising, operations, and marketplace teams.",
-      "Reuse the same approved catalog data when exports or purchase orders arrive later.",
+      "Extract key attributes from product imagery.",
+      "Keep merchandising and ops in one workspace.",
+      "Reuse approved catalog data later.",
     ],
     carryTitle: "What carries forward",
-    carryDetail:
-      "Approved catalog attributes become the base layer for marketplace exports and downstream PO handling.",
+    carryDetail: "Approved catalog attributes become the base layer for exports and PO handling.",
   },
   {
     value: "po-review",
     label: "PO Review",
     eyebrow: "Phase 02",
     title: "Review the received PO once, then stop reconciling downstream mistakes.",
-    detail:
-      "Upload the marketplace PO, verify parsed rows, and confirm a clean operational version before the team creates any shipping documents.",
+    detail: "Upload the PO, verify parsed rows, and confirm one operational version.",
     bullets: [
-      "Accept PDF, XLS, and XLSX purchase orders in the same workflow.",
-      "Let ops confirm parsed line items before barcode, invoice, or packing steps begin.",
-      "Keep one approved PO state instead of retyping rows into separate tools.",
+      "Accept PDF, XLS, and XLSX files.",
+      "Confirm line items before docs begin.",
+      "Keep one approved PO state.",
     ],
     carryTitle: "Why it matters",
-    carryDetail:
-      "A single review step prevents barcode sheets, GST invoices, and packing outputs from diverging later.",
+    carryDetail: "One review step keeps barcode sheets, invoices, and packing outputs aligned.",
   },
   {
     value: "dispatch",
     label: "Dispatch Docs",
     eyebrow: "Phase 03",
     title: "Generate dispatch-ready outputs from approved data, not from memory.",
-    detail:
-      "Once the PO is confirmed, Grada generates barcodes, invoices, packing lists, and stickers from the same source of truth.",
+    detail: "Generate barcodes, invoices, packing lists, and stickers from the confirmed PO.",
     bullets: [
-      "Create barcode sheets and sticker templates without rebuilding SKU details.",
-      "Handle intrastate versus interstate GST logic inside the document flow.",
-      "Store generated files with durable history so teams can download and recheck them later.",
+      "Create barcode sheets and sticker templates.",
+      "Handle GST logic inside the flow.",
+      "Store generated files with history.",
     ],
     carryTitle: "Operational result",
     carryDetail:
-      "Dispatch teams move faster because every output is derived from the already-approved catalog and PO state.",
+      "Dispatch teams move faster because every output comes from approved upstream data.",
   },
 ];
 
@@ -174,26 +158,25 @@ const playbookQuestions = [
   {
     value: "manual-rebuilds",
     title: "What problem does Grada remove first?",
-    detail:
-      "The first win is stopping teams from rebuilding the same product and order context in separate spreadsheets, chats, and document generators. Grada creates one operational chain from product setup to dispatch outputs.",
+    detail: "It stops teams from rebuilding the same product and order context in separate tools.",
   },
   {
     value: "marketplace-exports",
     title: "How do marketplace exports fit into the system?",
     detail:
-      "Exports are not treated as one-off files. They sit on top of the same approved catalog records, so channel formatting can change without forcing your team to re-enter core product data each time.",
+      "Exports sit on top of approved catalog records instead of becoming separate spreadsheets.",
   },
   {
     value: "po-confirmation",
     title: "Why make PO review a dedicated step?",
     detail:
-      "Because the received PO becomes the source for barcode sheets, GST invoices, stickers, and packing lists. A deliberate confirmation step upstream is much cheaper than reconciling multiple incorrect outputs downstream.",
+      "Because the received PO drives every downstream document and needs one clean approval step.",
   },
   {
     value: "dispatch-docs",
     title: "What happens after the PO is approved?",
     detail:
-      "The same confirmed data powers barcode generation, GST handling, packing outputs, and archived downloadable documents. Teams get continuity instead of copy-paste handoffs between tools.",
+      "The same confirmed data powers barcode generation, GST handling, packing outputs, and stored documents.",
   },
 ];
 
@@ -261,8 +244,7 @@ export default function LandingPage(): JSX.Element {
               className="mt-6 max-w-2xl text-kira-darkgray md:text-lg animate-fade-in-up"
               style={{ animationDelay: "1000ms" }}
             >
-              Grada replaces the spreadsheet chaos behind Indian fashion brands with AI-powered
-              workflows for catalog, purchase orders, barcodes, invoices, and packing lists.
+              Grada gives Indian fashion brands one system for catalog, PO review, and dispatch.
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -276,14 +258,6 @@ export default function LandingPage(): JSX.Element {
                 <Link href="/login">Sign In</Link>
               </Button>
             </div>
-
-            <p
-              className="mt-6 text-sm text-kira-midgray animate-fade-in-up"
-              style={{ animationDelay: "1200ms" }}
-            >
-              Built for wholesale and D2C fashion teams that want one connected system for catalog,
-              PO review, and dispatch documents.
-            </p>
 
             <Separator className="mt-8" />
 
@@ -308,12 +282,9 @@ export default function LandingPage(): JSX.Element {
               style={{ animationDelay: "120ms" }}
             >
               <Badge variant="outline">Operational Spine</Badge>
-              <h2 className="mt-4 text-3xl">
-                The handoff that usually breaks is already connected.
-              </h2>
+              <h2 className="mt-4 text-3xl">The handoff is already connected.</h2>
               <p className="mt-3 text-kira-darkgray">
-                Catalog setup, marketplace exports, received PO review, and dispatch documents all
-                sit inside the same workflow instead of being rebuilt in separate tools.
+                Catalog, PO review, and dispatch all live in one flow.
               </p>
 
               <div className="mt-5 flex flex-wrap gap-2">
@@ -366,8 +337,7 @@ export default function LandingPage(): JSX.Element {
             </h2>
           </div>
           <p className="max-w-2xl text-sm leading-6 text-kira-darkgray">
-            Each module handles a painful handoff, but the bigger win is that they all reuse the
-            same approved data instead of forcing teams to rebuild context at every step.
+            Four modules. One connected operating flow.
           </p>
         </div>
 
@@ -426,14 +396,7 @@ export default function LandingPage(): JSX.Element {
             style={{ animationDelay: "240ms" }}
           >
             <Badge variant="secondary">Why This Feels Different</Badge>
-            <h3 className="mt-4 text-3xl leading-tight">
-              Grada is organized like one operating system, not a box of tools.
-            </h3>
-            <p className="mt-3 text-kira-darkgray">
-              Most teams patch together catalog sheets, export templates, PO review, and dispatch
-              files across separate flows. Grada keeps those steps in sequence so approved data can
-              move forward instead of being retyped.
-            </p>
+            <h3 className="mt-4 text-3xl leading-tight">Built like one operating system.</h3>
             <div className="mt-6 space-y-3">
               {modulePrinciples.map((principle, index) => (
                 <div
@@ -461,8 +424,7 @@ export default function LandingPage(): JSX.Element {
             <h2 className="mt-3 text-3xl">See the connected flow, not just the feature list.</h2>
           </div>
           <p className="max-w-2xl text-sm leading-6 text-kira-darkgray">
-            Start with a reusable catalog record, confirm the received PO once, and let dispatch
-            outputs inherit approved data instead of restarting from zero.
+            One clean flow from catalog to dispatch.
           </p>
         </div>
 
@@ -512,22 +474,6 @@ export default function LandingPage(): JSX.Element {
                     </div>
                   ))}
                 </div>
-
-                <Separator className="my-5" />
-
-                <div className="grid gap-3 md:grid-cols-3">
-                  {coverageBlocks.map((block) => (
-                    <div
-                      className="rounded-2xl border border-kira-warmgray/35 bg-kira-offwhite/55 p-4"
-                      key={block.title}
-                    >
-                      <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                        {block.title}
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-kira-darkgray">{block.detail}</p>
-                    </div>
-                  ))}
-                </div>
               </div>
             </TabsContent>
           ))}
@@ -541,12 +487,8 @@ export default function LandingPage(): JSX.Element {
         >
           <Badge variant="outline">Ops FAQ</Badge>
           <h2 className="mt-3 text-3xl">What Grada is actually replacing.</h2>
-          <p className="mt-3 max-w-2xl text-kira-darkgray">
-            The operational pain is not just manual typing. It is the repeated handoff between
-            catalog data, received POs, and dispatch documents that never stay in sync.
-          </p>
 
-          <Accordion className="mt-6" collapsible defaultValue="manual-rebuilds" type="single">
+          <Accordion className="mt-5" collapsible defaultValue="manual-rebuilds" type="single">
             {playbookQuestions.map((question) => (
               <AccordionItem key={question.value} value={question.value}>
                 <AccordionTrigger>{question.title}</AccordionTrigger>
@@ -563,8 +505,7 @@ export default function LandingPage(): JSX.Element {
           <Badge variant="secondary">Get Started</Badge>
           <h2 className="mt-3 text-3xl">Start with the product, not a sales deck.</h2>
           <p className="mt-3 text-kira-darkgray">
-            Grada is built for Indian wholesale and D2C fashion brands ready to automate the
-            operations layer. Open the workflow, request access, or reach out directly.
+            Open the workflow, request access, or reach out directly.
           </p>
 
           <div className="mt-6 space-y-3">
@@ -609,8 +550,7 @@ export default function LandingPage(): JSX.Element {
             <Badge variant="outline">Ready to Scale</Badge>
             <h2 className="mt-3">Stop operating manually. Start operating at scale.</h2>
             <p className="mt-2 max-w-2xl text-kira-darkgray">
-              Move from catalog to PO review to barcode, invoice, and packing outputs inside one
-              workflow built for fashion operations.
+              Move from catalog to dispatch inside one workflow.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
