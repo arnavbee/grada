@@ -87,11 +87,11 @@ export function MarketplaceExportsModuleCard({
 
         <div
           aria-hidden={!isPreviewOpen}
-          className={`pointer-events-none absolute inset-0 transition-opacity duration-200 ${
+          className={`pointer-events-none absolute inset-0 bg-[#0f1117] transition-opacity duration-200 ${
             isPreviewOpen ? "opacity-100" : "opacity-0"
           }`}
         >
-          <div className="h-full overflow-hidden rounded-[28px] bg-[#0f1117]">
+          <div className="h-full overflow-hidden">
             <iframe
               aria-label="Animated Marketplace Exports workflow preview"
               className="kira-infographic-embed"
