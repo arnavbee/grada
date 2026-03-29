@@ -481,54 +481,53 @@ export default function LandingPage(): JSX.Element {
 
           {workflowViews.map((view) => (
             <TabsContent className="mt-0" key={view.value} value={view.value}>
-              <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.25fr)_22rem]">
-                <div className="rounded-[28px] border border-kira-warmgray/35 bg-white/60 p-6 md:p-7">
-                  <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                    {view.eyebrow}
-                  </p>
-                  <h3 className="mt-3 max-w-3xl text-[2rem] leading-tight text-kira-black md:text-[2.6rem]">
-                    {view.title}
-                  </h3>
-                  <p className="mt-4 max-w-3xl text-base leading-7 text-kira-darkgray">
-                    {view.detail}
-                  </p>
-
-                  <Separator className="my-5" />
-
-                  <div className="grid gap-3 md:grid-cols-3">
-                    {view.bullets.map((bullet) => (
-                      <div
-                        className="flex h-full items-start gap-3 rounded-2xl border border-kira-warmgray/30 bg-kira-offwhite/70 px-4 py-4"
-                        key={bullet}
-                      >
-                        <span className="mt-2 h-2 w-2 rounded-full bg-kira-brown" />
-                        <p className="text-sm leading-6 text-kira-darkgray">{bullet}</p>
-                      </div>
-                    ))}
+              <div className="rounded-[28px] border border-kira-warmgray/35 bg-white/60 p-6 md:p-7">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="max-w-3xl">
+                    <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                      {view.eyebrow}
+                    </p>
+                    <h3 className="mt-3 text-[2rem] leading-tight text-kira-black md:text-[2.6rem]">
+                      {view.title}
+                    </h3>
+                    <p className="mt-4 text-base leading-7 text-kira-darkgray">{view.detail}</p>
+                  </div>
+                  <div className="w-full rounded-[24px] border border-kira-warmgray/35 bg-kira-offwhite/70 p-5 lg:max-w-sm">
+                    <Badge variant="secondary">{view.label}</Badge>
+                    <h4 className="mt-4 text-2xl leading-tight">{view.carryTitle}</h4>
+                    <p className="mt-3 text-sm leading-7 text-kira-darkgray">{view.carryDetail}</p>
                   </div>
                 </div>
 
-                <Card className="h-full rounded-[28px] border-kira-darkgray/15 p-5 md:p-6">
-                  <Badge variant="secondary">{view.label}</Badge>
-                  <h4 className="mt-4 text-2xl leading-tight">{view.carryTitle}</h4>
-                  <p className="mt-3 text-sm leading-7 text-kira-darkgray">{view.carryDetail}</p>
+                <Separator className="my-5" />
 
-                  <Separator className="my-5" />
+                <div className="grid gap-3 md:grid-cols-3">
+                  {view.bullets.map((bullet) => (
+                    <div
+                      className="flex h-full items-start gap-3 rounded-2xl border border-kira-warmgray/30 bg-kira-offwhite/70 px-4 py-4"
+                      key={bullet}
+                    >
+                      <span className="mt-2 h-2 w-2 rounded-full bg-kira-brown" />
+                      <p className="text-sm leading-6 text-kira-darkgray">{bullet}</p>
+                    </div>
+                  ))}
+                </div>
 
-                  <div className="space-y-3">
-                    {coverageBlocks.map((block) => (
-                      <div
-                        className="rounded-2xl border border-kira-warmgray/35 bg-kira-offwhite/55 p-4"
-                        key={block.title}
-                      >
-                        <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                          {block.title}
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-kira-darkgray">{block.detail}</p>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
+                <Separator className="my-5" />
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  {coverageBlocks.map((block) => (
+                    <div
+                      className="rounded-2xl border border-kira-warmgray/35 bg-kira-offwhite/55 p-4"
+                      key={block.title}
+                    >
+                      <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                        {block.title}
+                      </p>
+                      <p className="mt-2 text-sm leading-6 text-kira-darkgray">{block.detail}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </TabsContent>
           ))}

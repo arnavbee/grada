@@ -69,32 +69,38 @@ export function ReceivedPoProcessingModuleCard({
     >
       <Card
         aria-label="Received PO Processing module with infographic preview"
-        className="animate-enter h-full rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
+        className="animate-enter relative h-full min-h-[22rem] overflow-hidden rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
         style={{ animationDelay: `${120 + index * 80}ms` }}
         tabIndex={0}
       >
-        <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">Module {index + 1}</p>
-        <h2 className="mt-3 text-2xl leading-tight text-kira-black">{title}</h2>
-        <p className="mt-2 text-kira-darkgray">
-          Upload marketplace POs in PDF, XLS, or XLSX, review parsed rows, and confirm one clean
-          source of truth before ops moves downstream.
-        </p>
         <div
-          className={`mt-5 overflow-hidden rounded-[24px] border border-kira-warmgray/35 bg-[#fbf7f0] transition-all duration-300 ease-out ${
-            isPreviewOpen ? "max-h-[24rem] opacity-100" : "max-h-0 opacity-0"
+          className={`transition-opacity duration-200 ${isPreviewOpen ? "opacity-0" : "opacity-100"}`}
+        >
+          <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+            Module {index + 1}
+          </p>
+          <h2 className="mt-3 text-2xl leading-tight text-kira-black">{title}</h2>
+          <p className="mt-2 text-kira-darkgray">
+            Upload marketplace POs in PDF, XLS, or XLSX, review parsed rows, and confirm one clean
+            source of truth before ops moves downstream.
+          </p>
+        </div>
+
+        <div
+          aria-hidden={!isPreviewOpen}
+          className={`pointer-events-none absolute inset-0 p-3 transition-opacity duration-200 ${
+            isPreviewOpen ? "opacity-100" : "opacity-0"
           }`}
         >
-          <div className="p-3">
-            <div className="h-72 overflow-hidden rounded-[1.15rem] border border-kira-warmgray/35 bg-kira-brown">
-              <iframe
-                aria-label="Animated received PO processing workflow preview"
-                className="kira-infographic-embed"
-                key={previewRun}
-                loading="lazy"
-                src={`${animationSrc}?preview=${previewRun}`}
-                title="Animated received PO processing workflow preview"
-              />
-            </div>
+          <div className="h-full overflow-hidden rounded-[1.35rem] border border-kira-warmgray/35 bg-kira-brown">
+            <iframe
+              aria-label="Animated received PO processing workflow preview"
+              className="kira-infographic-embed"
+              key={previewRun}
+              loading="lazy"
+              src={`${animationSrc}?preview=${previewRun}`}
+              title="Animated received PO processing workflow preview"
+            />
           </div>
         </div>
       </Card>
