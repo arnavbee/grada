@@ -13,38 +13,36 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FooterBrand } from "@/src/components/FooterBrand";
 import { GridBackground } from "@/src/components/GridBackground";
-import { DispatchDocumentsModuleCard } from "@/src/components/marketing/dispatch-documents-module-card";
-import { MarketplaceExportsModuleCard } from "@/src/components/marketing/marketplace-exports-module-card";
-import { ReceivedPoProcessingModuleCard } from "@/src/components/marketing/received-po-processing-module-card";
-import { SmartCatalogModuleCard } from "@/src/components/marketing/smart-catalog-module-card";
 import { Card } from "@/src/components/ui/card";
-
-const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
-const marketplaceExportsAnimationSrc = "/marketing/grada-marketplace-exports-animated.html";
-const barcodeAnimationSrc = "/marketing/grada-barcode-animated.html";
-const commercialInvoicesAnimationSrc = "/marketing/grada-commercial-invoices-autoplay.html";
-const receivedPoProcessingAnimationSrc = "/marketing/grada-received-po-processing-animated.html";
 
 const modules = [
   {
+    number: "01",
     title: "Smart Catalog",
     detail:
       "AI analyzes product images and helps your team lock category, color, fabric, composition, and style data in one shared workspace.",
+    highlight: "Build one reusable product record before export or ops work begins.",
   },
   {
+    number: "02",
     title: "Marketplace Exports",
     detail:
       "Build the catalog once, then generate channel-ready exports for Myntra, Ajio, Amazon IN, Flipkart, Nykaa, and generic workflows.",
+    highlight: "Channel-specific files without channel-specific spreadsheet drift.",
   },
   {
+    number: "03",
     title: "Received PO Processing",
     detail:
       "Upload marketplace POs in PDF, XLS, or XLSX, review parsed rows, and confirm one clean source of truth before ops moves downstream.",
+    highlight: "One review step before barcode, invoice, and packing work begins.",
   },
   {
+    number: "04",
     title: "Dispatch Documents",
     detail:
       "Generate barcodes, GST invoices, packing lists, and sticker outputs from the same confirmed PO instead of rebuilding each document by hand.",
+    highlight: "Dispatch-ready outputs generated from approved upstream data.",
   },
 ];
 
@@ -72,6 +70,12 @@ const coverageBlocks = [
     detail:
       "Your team reviews once, confirms once, and reuses approved data everywhere downstream instead of reconciling it later.",
   },
+];
+
+const modulePrinciples = [
+  "Catalog data is approved once and reused everywhere.",
+  "Received PO review happens before downstream document generation.",
+  "Marketplace exports and dispatch docs stay tied to the same operational record.",
 ];
 
 const marketplaceCoverage = [
@@ -357,69 +361,55 @@ export default function LandingPage(): JSX.Element {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 overflow-visible md:grid-cols-2 xl:grid-cols-4">
-          {modules.map((module, index) => {
-            if (module.title === "Smart Catalog") {
-              return (
-                <SmartCatalogModuleCard
-                  animationSrc={smartCatalogAnimationSrc}
-                  detail={module.detail}
-                  index={index}
-                  key={module.title}
-                  title={module.title}
-                />
-              );
-            }
-
-            if (module.title === "Marketplace Exports") {
-              return (
-                <MarketplaceExportsModuleCard
-                  animationSrc={marketplaceExportsAnimationSrc}
-                  detail={module.detail}
-                  index={index}
-                  key={module.title}
-                  title={module.title}
-                />
-              );
-            }
-
-            if (module.title === "Received PO Processing") {
-              return (
-                <ReceivedPoProcessingModuleCard
-                  animationSrc={receivedPoProcessingAnimationSrc}
-                  index={index}
-                  key={module.title}
-                  title={module.title}
-                />
-              );
-            }
-
-            if (module.title === "Dispatch Documents") {
-              return (
-                <DispatchDocumentsModuleCard
-                  barcodeAnimationSrc={barcodeAnimationSrc}
-                  index={index}
-                  invoiceAnimationSrc={commercialInvoicesAnimationSrc}
-                  key={module.title}
-                  title={module.title}
-                />
-              );
-            }
-
-            return (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {modules.map((module, index) => (
               <Card
-                className="animate-enter h-full p-5 transition-transform duration-300 hover:-translate-y-1"
+                className="animate-enter h-full rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
                 key={module.title}
-                style={{ animationDelay: `${120 + index * 80}ms` }}
+                style={{ animationDelay: `${120 + index * 70}ms` }}
               >
-                <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                  Module {index + 1}
-                </p>
-                <h2 className="mt-2 text-2xl">{module.title}</h2>
-                <p className="mt-2 text-kira-darkgray">{module.detail}</p>
+                <div className="flex items-center justify-between gap-3">
+                  <Badge variant="outline">Module {module.number}</Badge>
+                  <span className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                    Connected
+                  </span>
+                </div>
+                <h3 className="mt-4 text-2xl leading-tight text-kira-black">{module.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-kira-darkgray">{module.detail}</p>
+                <Separator className="my-5" />
+                <p className="text-sm font-medium leading-6 text-kira-black">{module.highlight}</p>
               </Card>
-            );
-          })}
+            ))}
+          </div>
+
+          <Card
+            className="animate-enter rounded-[32px] border-kira-darkgray/15 p-6 md:p-7"
+            style={{ animationDelay: "240ms" }}
+          >
+            <Badge variant="secondary">Why This Feels Different</Badge>
+            <h3 className="mt-4 text-3xl leading-tight">
+              Grada is organized like one operating system, not a box of tools.
+            </h3>
+            <p className="mt-3 text-kira-darkgray">
+              Most teams patch together catalog sheets, export templates, PO review, and dispatch
+              files across separate flows. Grada keeps those steps in sequence so approved data can
+              move forward instead of being retyped.
+            </p>
+            <div className="mt-6 space-y-3">
+              {modulePrinciples.map((principle, index) => (
+                <div
+                  className="rounded-2xl border border-kira-warmgray/35 bg-kira-offwhite/55 px-4 py-4"
+                  key={principle}
+                >
+                  <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                    Principle {index + 1}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-kira-darkgray">{principle}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
       </section>
 
@@ -433,8 +423,8 @@ export default function LandingPage(): JSX.Element {
             <h2 className="mt-3 text-3xl">See the connected flow, not just the feature list.</h2>
           </div>
           <p className="max-w-2xl text-sm leading-6 text-kira-darkgray">
-            Shadcn tabs are doing the heavy lifting here: instead of stacking every detail at once,
-            the page can tell the story in clear phases without losing depth.
+            Start with a reusable catalog record, confirm the received PO once, and let dispatch
+            outputs inherit approved data instead of restarting from zero.
           </p>
         </div>
 
@@ -442,7 +432,7 @@ export default function LandingPage(): JSX.Element {
           <TabsList className="w-full flex-wrap justify-start gap-2 rounded-none border-0 bg-transparent p-0">
             {workflowViews.map((view) => (
               <TabsTrigger
-                className="min-w-[11rem] justify-start rounded-2xl border border-kira-warmgray/40 bg-white/45 px-4 py-3 text-left data-[state=active]:border-kira-black/10 data-[state=active]:bg-kira-black data-[state=active]:text-kira-offwhite data-[state=active]:shadow-none"
+                className="min-w-[10rem] justify-start rounded-full border border-kira-warmgray/40 bg-white/55 px-5 py-3 text-left data-[state=active]:border-kira-black/10 data-[state=active]:bg-kira-black data-[state=active]:text-kira-offwhite data-[state=active]:shadow-none"
                 key={view.value}
                 value={view.value}
               >
@@ -452,23 +442,25 @@ export default function LandingPage(): JSX.Element {
           </TabsList>
 
           {workflowViews.map((view) => (
-            <TabsContent key={view.value} value={view.value}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-[1.35fr_0.65fr]">
-                <div className="rounded-[28px] border border-kira-warmgray/35 bg-white/55 p-5 md:p-6">
+            <TabsContent className="mt-0" key={view.value} value={view.value}>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.25fr)_22rem]">
+                <div className="rounded-[28px] border border-kira-warmgray/35 bg-white/60 p-6 md:p-7">
                   <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
                     {view.eyebrow}
                   </p>
-                  <h3 className="mt-3 text-3xl leading-tight text-kira-black">{view.title}</h3>
-                  <p className="mt-3 max-w-3xl text-base leading-7 text-kira-darkgray">
+                  <h3 className="mt-3 max-w-3xl text-[2rem] leading-tight text-kira-black md:text-[2.6rem]">
+                    {view.title}
+                  </h3>
+                  <p className="mt-4 max-w-3xl text-base leading-7 text-kira-darkgray">
                     {view.detail}
                   </p>
 
                   <Separator className="my-5" />
 
-                  <div className="grid gap-3">
+                  <div className="grid gap-3 md:grid-cols-3">
                     {view.bullets.map((bullet) => (
                       <div
-                        className="flex items-start gap-3 rounded-2xl border border-kira-warmgray/30 bg-kira-offwhite/65 px-4 py-3"
+                        className="flex h-full items-start gap-3 rounded-2xl border border-kira-warmgray/30 bg-kira-offwhite/70 px-4 py-4"
                         key={bullet}
                       >
                         <span className="mt-2 h-2 w-2 rounded-full bg-kira-brown" />
@@ -478,10 +470,10 @@ export default function LandingPage(): JSX.Element {
                   </div>
                 </div>
 
-                <Card className="h-full p-5 md:p-6">
+                <Card className="h-full rounded-[28px] border-kira-darkgray/15 p-5 md:p-6">
                   <Badge variant="secondary">{view.label}</Badge>
-                  <h4 className="mt-4 text-2xl">{view.carryTitle}</h4>
-                  <p className="mt-3 leading-7 text-kira-darkgray">{view.carryDetail}</p>
+                  <h4 className="mt-4 text-2xl leading-tight">{view.carryTitle}</h4>
+                  <p className="mt-3 text-sm leading-7 text-kira-darkgray">{view.carryDetail}</p>
 
                   <Separator className="my-5" />
 
@@ -513,8 +505,8 @@ export default function LandingPage(): JSX.Element {
           <Badge variant="outline">Ops FAQ</Badge>
           <h2 className="mt-3 text-3xl">What Grada is actually replacing.</h2>
           <p className="mt-3 max-w-2xl text-kira-darkgray">
-            Accordion works well on the landing page because it keeps the screen calm while still
-            letting visitors drill into the operational logic behind the product.
+            The operational pain is not just manual typing. It is the repeated handoff between
+            catalog data, received POs, and dispatch documents that never stay in sync.
           </p>
 
           <Accordion className="mt-6" collapsible defaultValue="manual-rebuilds" type="single">
