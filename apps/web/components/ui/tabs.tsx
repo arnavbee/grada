@@ -26,7 +26,7 @@ function Tabs({
 }
 
 const tabsListVariants = cva(
-  "inline-flex w-fit items-center justify-center rounded-full border border-kira-warmgray/40 bg-kira-offwhite/45 p-1 text-kira-darkgray group-data-horizontal/tabs:h-auto group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none data-[variant=line]:border-0 data-[variant=line]:bg-transparent",
+  "inline-flex w-fit items-center justify-center rounded-full border border-kira-warmgray/40 bg-kira-offwhite/45 p-1 text-kira-darkgray dark:border-white/10 dark:bg-white/6 dark:text-kira-midgray group-data-horizontal/tabs:h-auto group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none data-[variant=line]:border-0 data-[variant=line]:bg-transparent",
   {
     variants: {
       variant: {
@@ -60,8 +60,8 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "inline-flex min-h-[2.5rem] flex-1 items-center justify-center gap-1.5 rounded-full border border-transparent px-4 py-2 text-sm font-medium whitespace-nowrap text-kira-darkgray transition-colors group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-kira-black focus-visible:ring-2 focus-visible:ring-kira-brown/30 focus-visible:ring-offset-2 focus-visible:ring-offset-kira-offwhite disabled:pointer-events-none disabled:opacity-50",
-        "data-[state=active]:border-kira-darkgray/10 data-[state=active]:bg-white data-[state=active]:text-kira-black data-[state=active]:shadow-sm group-data-[variant=line]/tabs-list:data-[state=active]:border-b-kira-black group-data-[variant=line]/tabs-list:data-[state=active]:border-x-transparent group-data-[variant=line]/tabs-list:data-[state=active]:border-t-transparent group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent group-data-[variant=line]/tabs-list:data-[state=active]:shadow-none",
+        "inline-flex min-h-[2.5rem] flex-1 items-center justify-center gap-1.5 rounded-full border border-transparent px-4 py-2 text-sm font-medium whitespace-nowrap text-kira-darkgray transition-colors group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-kira-black focus-visible:ring-2 focus-visible:ring-kira-brown/30 focus-visible:ring-offset-2 focus-visible:ring-offset-kira-offwhite dark:text-kira-midgray dark:hover:text-kira-offwhite dark:focus-visible:ring-offset-[#141b18] disabled:pointer-events-none disabled:opacity-50",
+        "data-[state=active]:border-kira-darkgray/10 data-[state=active]:bg-white data-[state=active]:text-kira-black data-[state=active]:shadow-sm dark:data-[state=active]:border-white/10 dark:data-[state=active]:bg-kira-offwhite dark:data-[state=active]:text-[#141b18] group-data-[variant=line]/tabs-list:data-[state=active]:border-b-kira-black group-data-[variant=line]/tabs-list:data-[state=active]:border-x-transparent group-data-[variant=line]/tabs-list:data-[state=active]:border-t-transparent group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent group-data-[variant=line]/tabs-list:data-[state=active]:shadow-none",
         className,
       )}
       {...props}

@@ -39,7 +39,7 @@ function AccordionTrigger({
       <AccordionPrimitive.Trigger
         data-slot="accordion-trigger"
         className={cn(
-          "group/accordion-trigger relative flex flex-1 items-start justify-between gap-4 py-4 text-left text-sm font-semibold text-kira-black transition-colors outline-none hover:text-kira-brown focus-visible:ring-2 focus-visible:ring-kira-brown/30 focus-visible:ring-offset-2 focus-visible:ring-offset-kira-offwhite disabled:pointer-events-none disabled:opacity-50",
+          "group/accordion-trigger relative flex flex-1 items-start justify-between gap-4 py-4 text-left text-sm font-semibold text-kira-black transition-colors outline-none hover:text-kira-brown focus-visible:ring-2 focus-visible:ring-kira-brown/30 focus-visible:ring-offset-2 focus-visible:ring-offset-kira-offwhite dark:text-kira-offwhite dark:focus-visible:ring-offset-[#141b18] disabled:pointer-events-none disabled:opacity-50",
           className,
         )}
         {...props}
@@ -71,7 +71,7 @@ function AccordionContent({
     >
       <div
         className={cn(
-          "pb-4 leading-6 [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-kira-black [&_p:not(:last-child)]:mb-4",
+          "pb-4 leading-6 [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-kira-black dark:[&_a]:hover:text-kira-offwhite [&_p:not(:last-child)]:mb-4",
           className,
         )}
       >

@@ -5,16 +5,19 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center rounded-md border border-transparent text-sm font-semibold whitespace-nowrap transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-kira-brown/35 focus-visible:ring-offset-2 focus-visible:ring-offset-kira-offwhite disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center rounded-md border border-transparent text-sm font-semibold whitespace-nowrap transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-kira-brown/35 focus-visible:ring-offset-2 focus-visible:ring-offset-kira-offwhite dark:focus-visible:ring-offset-[#141b18] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default: "bg-kira-black text-kira-offwhite hover:bg-kira-black/92",
-        outline: "border-kira-darkgray/20 bg-transparent text-kira-black hover:bg-kira-warmgray/15",
+        default:
+          "bg-kira-black text-kira-offwhite hover:bg-kira-black/92 dark:bg-kira-offwhite dark:text-[#141b18] dark:hover:bg-kira-offwhite/90",
+        outline:
+          "border-kira-darkgray/20 bg-transparent text-kira-black hover:bg-kira-warmgray/15 dark:border-white/12 dark:text-kira-offwhite dark:hover:bg-white/8",
         secondary: "bg-kira-brown text-kira-offwhite hover:bg-kira-brown/90",
-        ghost: "text-kira-black hover:bg-kira-warmgray/12",
+        ghost:
+          "text-kira-black hover:bg-kira-warmgray/12 dark:text-kira-offwhite dark:hover:bg-white/8",
         destructive: "bg-red-100 text-red-800 hover:bg-red-200",
-        link: "border-transparent px-0 text-kira-black underline-offset-4 hover:underline",
+        link: "border-transparent px-0 text-kira-black underline-offset-4 hover:underline dark:text-kira-offwhite",
       },
       size: {
         default: "h-10 gap-2 px-4 py-2",

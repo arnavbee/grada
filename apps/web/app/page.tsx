@@ -220,7 +220,11 @@ export default function LandingPage(): JSX.Element {
           <div className="relative z-10 md:col-span-7">
             <div className="flex flex-wrap gap-2">
               {heroBadges.map((badge) => (
-                <Badge className="bg-white/75 text-kira-black" key={badge} variant="secondary">
+                <Badge
+                  className="bg-white/75 text-kira-black dark:bg-white/8 dark:text-kira-offwhite"
+                  key={badge}
+                  variant="secondary"
+                >
                   {badge}
                 </Badge>
               ))}
@@ -264,7 +268,7 @@ export default function LandingPage(): JSX.Element {
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
               {metrics.map((metric) => (
                 <div
-                  className="rounded-2xl border border-kira-warmgray/35 bg-white/45 p-4 backdrop-blur-sm"
+                  className="rounded-2xl border border-kira-warmgray/35 bg-white/45 p-4 backdrop-blur-sm dark:border-white/10 dark:bg-white/6"
                   key={metric.label}
                 >
                   <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
@@ -292,13 +296,13 @@ export default function LandingPage(): JSX.Element {
                   <HoverCard key={marketplace.label}>
                     <HoverCardTrigger asChild>
                       <button
-                        className="kira-focus-ring rounded-full border border-kira-warmgray/45 bg-white/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-kira-darkgray transition-colors hover:border-kira-brown/45 hover:text-kira-black"
+                        className="kira-focus-ring rounded-full border border-kira-warmgray/45 bg-white/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-kira-darkgray transition-colors hover:border-kira-brown/45 hover:text-kira-black dark:border-white/10 dark:bg-white/8 dark:text-kira-midgray dark:hover:text-kira-offwhite"
                         type="button"
                       >
                         {marketplace.label}
                       </button>
                     </HoverCardTrigger>
-                    <HoverCardContent className="border-kira-warmgray/40 bg-kira-offwhite/95">
+                    <HoverCardContent className="border-kira-warmgray/40 bg-kira-offwhite/95 dark:border-white/10 dark:bg-[rgba(24,31,27,0.98)]">
                       <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
                         Coverage
                       </p>
@@ -400,7 +404,7 @@ export default function LandingPage(): JSX.Element {
             <div className="mt-6 space-y-3">
               {modulePrinciples.map((principle, index) => (
                 <div
-                  className="rounded-2xl border border-kira-warmgray/35 bg-kira-offwhite/55 px-4 py-4"
+                  className="rounded-2xl border border-kira-warmgray/35 bg-kira-offwhite/55 px-4 py-4 dark:border-white/10 dark:bg-white/5"
                   key={principle}
                 >
                   <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
@@ -432,7 +436,7 @@ export default function LandingPage(): JSX.Element {
           <TabsList className="w-full flex-wrap justify-start gap-2 rounded-none border-0 bg-transparent p-0">
             {workflowViews.map((view) => (
               <TabsTrigger
-                className="min-w-[10rem] justify-start rounded-full border border-kira-warmgray/40 bg-white/55 px-5 py-3 text-left data-[state=active]:border-kira-black/10 data-[state=active]:bg-kira-black data-[state=active]:text-kira-offwhite data-[state=active]:shadow-none"
+                className="min-w-[10rem] justify-start rounded-full border border-kira-warmgray/40 bg-white/55 px-5 py-3 text-left dark:border-white/10 dark:bg-white/6 dark:text-kira-midgray data-[state=active]:border-kira-black/10 data-[state=active]:bg-kira-black data-[state=active]:text-kira-offwhite data-[state=active]:shadow-none dark:data-[state=active]:border-white/10 dark:data-[state=active]:bg-kira-offwhite dark:data-[state=active]:text-[#141b18]"
                 key={view.value}
                 value={view.value}
               >
@@ -443,7 +447,7 @@ export default function LandingPage(): JSX.Element {
 
           {workflowViews.map((view) => (
             <TabsContent className="mt-0" key={view.value} value={view.value}>
-              <div className="rounded-[28px] border border-kira-warmgray/35 bg-white/60 p-6 md:p-7">
+              <div className="rounded-[28px] border border-kira-warmgray/35 bg-white/60 p-6 md:p-7 dark:border-white/10 dark:bg-white/5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="max-w-3xl">
                     <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
@@ -454,7 +458,7 @@ export default function LandingPage(): JSX.Element {
                     </h3>
                     <p className="mt-4 text-base leading-7 text-kira-darkgray">{view.detail}</p>
                   </div>
-                  <div className="w-full rounded-[24px] border border-kira-warmgray/35 bg-kira-offwhite/70 p-5 lg:max-w-sm">
+                  <div className="w-full rounded-[24px] border border-kira-warmgray/35 bg-kira-offwhite/70 p-5 dark:border-white/10 dark:bg-white/6 lg:max-w-sm">
                     <Badge variant="secondary">{view.label}</Badge>
                     <h4 className="mt-4 text-2xl leading-tight">{view.carryTitle}</h4>
                     <p className="mt-3 text-sm leading-7 text-kira-darkgray">{view.carryDetail}</p>
@@ -466,7 +470,7 @@ export default function LandingPage(): JSX.Element {
                 <div className="grid gap-3 md:grid-cols-3">
                   {view.bullets.map((bullet) => (
                     <div
-                      className="flex h-full items-start gap-3 rounded-2xl border border-kira-warmgray/30 bg-kira-offwhite/70 px-4 py-4"
+                      className="flex h-full items-start gap-3 rounded-2xl border border-kira-warmgray/30 bg-kira-offwhite/70 px-4 py-4 dark:border-white/10 dark:bg-white/6"
                       key={bullet}
                     >
                       <span className="mt-2 h-2 w-2 rounded-full bg-kira-brown" />
@@ -511,7 +515,7 @@ export default function LandingPage(): JSX.Element {
           <div className="mt-6 space-y-3">
             {contactChannels.map((channel) => (
               <a
-                className="kira-surface-elevated kira-focus-ring flex items-center justify-between rounded-2xl border border-kira-warmgray/45 px-4 py-4 text-kira-black transition-colors hover:bg-kira-warmgray/20"
+                className="kira-surface-elevated kira-focus-ring flex items-center justify-between rounded-2xl border border-kira-warmgray/45 px-4 py-4 text-kira-black transition-colors hover:bg-kira-warmgray/20 dark:border-white/10 dark:text-kira-offwhite dark:hover:bg-white/8"
                 href={channel.href}
                 key={channel.label}
                 rel="noreferrer"
