@@ -15,7 +15,7 @@ import type {
   PackingList,
   ReceivedPO,
 } from "@/src/lib/received-po";
-import type { BrandProfile } from "@/src/lib/settings";
+import type { BrandProfile, CartonCapacityRule } from "@/src/lib/settings";
 
 const {
   pushMock,
@@ -41,6 +41,10 @@ const {
   uploadStickerImageMock,
   normalizeStickerAssetUrlForPdfMock,
   getBrandProfileMock,
+  listCartonRulesMock,
+  createCartonRuleMock,
+  updateCartonRuleMock,
+  deleteCartonRuleMock,
 } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   uploadReceivedPOMock: vi.fn(),
@@ -67,6 +71,10 @@ const {
   uploadStickerImageMock: vi.fn(),
   normalizeStickerAssetUrlForPdfMock: vi.fn(),
   getBrandProfileMock: vi.fn(),
+  listCartonRulesMock: vi.fn(),
+  createCartonRuleMock: vi.fn(),
+  updateCartonRuleMock: vi.fn(),
+  deleteCartonRuleMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -139,6 +147,10 @@ vi.mock("@/src/lib/sticker-templates", async () => {
 
 vi.mock("@/src/lib/settings", () => ({
   getBrandProfile: getBrandProfileMock,
+  listCartonRules: listCartonRulesMock,
+  createCartonRule: createCartonRuleMock,
+  updateCartonRule: updateCartonRuleMock,
+  deleteCartonRule: deleteCartonRuleMock,
 }));
 
 vi.mock("@/src/lib/sticker-asset-pdf", async () => {
@@ -213,6 +225,18 @@ function buildBrandProfile(): BrandProfile {
     invoice_prefix: "INV",
     default_igst_rate: 5,
   };
+}
+
+function buildCartonRules(): CartonCapacityRule[] {
+  return [
+    {
+      id: "rule_1",
+      company_id: "co_1",
+      category: "Dresses",
+      pieces_per_carton: 20,
+      is_default: true,
+    },
+  ];
 }
 
 function buildReceivedPO(status: ReceivedPO["status"]): ReceivedPO {
@@ -310,6 +334,9 @@ function buildPackingList(
     id: "pl_1",
     received_po_id: "po_1",
     company_id: "co_1",
+    invoice_id: "inv_1",
+    invoice_number: "INV-2026-001",
+    invoice_date: "2026-03-24T00:00:00+00:00",
     status,
     file_url: fileUrl,
     created_at: "2026-03-24T00:00:00+00:00",
@@ -375,6 +402,11 @@ describe("received PO dashboard flows", () => {
     );
     getBrandProfileMock.mockReset();
     getBrandProfileMock.mockResolvedValue(buildBrandProfile());
+    listCartonRulesMock.mockReset();
+    listCartonRulesMock.mockResolvedValue(buildCartonRules());
+    createCartonRuleMock.mockReset();
+    updateCartonRuleMock.mockReset();
+    deleteCartonRuleMock.mockReset();
   });
 
   afterEach(() => {
@@ -562,7 +594,7 @@ describe("received PO dashboard flows", () => {
 
     await openDocumentsTab("Invoice");
     expect(await screen.findByText("CGST + SGST")).toBeTruthy();
-    expect(screen.getByText("AED 249.50")).toBeTruthy();
+    expect(screen.getByText("INR 249.50")).toBeTruthy();
   });
 
   it("uses resolved file URLs from document cards when downloads are available", async () => {
@@ -721,7 +753,7 @@ describe("received PO dashboard flows", () => {
 
     render(<ReceivedPODocumentsView receivedPoId="po_1" />);
 
-    await userEvent.setup().click(screen.getByRole("button", { name: "Choose" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "Sticker template" }));
     const templateLabel = await screen.findByText("kita");
     const templateButton = templateLabel.closest("button");
     expect(templateButton).not.toBeNull();
@@ -803,5 +835,24 @@ describe("received PO dashboard flows", () => {
 
     expect(screen.getByText("Packing list PDF generation failed. Please try again.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Generate PDF" })).toBeTruthy();
+  });
+
+  it("opens packing rules in a dialog from the packing list tab", async () => {
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock.mockResolvedValue(null);
+    getOptionalInvoiceMock.mockResolvedValue(
+      buildInvoice("final", "/static/generated/invoices/inv_1.pdf"),
+    );
+    getOptionalPackingListMock.mockResolvedValue(null);
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    await openDocumentsTab("Packing List");
+    await userEvent.setup().click(screen.getByRole("button", { name: "Change packing rules" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Packing rules" })).toBeTruthy();
+    expect(within(dialog).getAllByDisplayValue("Dresses").length).toBeGreaterThan(0);
+    expect(listCartonRulesMock).toHaveBeenCalled();
   });
 });

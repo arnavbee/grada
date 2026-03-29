@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CartonBreakdown } from "@/src/components/received-po/CartonBreakdown";
 import { DocumentCard } from "@/src/components/received-po/DocumentCard";
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
+import { PackingRulesPanel } from "@/src/components/dashboard/packing-rules-panel";
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { normalizeStickerAssetUrlForPdf } from "@/src/lib/sticker-asset-pdf";
@@ -335,6 +336,7 @@ export function ReceivedPODocumentsView({
   const [invoiceEditorOpen, setInvoiceEditorOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<DocumentWorkspaceTab>("barcode");
   const [packingListPreviewOpen, setPackingListPreviewOpen] = useState(false);
+  const [packingRulesDialogOpen, setPackingRulesDialogOpen] = useState(false);
   const [cartonDrafts, setCartonDrafts] = useState<Record<string, CartonDraftState>>({});
   const [statusLine, setStatusLine] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1199,6 +1201,9 @@ export function ReceivedPODocumentsView({
             <DocumentCard
               actions={
                 <>
+                  <Button onClick={() => setPackingRulesDialogOpen(true)} variant="secondary">
+                    Change packing rules
+                  </Button>
                   {!packingList && !invoice ? (
                     <Button disabled variant="secondary">
                       Create invoice first
@@ -1248,6 +1253,11 @@ export function ReceivedPODocumentsView({
                 <p className="text-sm text-kira-midgray">
                   Create an invoice draft first. The packing list will be linked to it so commercial
                   row data stays consistent between documents.
+                </p>
+              ) : null}
+              {!packingList ? (
+                <p className="text-xs leading-5 text-kira-midgray">
+                  Packing rules apply when a new packing list draft is created.
                 </p>
               ) : null}
               {packingList ? (
@@ -1358,6 +1368,32 @@ export function ReceivedPODocumentsView({
                 </div>
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+      {packingRulesDialogOpen ? (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-kira-black/40 px-4 py-8">
+          <div
+            aria-modal="true"
+            className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl dark:border dark:border-white/10 dark:bg-[#12141B]"
+            role="dialog"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold text-kira-black dark:text-white">
+                  Packing rules
+                </h2>
+                <p className="mt-1 text-sm text-kira-midgray dark:text-gray-400">
+                  Adjust carton split rules here without leaving the received PO workflow. Existing
+                  packing list drafts keep their current carton assignments.
+                </p>
+              </div>
+              <Button onClick={() => setPackingRulesDialogOpen(false)} variant="secondary">
+                Close
+              </Button>
+            </div>
+
+            <PackingRulesPanel className="mt-6" />
           </div>
         </div>
       ) : null}

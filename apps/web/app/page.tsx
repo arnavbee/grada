@@ -52,7 +52,7 @@ const modules = [
   },
 ];
 
-const heroBadges = ["Indian fashion brands", "Catalog -> PO -> dispatch"];
+const heroBadges = ["Catalog -> PO -> dispatch"];
 
 const metrics = [
   { label: "Built For", value: "Indian fashion brands" },
