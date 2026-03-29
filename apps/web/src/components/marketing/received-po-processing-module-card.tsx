@@ -98,7 +98,9 @@ export function ReceivedPoProcessingModuleCard({
               className="kira-infographic-embed"
               key={previewRun}
               loading="lazy"
+              scrolling="no"
               src={`${animationSrc}?preview=${previewRun}`}
+              tabIndex={-1}
               title="Animated received PO processing workflow preview"
             />
           </div>
