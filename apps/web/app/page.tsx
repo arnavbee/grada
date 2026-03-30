@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -81,30 +82,80 @@ const modulePrinciples = [
   "Keep every output tied to the same record.",
 ];
 
-const marketplaceCoverage = [
+type MarketplaceCoverageItem = {
+  detail: string;
+  label: string;
+  logo:
+    | {
+        height: number;
+        kind: "image";
+        src: string;
+        width: number;
+      }
+    | {
+        kind: "amazon";
+      }
+    | {
+        kind: "text";
+        text: string;
+      };
+};
+
+const marketplaceCoverage: MarketplaceCoverageItem[] = [
   {
     label: "Myntra",
     detail: "Structured exports tied to the same SKU logic.",
+    logo: {
+      height: 28,
+      kind: "image",
+      src: "https://upload.wikimedia.org/wikipedia/commons/b/bc/Myntra_Logo.png",
+      width: 90,
+    },
   },
   {
     label: "Ajio",
     detail: "Channel-ready exports without manual remapping.",
+    logo: {
+      height: 26,
+      kind: "image",
+      src: "https://images.seeklogo.com/logo-png/34/1/ajio-logo-png_seeklogo-348946.png",
+      width: 100,
+    },
   },
   {
     label: "Amazon IN",
     detail: "Reuse the same catalog data instead of rebuilding it.",
+    logo: {
+      kind: "amazon",
+    },
   },
   {
     label: "Flipkart",
     detail: "Marketplace-specific formats from one source.",
+    logo: {
+      height: 26,
+      kind: "image",
+      src: "https://upload.wikimedia.org/wikipedia/commons/e/e5/Flipkart_logo_%282026%29.svg",
+      width: 90,
+    },
   },
   {
     label: "Nykaa",
     detail: "Keep rich attribute structure intact across teams.",
+    logo: {
+      height: 26,
+      kind: "image",
+      src: "https://upload.wikimedia.org/wikipedia/commons/0/00/Nykaa_New_Logo.svg",
+      width: 85,
+    },
   },
   {
     label: "Generic Exports",
     detail: "Support custom retailer and internal templates.",
+    logo: {
+      kind: "text",
+      text: "Generic Exports",
+    },
   },
 ];
 
@@ -208,6 +259,64 @@ const tickerItems = [
   "R2 Document Storage",
 ];
 
+function MarketplaceCoverageLogo({
+  marketplace,
+}: {
+  marketplace: MarketplaceCoverageItem;
+}): JSX.Element {
+  if (marketplace.logo.kind === "image") {
+    return (
+      <Image
+        alt=""
+        aria-hidden="true"
+        className="h-5 w-auto object-contain"
+        height={marketplace.logo.height}
+        src={marketplace.logo.src}
+        unoptimized
+        width={marketplace.logo.width}
+      />
+    );
+  }
+
+  if (marketplace.logo.kind === "amazon") {
+    return (
+      <span className="relative inline-flex h-5 w-[4.9rem] items-start justify-start font-sans text-[0.95rem] font-medium lowercase tracking-[-0.05em] text-[#171717]">
+        <span>amazon</span>
+        <span className="absolute -right-0.5 top-0 text-[0.5rem] font-semibold tracking-normal text-[#f59e0b]">
+          .in
+        </span>
+        <svg
+          aria-hidden="true"
+          className="absolute -bottom-0.5 left-0 h-2 w-[3.7rem]"
+          viewBox="0 0 58 12"
+        >
+          <path
+            d="M2 4.5C12 10.5 36 10.5 49 4.5"
+            fill="none"
+            stroke="#f59e0b"
+            strokeLinecap="round"
+            strokeWidth="2"
+          />
+          <path
+            d="M45.5 2.7L49 4.5L45.2 6.8"
+            fill="none"
+            stroke="#f59e0b"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-xs font-semibold uppercase tracking-[0.08em]">
+      {marketplace.logo.text}
+    </span>
+  );
+}
+
 export default function LandingPage(): JSX.Element {
   return (
     <main className="relative w-full max-w-none space-y-6 p-4 md:space-y-8 md:p-8">
@@ -296,10 +405,11 @@ export default function LandingPage(): JSX.Element {
                   <HoverCard key={marketplace.label}>
                     <HoverCardTrigger asChild>
                       <button
-                        className="kira-focus-ring rounded-full border border-kira-warmgray/45 bg-white/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-kira-darkgray transition-colors hover:border-kira-brown/45 hover:text-kira-black dark:border-white/10 dark:bg-white/8 dark:text-kira-midgray dark:hover:text-kira-offwhite"
+                        className="kira-focus-ring flex min-h-11 items-center justify-center rounded-full border border-kira-warmgray/45 bg-white/85 px-4 py-2 text-kira-darkgray transition-colors hover:border-kira-brown/45 hover:text-kira-black dark:border-white/10 dark:bg-kira-offwhite/95 dark:text-kira-black"
                         type="button"
                       >
-                        {marketplace.label}
+                        <MarketplaceCoverageLogo marketplace={marketplace} />
+                        <span className="sr-only">{marketplace.label}</span>
                       </button>
                     </HoverCardTrigger>
                     <HoverCardContent className="border-kira-warmgray/40 bg-kira-offwhite/95 dark:border-white/10 dark:bg-[rgba(24,31,27,0.98)]">
