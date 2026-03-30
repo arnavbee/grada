@@ -87,6 +87,7 @@ type MarketplaceCoverageItem = {
   label: string;
   logo:
     | {
+        className?: string;
         height: number;
         kind: "image";
         src: string;
@@ -133,6 +134,7 @@ const marketplaceCoverage: MarketplaceCoverageItem[] = [
     label: "Flipkart",
     detail: "Marketplace-specific formats from one source.",
     logo: {
+      className: "h-6 w-auto object-contain",
       height: 26,
       kind: "image",
       src: "https://upload.wikimedia.org/wikipedia/commons/e/e5/Flipkart_logo_%282026%29.svg",
@@ -269,7 +271,7 @@ function MarketplaceCoverageLogo({
       <Image
         alt=""
         aria-hidden="true"
-        className="h-5 w-auto object-contain"
+        className={marketplace.logo.className ?? "h-5 w-auto object-contain"}
         height={marketplace.logo.height}
         src={marketplace.logo.src}
         unoptimized
