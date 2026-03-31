@@ -337,13 +337,16 @@ export default function LandingPage(): JSX.Element {
             <h1 className="max-w-3xl text-[4.5rem] font-bold leading-none tracking-tighter md:text-[7.5rem] lg:text-[9rem] animate-fade-in-up">
               Grada
               <span
-                className="mb-1 ml-0 inline-block h-3 w-3 [perspective:160px] md:mb-3 md:ml-1 md:h-6 md:w-6"
+                className="mb-1 ml-0 inline-block h-3 w-3 md:mb-3 md:ml-1 md:h-6 md:w-6"
                 style={{ animationDelay: "400ms" }}
               >
                 <span className="kira-cube-dot animate-cube-dot">
+                  <span className="kira-cube-face kira-cube-face-front" />
+                  <span className="kira-cube-face kira-cube-face-back" />
                   <span className="kira-cube-face kira-cube-face-top" />
                   <span className="kira-cube-face kira-cube-face-left" />
                   <span className="kira-cube-face kira-cube-face-right" />
+                  <span className="kira-cube-face kira-cube-face-bottom" />
                 </span>
               </span>
             </h1>

@@ -224,33 +224,37 @@ html[data-theme="dark"] .kira-tint-deep {
 .kira-cube-face {
   position: absolute;
   inset: 0;
+  backface-visibility: hidden;
 }
 
-.kira-cube-face-top {
-  clip-path: polygon(50% 0, 100% 28%, 50% 56%, 0 28%);
-  background: linear-gradient(160deg, #e1bb93 0%, #c99766 100%);
-}
-
-.kira-cube-face-left {
-  clip-path: polygon(0 28%, 50% 56%, 50% 100%, 0 72%);
+.kira-cube-face-front {
+  transform: translateZ(50%);
   background: linear-gradient(180deg, #ba8758 0%, #a06f42 100%);
 }
 
+.kira-cube-face-back {
+  transform: rotateY(180deg) translateZ(50%);
+  background: linear-gradient(180deg, #a06f42 0%, #8f5d31 100%);
+}
+
 .kira-cube-face-right {
-  clip-path: polygon(100% 28%, 50% 56%, 50% 100%, 100% 72%);
-  background: linear-gradient(180deg, #97663c 0%, #8f5d31 100%);
+  transform: rotateY(90deg) translateZ(50%);
+  background: linear-gradient(180deg, #97663c 0%, #8b5a30 100%);
 }
 
-html[data-theme="dark"] .kira-cube-face-top {
-  background: linear-gradient(160deg, #f0d3ae 0%, #dfba8e 100%);
+.kira-cube-face-left {
+  transform: rotateY(-90deg) translateZ(50%);
+  background: linear-gradient(180deg, #c99766 0%, #b78354 100%);
 }
 
-html[data-theme="dark"] .kira-cube-face-left {
-  background: linear-gradient(180deg, #d2a573 0%, #c1905a 100%);
+.kira-cube-face-top {
+  transform: rotateX(90deg) translateZ(50%);
+  background: linear-gradient(180deg, #e1bb93 0%, #d4a978 100%);
 }
 
-html[data-theme="dark"] .kira-cube-face-right {
-  background: linear-gradient(180deg, #b9844d 0%, #a9733f 100%);
+.kira-cube-face-bottom {
+  transform: rotateX(-90deg) translateZ(50%);
+  background: linear-gradient(180deg, #8f5d31 0%, #7e4f27 100%);
 }
 
 @keyframes modal-open {

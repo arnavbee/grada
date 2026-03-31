@@ -29,34 +29,10 @@ const config: Config = {
         },
         "cube-dot": {
           "0%": {
-            transform: "perspective(140px) rotateX(0deg) rotateY(0deg)",
-            opacity: "0.96",
-            boxShadow:
-              "inset 1px 1px 0 rgba(255, 255, 255, 0.42), 0 1px 4px rgba(45, 27, 13, 0.16)",
-          },
-          "25%": {
-            transform: "perspective(140px) rotateX(90deg) rotateY(0deg)",
-            opacity: "1",
-            boxShadow:
-              "inset -1px 1px 0 rgba(255, 255, 255, 0.5), 0 2px 6px rgba(45, 27, 13, 0.22)",
-          },
-          "50%": {
-            transform: "perspective(140px) rotateX(90deg) rotateY(90deg)",
-            opacity: "1",
-            boxShadow:
-              "inset 1px -1px 0 rgba(255, 255, 255, 0.5), 0 2px 6px rgba(45, 27, 13, 0.22)",
-          },
-          "75%": {
-            transform: "perspective(140px) rotateX(180deg) rotateY(180deg)",
-            opacity: "1",
-            boxShadow:
-              "inset -1px -1px 0 rgba(255, 255, 255, 0.45), 0 2px 6px rgba(45, 27, 13, 0.2)",
+            transform: "perspective(180px) rotateX(-26deg) rotateY(38deg)",
           },
           "100%": {
-            transform: "perspective(140px) rotateX(360deg) rotateY(360deg)",
-            opacity: "0.96",
-            boxShadow:
-              "inset 1px 1px 0 rgba(255, 255, 255, 0.42), 0 1px 4px rgba(45, 27, 13, 0.16)",
+            transform: "perspective(180px) rotateX(-26deg) rotateY(398deg)",
           },
         },
         "letter-spacing": {
@@ -70,7 +46,7 @@ const config: Config = {
       },
       animation: {
         enter: "enter 420ms ease-out both",
-        "cube-dot": "cube-dot 2.4s cubic-bezier(0.38, 0.02, 0.2, 0.98) infinite",
+        "cube-dot": "cube-dot 2.6s linear infinite",
         "letter-spacing": "letter-spacing 800ms cubic-bezier(0.16, 1, 0.3, 1) both",
         "fade-in-up": "fade-in-up 800ms cubic-bezier(0.16, 1, 0.3, 1) both",
       },
