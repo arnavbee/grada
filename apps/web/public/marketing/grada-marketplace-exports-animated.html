@@ -5,9 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Grada — Marketplace Exports</title>
 <style>
+  :root {
+    --grada-accent: #A06F42;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: 100%; height: 100%; }
-  body { background: #0f1117; display: flex; justify-content: center; align-items: center; min-height: 100%; }
+  body { background: var(--grada-accent); display: flex; justify-content: center; align-items: center; min-height: 100%; }
   svg { display: block; width: 100%; max-width: 800px; max-height: 100%; margin: 0 auto; }
 
   @keyframes drawPath {
@@ -79,7 +82,7 @@
 </head>
 <body>
 <svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
-  <rect width="800" height="500" fill="#0f1117" />
+  <rect width="800" height="500" fill="var(--grada-accent)" />
 
   <!-- central catalog node -->
   <rect x="320" y="208" width="160" height="60" rx="5" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.6)"
