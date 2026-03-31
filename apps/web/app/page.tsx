@@ -7,7 +7,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +16,7 @@ import { GridBackground } from "@/src/components/GridBackground";
 import { DispatchDocumentsModuleCard } from "@/src/components/marketing/dispatch-documents-module-card";
 import { MarketplaceExportsModuleCard } from "@/src/components/marketing/marketplace-exports-module-card";
 import { ReceivedPoProcessingModuleCard } from "@/src/components/marketing/received-po-processing-module-card";
+import { SectionEyebrow } from "@/src/components/marketing/section-eyebrow";
 import { SmartCatalogModuleCard } from "@/src/components/marketing/smart-catalog-module-card";
 import { Card } from "@/src/components/ui/card";
 
@@ -54,12 +54,6 @@ const modules = [
 ];
 
 const heroBadges = ["Catalog -> PO -> dispatch"];
-
-const metrics = [
-  { label: "Built For", value: "Indian fashion brands" },
-  { label: "Core Flow", value: "Catalog -> PO -> Dispatch" },
-  { label: "Coverage", value: "6 marketplaces live" },
-];
 
 const coverageBlocks = [
   {
@@ -328,16 +322,12 @@ export default function LandingPage(): JSX.Element {
         <div className="kira-float-slow absolute -right-24 top-0 h-72 w-72 rounded-full bg-kira-brown/10 blur-3xl" />
         <div className="kira-float-fast absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-[#A6B09B]/18 blur-3xl" />
         <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
-          <div className="relative z-10 md:col-span-7">
-            <div className="flex flex-wrap gap-2">
+          <div className="relative z-10 flex h-full flex-col md:col-span-7">
+            <div className="flex flex-wrap gap-y-2">
               {heroBadges.map((badge) => (
-                <Badge
-                  className="bg-white/75 text-kira-black dark:bg-white/8 dark:text-kira-offwhite"
-                  key={badge}
-                  variant="secondary"
-                >
+                <SectionEyebrow className="tracking-[0.22em]" key={badge} linePosition="before">
                   {badge}
-                </Badge>
+                </SectionEyebrow>
               ))}
             </div>
 
@@ -353,7 +343,7 @@ export default function LandingPage(): JSX.Element {
               className="mt-6 max-w-3xl text-3xl leading-tight md:text-5xl animate-fade-in-up"
               style={{ animationDelay: "800ms" }}
             >
-              From catalog to dispatch, automated.
+              From catalog to dispatch, <span className="text-kira-brown">simplified.</span>
             </p>
             <p
               className="mt-6 max-w-2xl text-kira-darkgray md:text-lg animate-fade-in-up"
@@ -362,7 +352,7 @@ export default function LandingPage(): JSX.Element {
               Grada gives Indian fashion brands one system for catalog, PO review, and dispatch.
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-10 flex flex-wrap items-center gap-3 md:mt-auto md:pt-8">
               <Button asChild className="rounded-full px-6" size="lg">
                 <Link href="/dashboard">See It in Action</Link>
               </Button>
@@ -373,22 +363,6 @@ export default function LandingPage(): JSX.Element {
                 <Link href="/login">Sign In</Link>
               </Button>
             </div>
-
-            <Separator className="mt-8" />
-
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {metrics.map((metric) => (
-                <div
-                  className="rounded-2xl border border-kira-warmgray/35 bg-white/45 p-4 backdrop-blur-sm dark:border-white/10 dark:bg-white/6"
-                  key={metric.label}
-                >
-                  <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                    {metric.label}
-                  </p>
-                  <p className="mt-2 text-xl font-semibold text-kira-black">{metric.value}</p>
-                </div>
-              ))}
-            </div>
           </div>
 
           <div className="relative z-10 md:col-span-5">
@@ -396,7 +370,7 @@ export default function LandingPage(): JSX.Element {
               className="animate-enter h-full overflow-hidden border-kira-darkgray/15 p-6 md:p-7"
               style={{ animationDelay: "120ms" }}
             >
-              <Badge variant="outline">Operational Spine</Badge>
+              <SectionEyebrow linePosition="after">Operational Spine</SectionEyebrow>
               <h2 className="mt-4 text-3xl">The handoff is already connected.</h2>
               <p className="mt-3 text-kira-darkgray">
                 Catalog, PO review, and dispatch all live in one flow.
@@ -447,7 +421,7 @@ export default function LandingPage(): JSX.Element {
       <section className="animate-enter" style={{ animationDelay: "180ms" }}>
         <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Badge variant="outline">Modules</Badge>
+            <SectionEyebrow linePosition="before">Modules</SectionEyebrow>
             <h2 className="mt-3 text-3xl">
               The product is already shaped around the real ops flow.
             </h2>
@@ -511,7 +485,7 @@ export default function LandingPage(): JSX.Element {
             className="animate-enter rounded-[32px] border-kira-darkgray/15 p-6 md:p-7"
             style={{ animationDelay: "240ms" }}
           >
-            <Badge variant="secondary">Why This Feels Different</Badge>
+            <SectionEyebrow linePosition="after">Why This Feels Different</SectionEyebrow>
             <h3 className="mt-4 text-3xl leading-tight">Built like one operating system.</h3>
             <div className="mt-6 space-y-3">
               {modulePrinciples.map((principle, index) => (
@@ -536,7 +510,7 @@ export default function LandingPage(): JSX.Element {
       >
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <Badge variant="outline">Workflow</Badge>
+            <SectionEyebrow linePosition="before">Workflow</SectionEyebrow>
             <h2 className="mt-3 text-3xl">See the connected flow, not just the feature list.</h2>
           </div>
           <p className="max-w-2xl text-sm leading-6 text-kira-darkgray">
@@ -571,7 +545,7 @@ export default function LandingPage(): JSX.Element {
                     <p className="mt-4 text-base leading-7 text-kira-darkgray">{view.detail}</p>
                   </div>
                   <div className="w-full rounded-[24px] border border-kira-warmgray/35 bg-kira-offwhite/70 p-5 dark:border-white/10 dark:bg-white/6 lg:max-w-sm">
-                    <Badge variant="secondary">{view.label}</Badge>
+                    <SectionEyebrow linePosition="after">{view.label}</SectionEyebrow>
                     <h4 className="mt-4 text-2xl leading-tight">{view.carryTitle}</h4>
                     <p className="mt-3 text-sm leading-7 text-kira-darkgray">{view.carryDetail}</p>
                   </div>
@@ -601,7 +575,7 @@ export default function LandingPage(): JSX.Element {
           className="animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7"
           style={{ animationDelay: "320ms" }}
         >
-          <Badge variant="outline">Ops FAQ</Badge>
+          <SectionEyebrow linePosition="before">Ops FAQ</SectionEyebrow>
           <h2 className="mt-3 text-3xl">What Grada is actually replacing.</h2>
 
           <Accordion className="mt-5" collapsible defaultValue="manual-rebuilds" type="single">
@@ -618,7 +592,7 @@ export default function LandingPage(): JSX.Element {
           className="animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7"
           style={{ animationDelay: "380ms" }}
         >
-          <Badge variant="secondary">Get Started</Badge>
+          <SectionEyebrow linePosition="after">Get Started</SectionEyebrow>
           <h2 className="mt-3 text-3xl">Start with the product, not a sales deck.</h2>
           <p className="mt-3 text-kira-darkgray">
             Open the workflow, request access, or reach out directly.
@@ -663,7 +637,7 @@ export default function LandingPage(): JSX.Element {
       <Card className="animate-enter p-5 md:p-7" style={{ animationDelay: "560ms" }}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Badge variant="outline">Ready to Scale</Badge>
+            <SectionEyebrow linePosition="before">Ready to Scale</SectionEyebrow>
             <h2 className="mt-3">Stop operating manually. Start operating at scale.</h2>
             <p className="mt-2 max-w-2xl text-kira-darkgray">
               Move from catalog to dispatch inside one workflow.

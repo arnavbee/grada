@@ -7,9 +7,17 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, require_roles
 from app.core.audit import log_audit
 from app.db.session import get_db
+from app.models.buyer_document_template import BuyerDocumentTemplate
 from app.models.carton_capacity_rule import CartonCapacityRule
 from app.models.company_settings import CompanySettings
 from app.models.user import User
+from app.schemas.buyer_document_template import (
+    BuyerDocumentTemplateCreateRequest,
+    BuyerDocumentTemplateListResponse,
+    BuyerDocumentTemplateResponse,
+    BuyerDocumentTemplateUpdateRequest,
+)
+from app.schemas.invoice import InvoiceDetails
 from app.schemas.settings import (
     BrandProfileResponse,
     BrandProfileSettings,
@@ -20,6 +28,7 @@ from app.schemas.settings import (
     POBuilderDefaultsResponse,
     POBuilderDefaultsSettings,
 )
+from app.services.buyer_document_templates import json_dumps, json_loads
 
 router = APIRouter(prefix='/settings', tags=['settings'])
 
@@ -32,10 +41,6 @@ def _json_loads(raw: str | None) -> dict[str, object]:
     except json.JSONDecodeError:
         return {}
     return parsed if isinstance(parsed, dict) else {}
-
-
-def _json_dumps(payload: dict[str, object]) -> str:
-    return json.dumps(payload, separators=(',', ':'))
 
 
 def _get_or_create_company_settings(db: Session, company_id: str) -> CompanySettings:
@@ -119,6 +124,28 @@ def _to_po_builder_defaults_response(
         default_osp_in_sar=float(po_builder_payload.get('default_osp_in_sar') or 95),
         default_fabric_composition=str(po_builder_payload.get('default_fabric_composition') or '100% Polyester'),
         default_size_ratio=normalized_ratio,
+    )
+
+
+def _to_buyer_document_template_response(
+    template: BuyerDocumentTemplate,
+) -> BuyerDocumentTemplateResponse:
+    try:
+        defaults = InvoiceDetails(**json_loads(template.defaults_json))
+    except Exception:
+        defaults = InvoiceDetails()
+    return BuyerDocumentTemplateResponse(
+        id=template.id,
+        company_id=template.company_id,
+        name=template.name,
+        buyer_key=template.buyer_key,
+        document_type=template.document_type,
+        layout_key=template.layout_key,
+        defaults=defaults,
+        is_default=template.is_default,
+        is_active=template.is_active,
+        created_at=template.created_at,
+        updated_at=template.updated_at,
     )
 
 
@@ -222,6 +249,150 @@ def update_po_builder_defaults(
     db.commit()
     db.refresh(company_settings)
     return _to_po_builder_defaults_response(current_user.company_id, company_settings)
+
+
+@router.get('/buyer-document-templates', response_model=BuyerDocumentTemplateListResponse)
+def list_buyer_document_templates(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> BuyerDocumentTemplateListResponse:
+    rows = (
+        db.query(BuyerDocumentTemplate)
+        .filter(BuyerDocumentTemplate.company_id == current_user.company_id)
+        .order_by(
+            BuyerDocumentTemplate.document_type.asc(),
+            BuyerDocumentTemplate.is_default.desc(),
+            BuyerDocumentTemplate.name.asc(),
+        )
+        .all()
+    )
+    return BuyerDocumentTemplateListResponse(
+        items=[_to_buyer_document_template_response(row) for row in rows],
+        total=len(rows),
+    )
+
+
+@router.post('/buyer-document-templates', response_model=BuyerDocumentTemplateResponse, status_code=status.HTTP_201_CREATED)
+def create_buyer_document_template(
+    payload: BuyerDocumentTemplateCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles('admin', 'manager')),
+) -> BuyerDocumentTemplateResponse:
+    if payload.is_default:
+        (
+            db.query(BuyerDocumentTemplate)
+            .filter(
+                BuyerDocumentTemplate.company_id == current_user.company_id,
+                BuyerDocumentTemplate.document_type == payload.document_type,
+            )
+            .update({'is_default': False})
+        )
+    template = BuyerDocumentTemplate(
+        id=str(uuid4()),
+        company_id=current_user.company_id,
+        name=payload.name.strip(),
+        buyer_key=payload.buyer_key.strip(),
+        document_type=payload.document_type,
+        layout_key=payload.layout_key,
+        defaults_json=json_dumps(payload.defaults.model_dump()),
+        is_default=payload.is_default,
+        is_active=payload.is_active,
+    )
+    db.add(template)
+    log_audit(
+        db,
+        action='settings.buyer_document_template.create',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={'buyer_document_template_id': template.id, 'document_type': template.document_type},
+    )
+    db.commit()
+    db.refresh(template)
+    return _to_buyer_document_template_response(template)
+
+
+@router.patch('/buyer-document-templates/{template_id}', response_model=BuyerDocumentTemplateResponse)
+def update_buyer_document_template(
+    template_id: str,
+    payload: BuyerDocumentTemplateUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles('admin', 'manager')),
+) -> BuyerDocumentTemplateResponse:
+    template = (
+        db.query(BuyerDocumentTemplate)
+        .filter(
+            BuyerDocumentTemplate.id == template_id,
+            BuyerDocumentTemplate.company_id == current_user.company_id,
+        )
+        .first()
+    )
+    if template is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Buyer document template not found.')
+
+    updates = payload.model_dump(exclude_unset=True)
+    if updates.get('is_default'):
+        next_document_type = updates.get('document_type') or template.document_type
+        (
+            db.query(BuyerDocumentTemplate)
+            .filter(
+                BuyerDocumentTemplate.company_id == current_user.company_id,
+                BuyerDocumentTemplate.document_type == next_document_type,
+                BuyerDocumentTemplate.id != template.id,
+            )
+            .update({'is_default': False})
+        )
+    if 'name' in updates and updates['name'] is not None:
+        template.name = updates['name'].strip()
+    if 'buyer_key' in updates and updates['buyer_key'] is not None:
+        template.buyer_key = updates['buyer_key'].strip()
+    if 'document_type' in updates and updates['document_type'] is not None:
+        template.document_type = updates['document_type']
+    if 'layout_key' in updates and updates['layout_key'] is not None:
+        template.layout_key = updates['layout_key']
+    if 'defaults' in updates and payload.defaults is not None:
+        template.defaults_json = json_dumps(payload.defaults.model_dump())
+    if 'is_default' in updates and updates['is_default'] is not None:
+        template.is_default = updates['is_default']
+    if 'is_active' in updates and updates['is_active'] is not None:
+        template.is_active = updates['is_active']
+
+    log_audit(
+        db,
+        action='settings.buyer_document_template.update',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={'buyer_document_template_id': template.id},
+    )
+    db.commit()
+    db.refresh(template)
+    return _to_buyer_document_template_response(template)
+
+
+@router.delete('/buyer-document-templates/{template_id}', status_code=status.HTTP_204_NO_CONTENT)
+def delete_buyer_document_template(
+    template_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles('admin', 'manager')),
+) -> None:
+    template = (
+        db.query(BuyerDocumentTemplate)
+        .filter(
+            BuyerDocumentTemplate.id == template_id,
+            BuyerDocumentTemplate.company_id == current_user.company_id,
+        )
+        .first()
+    )
+    if template is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Buyer document template not found.')
+    db.delete(template)
+    log_audit(
+        db,
+        action='settings.buyer_document_template.delete',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={'buyer_document_template_id': template.id},
+    )
+    db.commit()
 
 
 @router.get('/carton-rules', response_model=CartonCapacityRuleListResponse)

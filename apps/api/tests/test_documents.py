@@ -206,6 +206,161 @@ def test_invoice_creation_and_update() -> None:
     assert invoice_items[0]['po_number'] == 'STY-2026-00999'
 
 
+def test_invoice_auto_matches_buyer_template_from_distributor() -> None:
+    headers = _auth_headers()
+    _, received_po_id = _seed_confirmed_received_po(headers)
+
+    create_template = client.post(
+        '/api/v1/settings/buyer-document-templates',
+        headers=headers,
+        json={
+            'name': 'Landmark Invoice',
+            'buyer_key': 'styli',
+            'document_type': 'invoice',
+            'layout_key': 'landmark_v1',
+            'is_default': False,
+            'is_active': True,
+            'defaults': {
+                'marketplace_name': 'Landmark',
+                'supplier_name': '',
+                'address': '',
+                'gst_number': '',
+                'pan_number': '',
+                'fbs_name': '',
+                'vendor_company_name': '',
+                'supplier_city': '',
+                'supplier_state': '',
+                'supplier_pincode': '',
+                'delivery_from_name': '',
+                'delivery_from_address': '',
+                'delivery_from_city': '',
+                'delivery_from_pincode': '',
+                'origin_country': '',
+                'origin_state': '',
+                'origin_district': '',
+                'bill_to_name': 'Landmark Buying House',
+                'bill_to_address': 'Landmark Towers',
+                'bill_to_gst': '29AAAAA0000A1Z5',
+                'bill_to_pan': 'AAAAA0000A',
+                'ship_to_name': 'Landmark Warehouse',
+                'ship_to_address': 'Landmark Logistics Park',
+                'ship_to_gst': '29BBBBB0000B1Z5',
+                'stamp_image_url': '',
+            },
+        },
+    )
+    assert create_template.status_code == 201
+    template_id = create_template.json()['id']
+
+    invoice = client.post(f'/api/v1/received-pos/{received_po_id}/invoice', headers=headers)
+    assert invoice.status_code == 201
+    body = invoice.json()
+    assert body['buyer_template_id'] == template_id
+    assert body['buyer_template_name'] == 'Landmark Invoice'
+    assert body['layout_key'] == 'landmark_v1'
+    assert body['details']['bill_to_name'] == 'Landmark Buying House'
+    assert body['details']['ship_to_name'] == 'Landmark Warehouse'
+
+
+def test_invoice_can_override_auto_match_with_manual_buyer_template() -> None:
+    headers = _auth_headers()
+    _, received_po_id = _seed_confirmed_received_po(headers)
+
+    auto_template = client.post(
+        '/api/v1/settings/buyer-document-templates',
+        headers=headers,
+        json={
+            'name': 'Styli Invoice',
+            'buyer_key': 'styli',
+            'document_type': 'invoice',
+            'layout_key': 'default_v1',
+            'is_default': False,
+            'is_active': True,
+            'defaults': {**{'marketplace_name': 'Styli'}, **{
+                'supplier_name': '',
+                'address': '',
+                'gst_number': '',
+                'pan_number': '',
+                'fbs_name': '',
+                'vendor_company_name': '',
+                'supplier_city': '',
+                'supplier_state': '',
+                'supplier_pincode': '',
+                'delivery_from_name': '',
+                'delivery_from_address': '',
+                'delivery_from_city': '',
+                'delivery_from_pincode': '',
+                'origin_country': '',
+                'origin_state': '',
+                'origin_district': '',
+                'bill_to_name': 'Styli Buyer',
+                'bill_to_address': '',
+                'bill_to_gst': '',
+                'bill_to_pan': '',
+                'ship_to_name': '',
+                'ship_to_address': '',
+                'ship_to_gst': '',
+                'stamp_image_url': '',
+            }},
+        },
+    )
+    assert auto_template.status_code == 201
+
+    override_template = client.post(
+        '/api/v1/settings/buyer-document-templates',
+        headers=headers,
+        json={
+            'name': 'Landmark Override',
+            'buyer_key': 'landmark',
+            'document_type': 'invoice',
+            'layout_key': 'landmark_v1',
+            'is_default': False,
+            'is_active': True,
+            'defaults': {
+                'marketplace_name': 'Landmark',
+                'supplier_name': '',
+                'address': '',
+                'gst_number': '',
+                'pan_number': '',
+                'fbs_name': '',
+                'vendor_company_name': '',
+                'supplier_city': '',
+                'supplier_state': '',
+                'supplier_pincode': '',
+                'delivery_from_name': '',
+                'delivery_from_address': '',
+                'delivery_from_city': '',
+                'delivery_from_pincode': '',
+                'origin_country': '',
+                'origin_state': '',
+                'origin_district': '',
+                'bill_to_name': 'Landmark Override Buyer',
+                'bill_to_address': '',
+                'bill_to_gst': '',
+                'bill_to_pan': '',
+                'ship_to_name': '',
+                'ship_to_address': '',
+                'ship_to_gst': '',
+                'stamp_image_url': '',
+            },
+        },
+    )
+    assert override_template.status_code == 201
+    override_template_id = override_template.json()['id']
+
+    invoice = client.post(
+        f'/api/v1/received-pos/{received_po_id}/invoice',
+        headers=headers,
+        json={'buyer_template_id': override_template_id},
+    )
+    assert invoice.status_code == 201
+    body = invoice.json()
+    assert body['buyer_template_id'] == override_template_id
+    assert body['buyer_template_name'] == 'Landmark Override'
+    assert body['layout_key'] == 'landmark_v1'
+    assert body['details']['bill_to_name'] == 'Landmark Override Buyer'
+
+
 def test_invoice_uses_cgst_and_sgst_for_intrastate_gst_numbers() -> None:
     headers = _auth_headers()
     _, received_po_id = _seed_confirmed_received_po(headers)

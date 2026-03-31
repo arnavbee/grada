@@ -1,6 +1,7 @@
 from app.models.ai_correction import AICorrection
 from app.models.audit_log import AuditLog
 from app.models.barcode_job import BarcodeJob
+from app.models.buyer_document_template import BuyerDocumentTemplate
 from app.models.catalog_template import CatalogTemplate
 from app.models.carton_capacity_rule import CartonCapacityRule
 from app.models.company import Company
@@ -23,6 +24,7 @@ __all__ = [
     'AICorrection',
     'AuditLog',
     'BarcodeJob',
+    'BuyerDocumentTemplate',
     'CatalogTemplate',
     'CartonCapacityRule',
     'Company',

@@ -49,6 +49,7 @@ class InvoiceDetails(BaseModel):
 class InvoiceCreateRequest(BaseModel):
     number_of_cartons: int = Field(default=0, ge=0, le=100000)
     export_mode: ExportMode = 'Air'
+    buyer_template_id: str | None = None
     details: InvoiceDetails | None = None
 
 
@@ -56,6 +57,7 @@ class InvoiceUpdateRequest(BaseModel):
     gross_weight: float | None = Field(default=None, ge=0)
     number_of_cartons: int | None = Field(default=None, ge=0, le=100000)
     export_mode: ExportMode | None = None
+    buyer_template_id: str | None = None
     details: InvoiceDetails | None = None
 
 
@@ -114,6 +116,9 @@ class InvoiceResponse(BaseModel):
     file_url: str | None
     created_at: datetime
     updated_at: datetime
+    buyer_template_id: str | None = None
+    buyer_template_name: str | None = None
+    layout_key: str
     details: InvoiceDetails
     line_items: list[InvoiceLineItemResponse] = Field(default_factory=list)
 

@@ -8,12 +8,19 @@ import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { InputField } from "@/src/components/ui/input-field";
 import {
+  createBuyerDocumentTemplate,
+  deleteBuyerDocumentTemplate,
   type BrandProfileInput,
+  type BuyerDocumentTemplate,
+  type BuyerDocumentTemplateDefaults,
+  type BuyerDocumentTemplateInput,
   type POBuilderDefaultsInput,
   getBrandProfile,
   getPOBuilderDefaults,
+  listBuyerDocumentTemplates,
   resolveSettingsAssetUrl,
   uploadBrandStamp,
+  updateBuyerDocumentTemplate,
   updateBrandProfile,
   updatePOBuilderDefaults,
 } from "@/src/lib/settings";
@@ -59,6 +66,42 @@ const EMPTY_PO_BUILDER_DEFAULTS: POBuilderDefaultsInput = {
 };
 
 const SIZE_KEYS = ["S", "M", "L", "XL", "XXL"] as const;
+const EMPTY_BUYER_TEMPLATE_DEFAULTS: BuyerDocumentTemplateDefaults = {
+  marketplace_name: "",
+  supplier_name: "",
+  address: "",
+  gst_number: "",
+  pan_number: "",
+  fbs_name: "",
+  vendor_company_name: "",
+  supplier_city: "",
+  supplier_state: "",
+  supplier_pincode: "",
+  delivery_from_name: "",
+  delivery_from_address: "",
+  delivery_from_city: "",
+  delivery_from_pincode: "",
+  origin_country: "",
+  origin_state: "",
+  origin_district: "",
+  bill_to_name: "",
+  bill_to_address: "",
+  bill_to_gst: "",
+  bill_to_pan: "",
+  ship_to_name: "",
+  ship_to_address: "",
+  ship_to_gst: "",
+  stamp_image_url: "",
+};
+const EMPTY_BUYER_TEMPLATE: BuyerDocumentTemplateInput = {
+  name: "",
+  buyer_key: "",
+  document_type: "invoice",
+  layout_key: "default_v1",
+  defaults: EMPTY_BUYER_TEMPLATE_DEFAULTS,
+  is_default: false,
+  is_active: true,
+};
 
 interface SectionHeaderProps {
   eyebrow: string;
@@ -83,9 +126,15 @@ export function SettingsView(): JSX.Element {
   const [poBuilderDefaults, setPOBuilderDefaults] =
     useState<POBuilderDefaultsInput>(EMPTY_PO_BUILDER_DEFAULTS);
   const [loading, setLoading] = useState(true);
+  const [buyerTemplates, setBuyerTemplates] = useState<BuyerDocumentTemplate[]>([]);
+  const [selectedBuyerTemplateId, setSelectedBuyerTemplateId] = useState<string | null>(null);
+  const [buyerTemplateDraft, setBuyerTemplateDraft] =
+    useState<BuyerDocumentTemplateInput>(EMPTY_BUYER_TEMPLATE);
   const [savingBrandIdentity, setSavingBrandIdentity] = useState(false);
   const [savingInvoiceDefaults, setSavingInvoiceDefaults] = useState(false);
   const [savingPOBuilderDefaults, setSavingPOBuilderDefaults] = useState(false);
+  const [savingBuyerTemplate, setSavingBuyerTemplate] = useState(false);
+  const [deletingBuyerTemplate, setDeletingBuyerTemplate] = useState(false);
   const [uploadingStamp, setUploadingStamp] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -95,9 +144,10 @@ export function SettingsView(): JSX.Element {
 
     async function load(): Promise<void> {
       try {
-        const [profile, builderDefaults] = await Promise.all([
+        const [profile, builderDefaults, templates] = await Promise.all([
           getBrandProfile(),
           getPOBuilderDefaults(),
+          listBuyerDocumentTemplates(),
         ]);
         if (!active) {
           return;
@@ -140,6 +190,23 @@ export function SettingsView(): JSX.Element {
           default_fabric_composition: builderDefaults.default_fabric_composition,
           default_size_ratio: builderDefaults.default_size_ratio,
         });
+        setBuyerTemplates(templates);
+        const initialTemplate =
+          templates.find((template) => template.is_default) ?? templates[0] ?? null;
+        setSelectedBuyerTemplateId(initialTemplate?.id ?? null);
+        setBuyerTemplateDraft(
+          initialTemplate
+            ? {
+                name: initialTemplate.name,
+                buyer_key: initialTemplate.buyer_key,
+                document_type: initialTemplate.document_type,
+                layout_key: initialTemplate.layout_key,
+                defaults: initialTemplate.defaults,
+                is_default: initialTemplate.is_default,
+                is_active: initialTemplate.is_active,
+              }
+            : EMPTY_BUYER_TEMPLATE,
+        );
       } catch (loadError) {
         if (!active) {
           return;
@@ -157,6 +224,9 @@ export function SettingsView(): JSX.Element {
       active = false;
     };
   }, []);
+
+  const selectedBuyerTemplate =
+    buyerTemplates.find((template) => template.id === selectedBuyerTemplateId) ?? null;
 
   const handleSaveBrandIdentity = async (): Promise<void> => {
     try {
@@ -307,6 +377,71 @@ export function SettingsView(): JSX.Element {
       );
     } finally {
       setSavingPOBuilderDefaults(false);
+    }
+  };
+
+  const handleSelectBuyerTemplate = (template: BuyerDocumentTemplate | null): void => {
+    setSelectedBuyerTemplateId(template?.id ?? null);
+    setBuyerTemplateDraft(
+      template
+        ? {
+            name: template.name,
+            buyer_key: template.buyer_key,
+            document_type: template.document_type,
+            layout_key: template.layout_key,
+            defaults: template.defaults,
+            is_default: template.is_default,
+            is_active: template.is_active,
+          }
+        : EMPTY_BUYER_TEMPLATE,
+    );
+  };
+
+  const handleSaveBuyerTemplate = async (): Promise<void> => {
+    try {
+      setSavingBuyerTemplate(true);
+      setError(null);
+      setMessage(null);
+      const payload: BuyerDocumentTemplateInput = {
+        ...buyerTemplateDraft,
+        name: buyerTemplateDraft.name.trim(),
+        buyer_key: buyerTemplateDraft.buyer_key.trim(),
+      };
+      const saved = selectedBuyerTemplate
+        ? await updateBuyerDocumentTemplate(selectedBuyerTemplate.id, payload)
+        : await createBuyerDocumentTemplate(payload);
+      const templates = await listBuyerDocumentTemplates();
+      setBuyerTemplates(templates);
+      handleSelectBuyerTemplate(templates.find((template) => template.id === saved.id) ?? saved);
+      setMessage(selectedBuyerTemplate ? "Buyer template saved." : "Buyer template created.");
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Failed to save buyer template.");
+    } finally {
+      setSavingBuyerTemplate(false);
+    }
+  };
+
+  const handleDeleteBuyerTemplate = async (): Promise<void> => {
+    if (!selectedBuyerTemplate) {
+      return;
+    }
+    try {
+      setDeletingBuyerTemplate(true);
+      setError(null);
+      setMessage(null);
+      await deleteBuyerDocumentTemplate(selectedBuyerTemplate.id);
+      const templates = await listBuyerDocumentTemplates();
+      setBuyerTemplates(templates);
+      const nextTemplate =
+        templates.find((template) => template.is_default) ?? templates[0] ?? null;
+      handleSelectBuyerTemplate(nextTemplate);
+      setMessage("Buyer template deleted.");
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error ? deleteError.message : "Failed to delete buyer template.",
+      );
+    } finally {
+      setDeletingBuyerTemplate(false);
     }
   };
 
@@ -763,6 +898,260 @@ export function SettingsView(): JSX.Element {
             <Button disabled={loading || savingInvoiceDefaults} onClick={handleSaveInvoiceDefaults}>
               {savingInvoiceDefaults ? "Saving..." : "Save invoice defaults"}
             </Button>
+          </div>
+        </Card>
+
+        <Card className="p-5 md:p-6">
+          <SectionHeader
+            description="Create buyer-specific invoice profiles so Landmark, Styli, or any other buyer can start from the right bill-to, ship-to, stamp, and layout defaults."
+            eyebrow="Buyer Templates"
+            title="Invoice buyer templates"
+          />
+          <div className="mt-6 grid gap-6 lg:grid-cols-[280px,minmax(0,1fr)]">
+            <div className="space-y-3">
+              <Button onClick={() => handleSelectBuyerTemplate(null)} variant="secondary">
+                New buyer template
+              </Button>
+              <div className="space-y-2">
+                {buyerTemplates.length === 0 ? (
+                  <Card className="border border-dashed border-kira-warmgray/35 p-4 text-sm text-kira-midgray">
+                    No buyer templates yet. Create one to auto-match invoice defaults by buyer.
+                  </Card>
+                ) : (
+                  buyerTemplates.map((template) => (
+                    <button
+                      className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                        selectedBuyerTemplateId === template.id
+                          ? "border-kira-black bg-kira-offwhite"
+                          : "border-kira-warmgray/30 hover:border-kira-midgray/40"
+                      }`}
+                      key={template.id}
+                      onClick={() => handleSelectBuyerTemplate(template)}
+                      type="button"
+                    >
+                      <p className="text-sm font-medium text-kira-black">{template.name}</p>
+                      <p className="mt-1 text-xs text-kira-midgray">
+                        {template.buyer_key} · {template.layout_key}
+                        {template.is_default ? " · default" : ""}
+                        {!template.is_active ? " · inactive" : ""}
+                      </p>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="grid gap-5 md:grid-cols-2">
+                <InputField
+                  disabled={loading || savingBuyerTemplate}
+                  label="Template name"
+                  onChange={(event) =>
+                    setBuyerTemplateDraft((current) => ({
+                      ...current,
+                      name: event.target.value,
+                    }))
+                  }
+                  value={buyerTemplateDraft.name}
+                />
+                <InputField
+                  disabled={loading || savingBuyerTemplate}
+                  hint="Used to auto-match the received PO distributor."
+                  label="Buyer key"
+                  onChange={(event) =>
+                    setBuyerTemplateDraft((current) => ({
+                      ...current,
+                      buyer_key: event.target.value,
+                    }))
+                  }
+                  value={buyerTemplateDraft.buyer_key}
+                />
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-kira-darkgray">Layout</span>
+                  <select
+                    className="kira-focus-ring w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
+                    disabled={loading || savingBuyerTemplate}
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        layout_key: event.target.value as BuyerDocumentTemplateInput["layout_key"],
+                      }))
+                    }
+                    value={buyerTemplateDraft.layout_key}
+                  >
+                    <option value="default_v1">Default invoice</option>
+                    <option value="landmark_v1">Landmark invoice</option>
+                  </select>
+                </label>
+                <div className="flex flex-wrap items-center gap-4 pt-7 text-sm text-kira-darkgray">
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      checked={buyerTemplateDraft.is_default}
+                      onChange={(event) =>
+                        setBuyerTemplateDraft((current) => ({
+                          ...current,
+                          is_default: event.target.checked,
+                        }))
+                      }
+                      type="checkbox"
+                    />
+                    <span>Set as default</span>
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      checked={buyerTemplateDraft.is_active}
+                      onChange={(event) =>
+                        setBuyerTemplateDraft((current) => ({
+                          ...current,
+                          is_active: event.target.checked,
+                        }))
+                      }
+                      type="checkbox"
+                    />
+                    <span>Active</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-2">
+                <InputField
+                  disabled={loading || savingBuyerTemplate}
+                  label="Marketplace label"
+                  onChange={(event) =>
+                    setBuyerTemplateDraft((current) => ({
+                      ...current,
+                      defaults: { ...current.defaults, marketplace_name: event.target.value },
+                    }))
+                  }
+                  value={buyerTemplateDraft.defaults.marketplace_name}
+                />
+                <InputField
+                  disabled={loading || savingBuyerTemplate}
+                  label="Stamp image URL"
+                  onChange={(event) =>
+                    setBuyerTemplateDraft((current) => ({
+                      ...current,
+                      defaults: { ...current.defaults, stamp_image_url: event.target.value },
+                    }))
+                  }
+                  value={buyerTemplateDraft.defaults.stamp_image_url}
+                />
+                <InputField
+                  disabled={loading || savingBuyerTemplate}
+                  label="Bill To name"
+                  onChange={(event) =>
+                    setBuyerTemplateDraft((current) => ({
+                      ...current,
+                      defaults: { ...current.defaults, bill_to_name: event.target.value },
+                    }))
+                  }
+                  value={buyerTemplateDraft.defaults.bill_to_name}
+                />
+                <InputField
+                  disabled={loading || savingBuyerTemplate}
+                  label="Bill To GST"
+                  onChange={(event) =>
+                    setBuyerTemplateDraft((current) => ({
+                      ...current,
+                      defaults: { ...current.defaults, bill_to_gst: event.target.value },
+                    }))
+                  }
+                  value={buyerTemplateDraft.defaults.bill_to_gst}
+                />
+                <InputField
+                  disabled={loading || savingBuyerTemplate}
+                  label="Bill To PAN"
+                  onChange={(event) =>
+                    setBuyerTemplateDraft((current) => ({
+                      ...current,
+                      defaults: { ...current.defaults, bill_to_pan: event.target.value },
+                    }))
+                  }
+                  value={buyerTemplateDraft.defaults.bill_to_pan}
+                />
+                <InputField
+                  disabled={loading || savingBuyerTemplate}
+                  label="Ship To name"
+                  onChange={(event) =>
+                    setBuyerTemplateDraft((current) => ({
+                      ...current,
+                      defaults: { ...current.defaults, ship_to_name: event.target.value },
+                    }))
+                  }
+                  value={buyerTemplateDraft.defaults.ship_to_name}
+                />
+                <InputField
+                  disabled={loading || savingBuyerTemplate}
+                  label="Ship To GST"
+                  onChange={(event) =>
+                    setBuyerTemplateDraft((current) => ({
+                      ...current,
+                      defaults: { ...current.defaults, ship_to_gst: event.target.value },
+                    }))
+                  }
+                  value={buyerTemplateDraft.defaults.ship_to_gst}
+                />
+                <label className="block md:col-span-2">
+                  <span className="mb-1 block text-sm font-medium text-kira-darkgray">
+                    Bill To address
+                  </span>
+                  <textarea
+                    className="kira-focus-ring min-h-24 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
+                    disabled={loading || savingBuyerTemplate}
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        defaults: { ...current.defaults, bill_to_address: event.target.value },
+                      }))
+                    }
+                    value={buyerTemplateDraft.defaults.bill_to_address}
+                  />
+                </label>
+                <label className="block md:col-span-2">
+                  <span className="mb-1 block text-sm font-medium text-kira-darkgray">
+                    Ship To address
+                  </span>
+                  <textarea
+                    className="kira-focus-ring min-h-24 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
+                    disabled={loading || savingBuyerTemplate}
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        defaults: { ...current.defaults, ship_to_address: event.target.value },
+                      }))
+                    }
+                    value={buyerTemplateDraft.defaults.ship_to_address}
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-2">
+                {selectedBuyerTemplate ? (
+                  <Button
+                    disabled={deletingBuyerTemplate}
+                    onClick={handleDeleteBuyerTemplate}
+                    variant="secondary"
+                  >
+                    {deletingBuyerTemplate ? "Deleting..." : "Delete template"}
+                  </Button>
+                ) : null}
+                <Button
+                  disabled={
+                    loading ||
+                    savingBuyerTemplate ||
+                    !buyerTemplateDraft.name.trim() ||
+                    !buyerTemplateDraft.buyer_key.trim()
+                  }
+                  onClick={handleSaveBuyerTemplate}
+                >
+                  {savingBuyerTemplate
+                    ? "Saving..."
+                    : selectedBuyerTemplate
+                      ? "Save template"
+                      : "Create template"}
+                </Button>
+              </div>
+            </div>
           </div>
         </Card>
 

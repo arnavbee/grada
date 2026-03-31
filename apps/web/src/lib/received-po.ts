@@ -122,6 +122,9 @@ export interface Invoice {
   file_url: string | null;
   created_at: string;
   updated_at: string;
+  buyer_template_id: string | null;
+  buyer_template_name: string | null;
+  layout_key: string;
   details: InvoiceDetails;
 }
 
@@ -286,6 +289,7 @@ export async function createInvoiceDraft(
   payload?: {
     number_of_cartons?: number;
     export_mode?: ExportMode;
+    buyer_template_id?: string | null;
     details?: InvoiceDetails;
   },
 ): Promise<Invoice> {
@@ -301,6 +305,7 @@ export async function updateInvoice(
     gross_weight?: number | null;
     number_of_cartons?: number | null;
     export_mode?: ExportMode | null;
+    buyer_template_id?: string | null;
     details?: InvoiceDetails;
   },
 ): Promise<Invoice> {

@@ -15,7 +15,7 @@ import type {
   PackingList,
   ReceivedPO,
 } from "@/src/lib/received-po";
-import type { BrandProfile, CartonCapacityRule } from "@/src/lib/settings";
+import type { BrandProfile, BuyerDocumentTemplate, CartonCapacityRule } from "@/src/lib/settings";
 
 const {
   pushMock,
@@ -41,6 +41,7 @@ const {
   uploadStickerImageMock,
   normalizeStickerAssetUrlForPdfMock,
   getBrandProfileMock,
+  listBuyerDocumentTemplatesMock,
   listCartonRulesMock,
   createCartonRuleMock,
   updateCartonRuleMock,
@@ -71,6 +72,7 @@ const {
   uploadStickerImageMock: vi.fn(),
   normalizeStickerAssetUrlForPdfMock: vi.fn(),
   getBrandProfileMock: vi.fn(),
+  listBuyerDocumentTemplatesMock: vi.fn(),
   listCartonRulesMock: vi.fn(),
   createCartonRuleMock: vi.fn(),
   updateCartonRuleMock: vi.fn(),
@@ -147,6 +149,7 @@ vi.mock("@/src/lib/sticker-templates", async () => {
 
 vi.mock("@/src/lib/settings", () => ({
   getBrandProfile: getBrandProfileMock,
+  listBuyerDocumentTemplates: listBuyerDocumentTemplatesMock,
   listCartonRules: listCartonRulesMock,
   createCartonRule: createCartonRuleMock,
   updateCartonRule: updateCartonRuleMock,
@@ -239,6 +242,10 @@ function buildCartonRules(): CartonCapacityRule[] {
   ];
 }
 
+function buildBuyerTemplates(): BuyerDocumentTemplate[] {
+  return [];
+}
+
 function buildReceivedPO(status: ReceivedPO["status"]): ReceivedPO {
   return {
     id: "po_1",
@@ -308,6 +315,9 @@ function buildInvoice(status: Invoice["status"], fileUrl: string | null = null):
     file_url: fileUrl,
     created_at: "2026-03-24T00:00:00+00:00",
     updated_at: "2026-03-24T00:00:00+00:00",
+    buyer_template_id: null,
+    buyer_template_name: null,
+    layout_key: "default_v1",
     details: DEFAULT_INVOICE_DETAILS,
   };
 }
@@ -402,6 +412,8 @@ describe("received PO dashboard flows", () => {
     );
     getBrandProfileMock.mockReset();
     getBrandProfileMock.mockResolvedValue(buildBrandProfile());
+    listBuyerDocumentTemplatesMock.mockReset();
+    listBuyerDocumentTemplatesMock.mockResolvedValue(buildBuyerTemplates());
     listCartonRulesMock.mockReset();
     listCartonRulesMock.mockResolvedValue(buildCartonRules());
     createCartonRuleMock.mockReset();
@@ -524,6 +536,7 @@ describe("received PO dashboard flows", () => {
       expect(createInvoiceDraftMock).toHaveBeenCalledWith("po_1", {
         number_of_cartons: 0,
         export_mode: "Air",
+        buyer_template_id: null,
         details: DEFAULT_INVOICE_DETAILS,
       });
     });
@@ -569,6 +582,7 @@ describe("received PO dashboard flows", () => {
         gross_weight: 12.5,
         number_of_cartons: 9,
         export_mode: "Air",
+        buyer_template_id: null,
         details: {
           ...DEFAULT_INVOICE_DETAILS,
           vendor_company_name: "Modern Sanskriti",

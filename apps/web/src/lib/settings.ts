@@ -83,6 +83,61 @@ export interface POBuilderDefaultsInput {
   default_size_ratio: Record<string, number>;
 }
 
+export type BuyerDocumentType = "invoice";
+export type BuyerInvoiceLayoutKey = "default_v1" | "landmark_v1";
+
+export interface BuyerDocumentTemplateDefaults {
+  marketplace_name: string;
+  supplier_name: string;
+  address: string;
+  gst_number: string;
+  pan_number: string;
+  fbs_name: string;
+  vendor_company_name: string;
+  supplier_city: string;
+  supplier_state: string;
+  supplier_pincode: string;
+  delivery_from_name: string;
+  delivery_from_address: string;
+  delivery_from_city: string;
+  delivery_from_pincode: string;
+  origin_country: string;
+  origin_state: string;
+  origin_district: string;
+  bill_to_name: string;
+  bill_to_address: string;
+  bill_to_gst: string;
+  bill_to_pan: string;
+  ship_to_name: string;
+  ship_to_address: string;
+  ship_to_gst: string;
+  stamp_image_url: string;
+}
+
+export interface BuyerDocumentTemplate {
+  id: string;
+  company_id: string;
+  name: string;
+  buyer_key: string;
+  document_type: BuyerDocumentType;
+  layout_key: BuyerInvoiceLayoutKey;
+  defaults: BuyerDocumentTemplateDefaults;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BuyerDocumentTemplateInput {
+  name: string;
+  buyer_key: string;
+  document_type: BuyerDocumentType;
+  layout_key: BuyerInvoiceLayoutKey;
+  defaults: BuyerDocumentTemplateDefaults;
+  is_default: boolean;
+  is_active: boolean;
+}
+
 export interface CartonCapacityRule {
   id: string;
   company_id: string;
@@ -93,6 +148,11 @@ export interface CartonCapacityRule {
 
 interface CartonRuleListResponse {
   items: CartonCapacityRule[];
+  total: number;
+}
+
+interface BuyerDocumentTemplateListResponse {
+  items: BuyerDocumentTemplate[];
   total: number;
 }
 
@@ -123,6 +183,38 @@ export async function updatePOBuilderDefaults(
   return apiRequest<POBuilderDefaults>("/settings/po-builder", {
     method: "PATCH",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function listBuyerDocumentTemplates(): Promise<BuyerDocumentTemplate[]> {
+  const response = await apiRequest<BuyerDocumentTemplateListResponse>(
+    "/settings/buyer-document-templates",
+  );
+  return response.items;
+}
+
+export async function createBuyerDocumentTemplate(
+  payload: BuyerDocumentTemplateInput,
+): Promise<BuyerDocumentTemplate> {
+  return apiRequest<BuyerDocumentTemplate>("/settings/buyer-document-templates", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateBuyerDocumentTemplate(
+  templateId: string,
+  payload: Partial<BuyerDocumentTemplateInput>,
+): Promise<BuyerDocumentTemplate> {
+  return apiRequest<BuyerDocumentTemplate>(`/settings/buyer-document-templates/${templateId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteBuyerDocumentTemplate(templateId: string): Promise<void> {
+  return apiRequest<void>(`/settings/buyer-document-templates/${templateId}`, {
+    method: "DELETE",
   });
 }
 

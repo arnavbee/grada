@@ -30,7 +30,12 @@ import {
   updateInvoice,
   updatePackingListCarton,
 } from "@/src/lib/received-po";
-import { getBrandProfile, type BrandProfile } from "@/src/lib/settings";
+import {
+  getBrandProfile,
+  listBuyerDocumentTemplates,
+  type BrandProfile,
+  type BuyerDocumentTemplate,
+} from "@/src/lib/settings";
 import {
   getStickerTemplate,
   listStickerTemplates,
@@ -311,6 +316,57 @@ function brandProfileToInvoiceDetails(profile: BrandProfile): InvoiceDetails {
   };
 }
 
+function normalizeBuyerKey(value: string | null | undefined): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function mergeBuyerTemplateDefaults(
+  base: InvoiceDetails,
+  template: BuyerDocumentTemplate | null,
+  distributor: string | null | undefined,
+): InvoiceDetails {
+  const merged: InvoiceDetails = { ...base };
+  if (template) {
+    for (const [key, value] of Object.entries(template.defaults)) {
+      if (typeof value === "string" && value.trim()) {
+        merged[key as keyof InvoiceDetails] = value;
+      }
+    }
+  }
+  if (!merged.marketplace_name.trim()) {
+    merged.marketplace_name = distributor || "Marketplace";
+  }
+  return merged;
+}
+
+function matchBuyerTemplate(
+  templates: BuyerDocumentTemplate[],
+  distributor: string | null | undefined,
+): BuyerDocumentTemplate | null {
+  const normalizedDistributor = normalizeBuyerKey(distributor);
+  if (!normalizedDistributor) {
+    return templates.find((template) => template.is_default) ?? null;
+  }
+  const exactMatch =
+    templates.find((template) => normalizeBuyerKey(template.buyer_key) === normalizedDistributor) ??
+    null;
+  if (exactMatch) {
+    return exactMatch;
+  }
+  const containsMatch =
+    templates.find((template) => {
+      const buyerKey = normalizeBuyerKey(template.buyer_key);
+      return buyerKey.length > 0 && normalizedDistributor.includes(buyerKey);
+    }) ?? null;
+  if (containsMatch) {
+    return containsMatch;
+  }
+  return templates.find((template) => template.is_default) ?? null;
+}
+
 export function ReceivedPODocumentsView({
   receivedPoId,
 }: ReceivedPODocumentsViewProps): JSX.Element {
@@ -324,6 +380,9 @@ export function ReceivedPODocumentsView({
   const [selectedBarcodeTemplate, setSelectedBarcodeTemplate] = useState<string>("styli");
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const [buyerTemplates, setBuyerTemplates] = useState<BuyerDocumentTemplate[]>([]);
+  const [selectedBuyerTemplateId, setSelectedBuyerTemplateId] = useState<string | null>(null);
+  const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
   const [packingList, setPackingList] = useState<PackingList | null>(null);
   const [numberOfCartons, setNumberOfCartons] = useState("0");
   const [exportMode, setExportMode] = useState<ExportMode>("Air");
@@ -357,6 +416,16 @@ export function ReceivedPODocumentsView({
       "Select template"
     );
   }, [selectedBarcodeTemplate, stickerTemplates]);
+  const selectedBuyerTemplate = useMemo(
+    () => buyerTemplates.find((template) => template.id === selectedBuyerTemplateId) ?? null,
+    [buyerTemplates, selectedBuyerTemplateId],
+  );
+  const buyerTemplateSummary = useMemo(() => {
+    if (!selectedBuyerTemplate) {
+      return "Current default layout";
+    }
+    return `${selectedBuyerTemplate.name} · ${selectedBuyerTemplate.layout_key}`;
+  }, [selectedBuyerTemplate]);
 
   useEffect(() => {
     let active = true;
@@ -368,6 +437,7 @@ export function ReceivedPODocumentsView({
           nextInvoice,
           nextPackingList,
           nextTemplates,
+          nextBuyerTemplates,
           nextBrandProfile,
         ] = await Promise.all([
           getReceivedPO(receivedPoId),
@@ -375,20 +445,32 @@ export function ReceivedPODocumentsView({
           getOptionalInvoice(receivedPoId),
           getOptionalPackingList(receivedPoId),
           loadTemplatesWithElements(),
+          listBuyerDocumentTemplates(),
           getBrandProfile(),
         ]);
         if (!active) {
           return;
         }
-        const defaultDetails = {
-          ...brandProfileToInvoiceDetails(nextBrandProfile),
-          marketplace_name: nextReceivedPO.distributor || "Marketplace",
-        };
+        const matchedBuyerTemplate =
+          (nextInvoice?.buyer_template_id
+            ? nextBuyerTemplates.find((template) => template.id === nextInvoice.buyer_template_id)
+            : null) ?? matchBuyerTemplate(nextBuyerTemplates, nextReceivedPO.distributor);
+        const defaultDetails = mergeBuyerTemplateDefaults(
+          {
+            ...brandProfileToInvoiceDetails(nextBrandProfile),
+            marketplace_name: nextReceivedPO.distributor || "Marketplace",
+          },
+          matchedBuyerTemplate,
+          nextReceivedPO.distributor,
+        );
         const defaultTemplateId = nextTemplates.find((template) => template.is_default)?.id ?? null;
         setReceivedPO(nextReceivedPO);
         setBarcodeJob(nextBarcodeJob);
         setActiveBarcodeJobId(nextBarcodeJob?.id ?? null);
         setStickerTemplates(nextTemplates);
+        setBuyerTemplates(nextBuyerTemplates);
+        setBrandProfile(nextBrandProfile);
+        setSelectedBuyerTemplateId(matchedBuyerTemplate?.id ?? null);
         setSelectedBarcodeTemplate(
           requestedTemplateId &&
             nextTemplates.some((template) => template.id === requestedTemplateId)
@@ -422,6 +504,24 @@ export function ReceivedPODocumentsView({
       active = false;
     };
   }, [receivedPoId, requestedTemplateId]);
+
+  useEffect(() => {
+    if (!receivedPO || !brandProfile) {
+      return;
+    }
+    const nextDefaultDetails = mergeBuyerTemplateDefaults(
+      {
+        ...brandProfileToInvoiceDetails(brandProfile),
+        marketplace_name: receivedPO.distributor || "Marketplace",
+      },
+      selectedBuyerTemplate,
+      receivedPO.distributor,
+    );
+    setDefaultInvoiceDetails(nextDefaultDetails);
+    if (!invoice) {
+      setInvoiceDetailsDraft(nextDefaultDetails);
+    }
+  }, [brandProfile, invoice, receivedPO, selectedBuyerTemplate]);
 
   useEffect(() => {
     const targetBarcodeJobId = activeBarcodeJobId ?? barcodeJob?.id ?? null;
@@ -648,9 +748,11 @@ export function ReceivedPODocumentsView({
       const nextInvoice = await createInvoiceDraft(receivedPoId, {
         number_of_cartons: Math.max(0, Number(numberOfCartons) || 0),
         export_mode: exportMode,
+        buyer_template_id: selectedBuyerTemplateId,
         details: invoiceDetailsDraft,
       });
       setInvoice(nextInvoice);
+      setSelectedBuyerTemplateId(nextInvoice.buyer_template_id ?? null);
       setNumberOfCartons(nextInvoice.number_of_cartons.toString());
       setExportMode(nextInvoice.export_mode);
       setGrossWeight(nextInvoice.gross_weight?.toString() ?? "");
@@ -671,9 +773,11 @@ export function ReceivedPODocumentsView({
         gross_weight: grossWeight ? Number(grossWeight) : null,
         number_of_cartons: Math.max(0, Number(numberOfCartons) || 0),
         export_mode: exportMode,
+        buyer_template_id: selectedBuyerTemplateId,
         details: invoiceDetailsDraft,
       });
       setInvoice(nextInvoice);
+      setSelectedBuyerTemplateId(nextInvoice.buyer_template_id ?? null);
       setNumberOfCartons(nextInvoice.number_of_cartons.toString());
       setExportMode(nextInvoice.export_mode);
       setInvoiceDetailsDraft(nextInvoice.details);
@@ -695,9 +799,11 @@ export function ReceivedPODocumentsView({
         (await createInvoiceDraft(receivedPoId, {
           number_of_cartons: Math.max(0, Number(numberOfCartons) || 0),
           export_mode: exportMode,
+          buyer_template_id: selectedBuyerTemplateId,
           details: invoiceDetailsDraft,
         }));
       setInvoice(ensuredInvoice);
+      setSelectedBuyerTemplateId(ensuredInvoice.buyer_template_id ?? null);
       setInvoiceDetailsDraft(ensuredInvoice.details);
       const generation = await generateInvoicePdf(receivedPoId);
       setInvoice((current) =>
@@ -729,9 +835,11 @@ export function ReceivedPODocumentsView({
         gross_weight: grossWeight ? Number(grossWeight) : null,
         number_of_cartons: Math.max(0, Number(numberOfCartons) || 0),
         export_mode: exportMode,
+        buyer_template_id: selectedBuyerTemplateId,
         details: invoiceDetailsDraft,
       });
       setInvoice(nextInvoice);
+      setSelectedBuyerTemplateId(nextInvoice.buyer_template_id ?? null);
       setInvoiceDetailsDraft(nextInvoice.details);
       setInvoiceDetailsDialogOpen(false);
       setStatusLine("Invoice details saved.");
@@ -756,9 +864,11 @@ export function ReceivedPODocumentsView({
         gross_weight: grossWeight ? Number(grossWeight) : null,
         number_of_cartons: Math.max(0, Number(numberOfCartons) || 0),
         export_mode: exportMode,
+        buyer_template_id: selectedBuyerTemplateId,
         details: defaultInvoiceDetails,
       });
       setInvoice(nextInvoice);
+      setSelectedBuyerTemplateId(nextInvoice.buyer_template_id ?? null);
       setInvoiceDetailsDraft(nextInvoice.details);
       setInvoiceDetailsDialogOpen(false);
       setStatusLine("Invoice defaults applied.");
@@ -1034,6 +1144,42 @@ export function ReceivedPODocumentsView({
                       </p>
                     </div>
                   </div>
+                  <div className="rounded-2xl border border-kira-warmgray/25 bg-kira-offwhite/40 p-4 dark:border-white/10 dark:bg-white/5">
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-end">
+                      <label className="block text-sm">
+                        <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                          Buyer template
+                        </span>
+                        <select
+                          className={DOC_INPUT_CLASS}
+                          onChange={(event) =>
+                            setSelectedBuyerTemplateId(event.target.value || null)
+                          }
+                          value={selectedBuyerTemplateId ?? ""}
+                        >
+                          <option value="">Use current default layout</option>
+                          {buyerTemplates.map((template) => (
+                            <option key={template.id} value={template.id}>
+                              {template.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <Button
+                        disabled={workingKey === "invoice-defaults"}
+                        onClick={handleUseDefaultInvoiceDetails}
+                        variant="secondary"
+                      >
+                        Apply template defaults
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-kira-midgray">
+                      {buyerTemplateSummary}
+                      {selectedBuyerTemplate
+                        ? ` · matched with buyer key "${selectedBuyerTemplate.buyer_key}"`
+                        : ""}
+                    </p>
+                  </div>
                   <div className="kira-muted-panel">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
@@ -1129,6 +1275,38 @@ export function ReceivedPODocumentsView({
                 </div>
               ) : (
                 <div className="space-y-3 text-sm text-kira-darkgray dark:text-gray-200">
+                  <div className="rounded-2xl border border-kira-warmgray/25 bg-kira-offwhite/40 p-4 dark:border-white/10 dark:bg-white/5">
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-end">
+                      <label className="block text-sm">
+                        <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                          Buyer template
+                        </span>
+                        <select
+                          className={DOC_INPUT_CLASS}
+                          onChange={(event) =>
+                            setSelectedBuyerTemplateId(event.target.value || null)
+                          }
+                          value={selectedBuyerTemplateId ?? ""}
+                        >
+                          <option value="">Use current default layout</option>
+                          {buyerTemplates.map((template) => (
+                            <option key={template.id} value={template.id}>
+                              {template.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <Button onClick={handleUseDefaultInvoiceDetails} variant="secondary">
+                        Apply template defaults
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-kira-midgray">
+                      {buyerTemplateSummary}
+                      {selectedBuyerTemplate
+                        ? ` · matched with buyer key "${selectedBuyerTemplate.buyer_key}"`
+                        : ""}
+                    </p>
+                  </div>
                   <div className="kira-muted-panel">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>

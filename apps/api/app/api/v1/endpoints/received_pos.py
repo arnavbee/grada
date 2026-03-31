@@ -12,6 +12,7 @@ from app.config.hsn_codes import get_hsn_code
 from app.core.audit import log_audit
 from app.db.session import get_db
 from app.models.barcode_job import BarcodeJob
+from app.models.buyer_document_template import BuyerDocumentTemplate
 from app.models.company_settings import CompanySettings
 from app.models.invoice import Invoice, InvoiceLineItem
 from app.models.packing_list import PackingList, PackingListCarton
@@ -46,6 +47,14 @@ from app.schemas.received_po import (
     ReceivedPOUploadResponse,
 )
 from app.schemas.sticker_template import CreateBarcodeJobRequest
+from app.services.buyer_document_templates import (
+    BUYER_DOCUMENT_TYPE_INVOICE,
+    build_template_snapshot,
+    choose_matching_template,
+    json_dumps,
+    merge_invoice_details,
+    resolve_layout_key,
+)
 from app.services.object_storage import get_object_storage_service
 from app.services.job_queue import (
     JOB_TYPE_RECEIVED_PO_BARCODE_PDF,
@@ -109,6 +118,9 @@ def _to_invoice_response(record: Invoice) -> InvoiceResponse:
         file_url=record.file_url,
         created_at=record.created_at,
         updated_at=record.updated_at,
+        buyer_template_id=record.buyer_template_id,
+        buyer_template_name=record.buyer_template_name,
+        layout_key=record.layout_key,
         details=details,
         line_items=record.line_items,
     )
@@ -165,7 +177,7 @@ def _po_builder_defaults(company_settings: CompanySettings | None) -> dict[str, 
     return defaults if isinstance(defaults, dict) else {}
 
 
-def _default_invoice_details(
+def _company_default_invoice_details(
     company_settings: CompanySettings | None, received_po: ReceivedPO | None = None
 ) -> InvoiceDetails:
     profile = _brand_profile(company_settings)
@@ -200,14 +212,97 @@ def _default_invoice_details(
     )
 
 
+def _default_invoice_details(
+    company_settings: CompanySettings | None,
+    received_po: ReceivedPO | None = None,
+    buyer_template: BuyerDocumentTemplate | None = None,
+) -> InvoiceDetails:
+    company_defaults = _company_default_invoice_details(company_settings, received_po)
+    return merge_invoice_details(
+        company_defaults,
+        template=buyer_template,
+        distributor=received_po.distributor if received_po else None,
+    )
+
+
 def _resolve_invoice_details(
     payload_details: InvoiceDetails | None,
     company_settings: CompanySettings | None,
     received_po: ReceivedPO | None = None,
+    buyer_template: BuyerDocumentTemplate | None = None,
 ) -> InvoiceDetails:
-    if payload_details is not None:
-        return payload_details
-    return _default_invoice_details(company_settings, received_po)
+    company_defaults = _company_default_invoice_details(company_settings, received_po)
+    return merge_invoice_details(
+        company_defaults,
+        template=buyer_template,
+        distributor=received_po.distributor if received_po else None,
+        override=payload_details,
+    )
+
+
+def _list_buyer_document_templates(db: Session, company_id: str) -> list[BuyerDocumentTemplate]:
+    return (
+        db.query(BuyerDocumentTemplate)
+        .filter(
+            BuyerDocumentTemplate.company_id == company_id,
+            BuyerDocumentTemplate.document_type == BUYER_DOCUMENT_TYPE_INVOICE,
+            BuyerDocumentTemplate.is_active.is_(True),
+        )
+        .order_by(BuyerDocumentTemplate.is_default.desc(), BuyerDocumentTemplate.name.asc())
+        .all()
+    )
+
+
+def _get_buyer_document_template_by_id(
+    db: Session,
+    company_id: str,
+    template_id: str,
+) -> BuyerDocumentTemplate | None:
+    return (
+        db.query(BuyerDocumentTemplate)
+        .filter(
+            BuyerDocumentTemplate.id == template_id,
+            BuyerDocumentTemplate.company_id == company_id,
+            BuyerDocumentTemplate.document_type == BUYER_DOCUMENT_TYPE_INVOICE,
+        )
+        .first()
+    )
+
+
+def _resolve_buyer_document_template(
+    db: Session,
+    company_id: str,
+    received_po: ReceivedPO,
+    *,
+    buyer_template_id: str | None = None,
+    existing_invoice: Invoice | None = None,
+) -> BuyerDocumentTemplate | None:
+    if buyer_template_id:
+        template = _get_buyer_document_template_by_id(db, company_id, buyer_template_id)
+        if template is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Buyer document template not found.')
+        return template
+
+    if existing_invoice and existing_invoice.buyer_template_id:
+        template = _get_buyer_document_template_by_id(db, company_id, existing_invoice.buyer_template_id)
+        return template
+
+    return choose_matching_template(_list_buyer_document_templates(db, company_id), received_po.distributor)
+
+
+def _apply_buyer_template_snapshot(
+    invoice: Invoice,
+    template: BuyerDocumentTemplate | None,
+    *,
+    received_po: ReceivedPO,
+    resolved_details: InvoiceDetails,
+) -> None:
+    invoice.buyer_template_id = template.id if template else None
+    invoice.buyer_template_name = template.name if template else None
+    invoice.layout_key = resolve_layout_key(template)
+    invoice.template_snapshot_json = json_dumps(
+        build_template_snapshot(template, distributor=received_po.distributor, merged_details=resolved_details)
+    )
 
 
 def _apply_invoice_details_to_line_items(
@@ -386,6 +481,7 @@ def _refresh_invoice_snapshot(
     received_po: ReceivedPO,
     company_settings: CompanySettings,
     *,
+    buyer_template: BuyerDocumentTemplate | None = None,
     details_override: InvoiceDetails | None = None,
 ) -> None:
     igst_rate = float(invoice.igst_rate or _get_default_igst_rate(company_settings))
@@ -424,6 +520,13 @@ def _refresh_invoice_snapshot(
     invoice.total_quantity = total_quantity
     invoice.total_amount_words = total_amount_words
     invoice.details_json = invoice_details.model_dump_json()
+    if buyer_template is not None:
+        _apply_buyer_template_snapshot(
+            invoice,
+            buyer_template,
+            received_po=received_po,
+            resolved_details=invoice_details,
+        )
 
 
 def _get_invoice_or_404(db: Session, company_id: str, received_po_id: str) -> Invoice:
@@ -771,6 +874,21 @@ def create_invoice_draft(
     ).first()
     if existing is not None:
         company_settings = _get_company_settings(db, current_user.company_id)
+        buyer_template = _resolve_buyer_document_template(
+            db,
+            current_user.company_id,
+            record,
+            buyer_template_id=payload.buyer_template_id,
+            existing_invoice=existing,
+        )
+        details_override = None
+        if payload.details is not None or payload.buyer_template_id is not None:
+            details_override = _resolve_invoice_details(
+                payload.details,
+                company_settings,
+                record,
+                buyer_template=buyer_template,
+            )
         existing.number_of_cartons = payload.number_of_cartons
         existing.export_mode = payload.export_mode
         _refresh_invoice_snapshot(
@@ -778,7 +896,8 @@ def create_invoice_draft(
             existing,
             record,
             company_settings,
-            details_override=payload.details,
+            buyer_template=buyer_template if payload.buyer_template_id is not None else None,
+            details_override=details_override,
         )
         if existing.status == 'final':
             existing.status = 'draft'
@@ -794,8 +913,19 @@ def create_invoice_draft(
         return _to_invoice_response(existing)
 
     company_settings = _get_company_settings(db, current_user.company_id)
+    buyer_template = _resolve_buyer_document_template(
+        db,
+        current_user.company_id,
+        record,
+        buyer_template_id=payload.buyer_template_id,
+    )
     igst_rate = _get_default_igst_rate(company_settings)
-    invoice_details = _resolve_invoice_details(payload.details, company_settings, record)
+    invoice_details = _resolve_invoice_details(
+        payload.details,
+        company_settings,
+        record,
+        buyer_template=buyer_template,
+    )
     (
         line_item_rows,
         total_quantity,
@@ -833,6 +963,12 @@ def create_invoice_draft(
         total_quantity=total_quantity,
         total_amount_words=total_amount_words,
         details_json=invoice_details.model_dump_json(),
+        buyer_template_id=buyer_template.id if buyer_template else None,
+        buyer_template_name=buyer_template.name if buyer_template else None,
+        layout_key=resolve_layout_key(buyer_template),
+        template_snapshot_json=json_dumps(
+            build_template_snapshot(buyer_template, distributor=record.distributor, merged_details=invoice_details)
+        ),
         status='draft',
     )
     company_settings.invoice_next_number += 1
@@ -884,14 +1020,29 @@ def update_invoice(
         invoice.number_of_cartons = payload.number_of_cartons
     if payload.export_mode is not None:
         invoice.export_mode = payload.export_mode
-    if payload.details is not None:
-        company_settings = _get_company_settings(db, current_user.company_id)
+    company_settings = _get_company_settings(db, current_user.company_id)
+    buyer_template = _resolve_buyer_document_template(
+        db,
+        current_user.company_id,
+        received_po,
+        buyer_template_id=payload.buyer_template_id,
+        existing_invoice=invoice,
+    )
+    details_override = None
+    if payload.details is not None or payload.buyer_template_id is not None:
+        details_override = _resolve_invoice_details(
+            payload.details,
+            company_settings,
+            received_po,
+            buyer_template=buyer_template,
+        )
         _refresh_invoice_snapshot(
             db,
             invoice,
             received_po,
             company_settings,
-            details_override=payload.details,
+            buyer_template=buyer_template if payload.buyer_template_id is not None else None,
+            details_override=details_override,
         )
     log_audit(
         db,
@@ -918,7 +1069,13 @@ def generate_invoice_pdf_endpoint(
     received_po = _get_received_po_or_404(db, current_user.company_id, received_po_id)
     invoice = _get_invoice_or_404(db, current_user.company_id, received_po_id)
     company_settings = _get_company_settings(db, current_user.company_id)
-    _refresh_invoice_snapshot(db, invoice, received_po, company_settings)
+    buyer_template = _resolve_buyer_document_template(
+        db,
+        current_user.company_id,
+        received_po,
+        existing_invoice=invoice,
+    )
+    _refresh_invoice_snapshot(db, invoice, received_po, company_settings, buyer_template=buyer_template)
     invoice.status = 'draft'
     invoice.file_url = None
     enqueue_processing_job(

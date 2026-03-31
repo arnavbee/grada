@@ -32,6 +32,7 @@ from app.models.invoice import Invoice, InvoiceLineItem
 from app.models.packing_list import PackingList
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
 from app.models.sticker_template import StickerElement, StickerTemplate
+from app.services.buyer_document_templates import DEFAULT_INVOICE_LAYOUT_KEY, LANDMARK_INVOICE_LAYOUT_KEY
 from app.services.object_storage import get_object_storage_service
 from app.utils.amount_words import convert_to_words
 
@@ -1842,11 +1843,16 @@ def _stamp_flowable(stamp_image_url: str) -> PlatypusImage | Paragraph:
     return Paragraph('&nbsp;', _invoice_styles()['small'])
 
 
-def _build_invoice_pdf(
+def _build_invoice_pdf_layout(
     invoice: Invoice,
     received_po: ReceivedPO,
     line_items: list[InvoiceLineItem],
     company_settings: CompanySettings | None,
+    *,
+    document_title: str = 'COMMERCIAL INVOICE',
+    bill_to_label: str = 'Bill To:',
+    ship_to_label: str = 'Ship To :',
+    signature_label: str = 'Receivers Signature and Date',
 ) -> bytes:
     profile = _invoice_profile(invoice, company_settings)
     marketplace_name = profile['marketplace_name'] or str(received_po.distributor or '').strip()
@@ -1905,14 +1911,14 @@ def _build_invoice_pdf(
         style=styles['small'],
     )
     bill_to_lines = [
-        'Bill To:',
+        bill_to_label,
         profile['bill_to_name'] or '-',
         *_invoice_address_lines(profile['bill_to_address']),
         f'Billed To GST NO: {profile["bill_to_gst"] or "-"}',
         f'Billed To PAN No: {profile["bill_to_pan"] or "-"}',
     ]
     ship_to_lines = [
-        'Ship To :',
+        ship_to_label,
         profile['ship_to_name'] or '-',
         *_invoice_address_lines(profile['ship_to_address']),
         f'Ship To GST NO: {profile["ship_to_gst"] or "-"}',
@@ -1967,7 +1973,7 @@ def _build_invoice_pdf(
     )
     header_wrapper = Table(
         [
-            [_rich_paragraph('COMMERCIAL INVOICE', styles['title'], bold=True)],
+            [_rich_paragraph(document_title, styles['title'], bold=True)],
             [header_content],
         ],
         colWidths=[267 * mm],
@@ -2164,7 +2170,7 @@ def _build_invoice_pdf(
         [[
             _stamp_flowable(profile['stamp_image_url']),
             _paragraph('', styles['cell']),
-            _paragraph('Receivers Signature and Date', styles['cell']),
+            _paragraph(signature_label, styles['cell']),
         ]],
         colWidths=[90 * mm, 105 * mm, 72 * mm],
     )
@@ -2186,6 +2192,45 @@ def _build_invoice_pdf(
     with _debug_friendly_pdf_streams():
         document.build(story, canvasmaker=_uncompressed_canvas)
     return buffer.getvalue()
+
+
+def _build_invoice_pdf_default_v1(
+    invoice: Invoice,
+    received_po: ReceivedPO,
+    line_items: list[InvoiceLineItem],
+    company_settings: CompanySettings | None,
+) -> bytes:
+    return _build_invoice_pdf_layout(invoice, received_po, line_items, company_settings)
+
+
+def _build_invoice_pdf_landmark_v1(
+    invoice: Invoice,
+    received_po: ReceivedPO,
+    line_items: list[InvoiceLineItem],
+    company_settings: CompanySettings | None,
+) -> bytes:
+    return _build_invoice_pdf_layout(
+        invoice,
+        received_po,
+        line_items,
+        company_settings,
+        document_title='LANDMARK COMMERCIAL INVOICE',
+        bill_to_label='Landmark Bill To:',
+        ship_to_label='Landmark Ship To:',
+        signature_label='Landmark Receiver Signature and Date',
+    )
+
+
+def _build_invoice_pdf(
+    invoice: Invoice,
+    received_po: ReceivedPO,
+    line_items: list[InvoiceLineItem],
+    company_settings: CompanySettings | None,
+) -> bytes:
+    layout_key = str(invoice.layout_key or DEFAULT_INVOICE_LAYOUT_KEY).strip() or DEFAULT_INVOICE_LAYOUT_KEY
+    if layout_key == LANDMARK_INVOICE_LAYOUT_KEY:
+        return _build_invoice_pdf_landmark_v1(invoice, received_po, line_items, company_settings)
+    return _build_invoice_pdf_default_v1(invoice, received_po, line_items, company_settings)
 
 
 def generate_barcode_job_pdf(barcode_job_id: str) -> None:
