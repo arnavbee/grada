@@ -50,16 +50,17 @@ const heroBadges = ["Catalog -> PO -> dispatch"];
 
 const coverageBlocks = [
   {
-    title: "One source of truth",
-    detail: "Product, PO, and dispatch data stay connected.",
+    title: "One record, reused everywhere",
+    detail: "The same SKU-level record drives catalog fields, PO lines, and dispatch documents.",
   },
   {
-    title: "One workflow",
-    detail: "Catalog, PO review, and dispatch outputs live in one flow.",
+    title: "No copy-paste handoffs",
+    detail: "Teams move from catalog to PO check to invoice/packing list in one connected path.",
   },
   {
-    title: "One review",
-    detail: "Approve once, then reuse that data downstream.",
+    title: "Approve once, lock downstream docs",
+    detail:
+      "After PO approval, barcodes, invoices, and stickers pull from that exact approved data.",
   },
 ];
 
