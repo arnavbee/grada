@@ -89,23 +89,20 @@ export function MarketplaceExportsModuleCard({
           <p className="mt-3 text-sm leading-7 text-kira-darkgray">{detail}</p>
         </div>
 
-        <div
-          aria-hidden={!isPreviewOpen}
-          className={`pointer-events-none absolute inset-0 bg-[#0f1117] transition-opacity duration-200 ${
-            isPreviewOpen ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <div className="h-full overflow-hidden">
-            <iframe
-              aria-label="Animated Marketplace Exports workflow preview"
-              className="kira-infographic-embed"
-              key={previewRun}
-              loading="lazy"
-              src={`${animationSrc}?preview=${previewRun}`}
-              title="Animated Marketplace Exports workflow preview"
-            />
+        {isPreviewOpen ? (
+          <div aria-hidden="false" className="pointer-events-none absolute inset-0 bg-kira-brown">
+            <div className="h-full overflow-hidden">
+              <iframe
+                aria-label="Animated Marketplace Exports workflow preview"
+                className="kira-infographic-embed"
+                key={previewRun}
+                loading="lazy"
+                src={`${animationSrc}?preview=${previewRun}`}
+                title="Animated Marketplace Exports workflow preview"
+              />
+            </div>
           </div>
-        </div>
+        ) : null}
       </Card>
     </div>
   );

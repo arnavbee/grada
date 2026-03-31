@@ -15,6 +15,7 @@ from app.models.barcode_job import BarcodeJob
 from app.models.buyer_document_template import BuyerDocumentTemplate
 from app.models.company_settings import CompanySettings
 from app.models.invoice import Invoice, InvoiceLineItem
+from app.models.marketplace_document_template import MarketplaceDocumentTemplate
 from app.models.packing_list import PackingList, PackingListCarton
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
 from app.models.sticker_template import StickerTemplate
@@ -30,7 +31,9 @@ from app.schemas.invoice import (
 from app.schemas.packing_list import (
     PackingListCartonResponse,
     PackingListCartonUpdateRequest,
+    PackingListCreateRequest,
     PackingListCreateResponse,
+    PackingListGeneratePdfRequest,
     PackingListGeneratePdfResponse,
     PackingListResponse,
 )
@@ -62,6 +65,13 @@ from app.services.job_queue import (
     JOB_TYPE_RECEIVED_PO_PACKING_LIST_PDF,
     JOB_TYPE_RECEIVED_PO_PARSE,
     enqueue_processing_job,
+)
+from app.services.marketplace_document_templates import (
+    DOCUMENT_TYPE_BARCODE,
+    DOCUMENT_TYPE_PACKING_LIST,
+    dumps_json as template_dumps_json,
+    loads_json as template_loads_json,
+    normalize_marketplace_key,
 )
 from app.services.packing_list_service import assign_cartons_for_received_po
 from app.utils.amount_words import convert_to_words
@@ -134,6 +144,9 @@ def _to_packing_list_response(record: PackingList) -> PackingListResponse:
         invoice_id=record.invoice_id,
         invoice_number=record.invoice_number,
         invoice_date=record.invoice_date,
+        template_id=record.template_id,
+        template_name=record.template_name,
+        layout_key=record.layout_key,
         status=record.status,
         file_url=record.file_url,
         created_at=record.created_at,
@@ -303,6 +316,208 @@ def _apply_buyer_template_snapshot(
     invoice.template_snapshot_json = json_dumps(
         build_template_snapshot(template, distributor=received_po.distributor, merged_details=resolved_details)
     )
+
+
+def _list_marketplace_document_templates(
+    db: Session,
+    company_id: str,
+    *,
+    document_type: str,
+) -> list[MarketplaceDocumentTemplate]:
+    return (
+        db.query(MarketplaceDocumentTemplate)
+        .filter(
+            MarketplaceDocumentTemplate.company_id == company_id,
+            MarketplaceDocumentTemplate.document_type == document_type,
+            MarketplaceDocumentTemplate.is_active.is_(True),
+        )
+        .order_by(
+            MarketplaceDocumentTemplate.is_default.desc(),
+            MarketplaceDocumentTemplate.updated_at.desc(),
+        )
+        .all()
+    )
+
+
+def _get_marketplace_document_template_by_id(
+    db: Session,
+    company_id: str,
+    template_id: str,
+    *,
+    document_type: str,
+) -> MarketplaceDocumentTemplate | None:
+    return (
+        db.query(MarketplaceDocumentTemplate)
+        .filter(
+            MarketplaceDocumentTemplate.id == template_id,
+            MarketplaceDocumentTemplate.company_id == company_id,
+            MarketplaceDocumentTemplate.document_type == document_type,
+        )
+        .first()
+    )
+
+
+def _choose_matching_marketplace_template(
+    templates: list[MarketplaceDocumentTemplate],
+    marketplace_name: str | None,
+) -> MarketplaceDocumentTemplate | None:
+    if not templates:
+        return None
+    normalized_name = ''
+    if marketplace_name:
+        try:
+            normalized_name = normalize_marketplace_key(marketplace_name)
+        except ValueError:
+            normalized_name = ''
+    if normalized_name:
+        exact_match = next((template for template in templates if template.marketplace_key == normalized_name), None)
+        if exact_match is not None:
+            return exact_match
+        contains_match = next(
+            (
+                template
+                for template in templates
+                if template.marketplace_key and normalized_name.find(template.marketplace_key) >= 0
+            ),
+            None,
+        )
+        if contains_match is not None:
+            return contains_match
+    return next((template for template in templates if template.is_default), None)
+
+
+def _resolve_packing_list_template(
+    db: Session,
+    company_id: str,
+    received_po: ReceivedPO,
+    *,
+    template_id: str | None = None,
+    existing_packing_list: PackingList | None = None,
+) -> MarketplaceDocumentTemplate | None:
+    if template_id:
+        template = _get_marketplace_document_template_by_id(
+            db,
+            company_id,
+            template_id,
+            document_type=DOCUMENT_TYPE_PACKING_LIST,
+        )
+        if template is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Marketplace template not found.')
+        return template
+    if existing_packing_list and existing_packing_list.template_id:
+        return _get_marketplace_document_template_by_id(
+            db,
+            company_id,
+            existing_packing_list.template_id,
+            document_type=DOCUMENT_TYPE_PACKING_LIST,
+        )
+    return _choose_matching_marketplace_template(
+        _list_marketplace_document_templates(db, company_id, document_type=DOCUMENT_TYPE_PACKING_LIST),
+        received_po.distributor,
+    )
+
+
+def _resolve_packing_list_layout_key(template: MarketplaceDocumentTemplate | None) -> str:
+    if template is None:
+        return 'default_v1'
+    layout = template_loads_json(template.layout_json)
+    layout_key = layout.get('layout_key')
+    if isinstance(layout_key, str) and layout_key.strip():
+        return layout_key.strip()
+    return 'default_v1'
+
+
+def _build_packing_list_template_snapshot(
+    template: MarketplaceDocumentTemplate | None,
+    *,
+    distributor: str | None,
+) -> dict[str, object]:
+    if template is None:
+        return {
+            'template_id': None,
+            'template_name': None,
+            'marketplace_key': None,
+            'document_type': DOCUMENT_TYPE_PACKING_LIST,
+            'layout_key': 'default_v1',
+            'layout': {},
+            'matched_from_distributor': distributor,
+        }
+    return {
+        'template_id': template.id,
+        'template_name': template.name,
+        'marketplace_key': template.marketplace_key,
+        'document_type': template.document_type,
+        'layout_key': _resolve_packing_list_layout_key(template),
+        'layout': template_loads_json(template.layout_json),
+        'matched_from_distributor': distributor,
+    }
+
+
+def _apply_packing_list_template_snapshot(
+    packing_list: PackingList,
+    template: MarketplaceDocumentTemplate | None,
+    *,
+    distributor: str | None,
+) -> None:
+    packing_list.template_id = template.id if template else None
+    packing_list.template_name = template.name if template else None
+    packing_list.layout_key = _resolve_packing_list_layout_key(template)
+    packing_list.template_snapshot_json = template_dumps_json(
+        _build_packing_list_template_snapshot(template, distributor=distributor)
+    )
+
+
+def _resolve_barcode_marketplace_template(
+    db: Session,
+    company_id: str,
+    received_po: ReceivedPO,
+    *,
+    template_id: str | None = None,
+) -> MarketplaceDocumentTemplate | None:
+    if template_id:
+        template = _get_marketplace_document_template_by_id(
+            db,
+            company_id,
+            template_id,
+            document_type=DOCUMENT_TYPE_BARCODE,
+        )
+        if template is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Marketplace template not found.')
+        return template
+    return _choose_matching_marketplace_template(
+        _list_marketplace_document_templates(db, company_id, document_type=DOCUMENT_TYPE_BARCODE),
+        received_po.distributor,
+    )
+
+
+def _build_barcode_template_snapshot(
+    template: MarketplaceDocumentTemplate | None,
+    *,
+    distributor: str | None,
+    template_kind: str,
+    sticker_template_id: str | None,
+) -> dict[str, object]:
+    if template is None:
+        return {
+            'template_id': None,
+            'template_name': None,
+            'marketplace_key': None,
+            'document_type': DOCUMENT_TYPE_BARCODE,
+            'template_kind': template_kind,
+            'sticker_template_id': sticker_template_id,
+            'layout': {},
+            'matched_from_distributor': distributor,
+        }
+    return {
+        'template_id': template.id,
+        'template_name': template.name,
+        'marketplace_key': template.marketplace_key,
+        'document_type': template.document_type,
+        'template_kind': template_kind,
+        'sticker_template_id': sticker_template_id,
+        'layout': template_loads_json(template.layout_json),
+        'matched_from_distributor': distributor,
+    }
 
 
 def _apply_invoice_details_to_line_items(
@@ -784,13 +999,33 @@ def create_barcode_job(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Confirm the received PO before generating documents.')
 
     next_payload = payload or CreateBarcodeJobRequest()
-    if next_payload.template_kind == 'custom':
-        if not next_payload.template_id:
+    marketplace_template = _resolve_barcode_marketplace_template(
+        db,
+        current_user.company_id,
+        record,
+        template_id=next_payload.marketplace_template_id,
+    )
+    resolved_template_kind = next_payload.template_kind
+    resolved_template_id = next_payload.template_id
+    if marketplace_template is not None:
+        layout = template_loads_json(marketplace_template.layout_json)
+        layout_template_kind = str(layout.get('sticker_template_kind') or '').strip()
+        layout_template_id = str(layout.get('sticker_template_id') or '').strip() or None
+        if (
+            layout_template_kind in {'styli', 'custom'}
+            and next_payload.template_kind == 'styli'
+            and next_payload.template_id is None
+        ):
+            resolved_template_kind = layout_template_kind
+            resolved_template_id = layout_template_id
+
+    if resolved_template_kind == 'custom':
+        if not resolved_template_id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Custom template selection is required.')
         template = (
             db.query(StickerTemplate)
             .filter(
-                StickerTemplate.id == next_payload.template_id,
+                StickerTemplate.id == resolved_template_id,
                 StickerTemplate.company_id == current_user.company_id,
             )
             .first()
@@ -802,8 +1037,18 @@ def create_barcode_job(
         id=str(uuid4()),
         received_po_id=record.id,
         status='pending',
-        template_kind=next_payload.template_kind,
-        template_id=next_payload.template_id,
+        template_kind=resolved_template_kind,
+        template_id=resolved_template_id,
+        marketplace_template_id=marketplace_template.id if marketplace_template else None,
+        marketplace_template_name=marketplace_template.name if marketplace_template else None,
+        template_snapshot_json=template_dumps_json(
+            _build_barcode_template_snapshot(
+                marketplace_template,
+                distributor=record.distributor,
+                template_kind=resolved_template_kind,
+                sticker_template_id=resolved_template_id,
+            )
+        ),
         total_stickers=len(record.items),
     )
     db.add(job)
@@ -823,7 +1068,12 @@ def create_barcode_job(
         input_ref=record.file_url,
     )
     db.commit()
-    return BarcodeJobCreateResponse(job_id=job.id, status=job.status)
+    return BarcodeJobCreateResponse(
+        job_id=job.id,
+        status=job.status,
+        marketplace_template_id=job.marketplace_template_id,
+        marketplace_template_name=job.marketplace_template_name,
+    )
 
 
 @router.get('/{received_po_id}/barcode/status', response_model=BarcodeJobResponse)
@@ -1092,6 +1342,7 @@ def generate_invoice_pdf_endpoint(
 @router.post('/{received_po_id}/packing-list', response_model=PackingListCreateResponse, status_code=status.HTTP_201_CREATED)
 def create_packing_list(
     received_po_id: str,
+    payload: PackingListCreateRequest | None = Body(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles('admin', 'manager', 'operator')),
 ) -> PackingListCreateResponse:
@@ -1110,11 +1361,24 @@ def create_packing_list(
             detail='Create an invoice draft before generating a packing list.',
         )
 
+    packing_template = _resolve_packing_list_template(
+        db,
+        current_user.company_id,
+        record,
+        template_id=payload.template_id if payload else None,
+    )
+
     packing_list, total_cartons, total_pieces = assign_cartons_for_received_po(
         db,
         received_po=record,
         company_id=current_user.company_id,
         invoice=invoice,
+        template_id=packing_template.id if packing_template else None,
+        template_name=packing_template.name if packing_template else None,
+        layout_key=_resolve_packing_list_layout_key(packing_template),
+        template_snapshot_json=template_dumps_json(
+            _build_packing_list_template_snapshot(packing_template, distributor=record.distributor)
+        ),
     )
     log_audit(
         db,
@@ -1128,6 +1392,9 @@ def create_packing_list(
         packing_list_id=packing_list.id,
         total_cartons=total_cartons,
         total_pieces=total_pieces,
+        template_id=packing_list.template_id,
+        template_name=packing_list.template_name,
+        layout_key=packing_list.layout_key,
     )
 
 
@@ -1181,11 +1448,20 @@ def update_packing_list_carton(
 @router.post('/{received_po_id}/packing-list/generate-pdf', response_model=PackingListGeneratePdfResponse)
 def generate_packing_list_pdf_endpoint(
     received_po_id: str,
+    payload: PackingListGeneratePdfRequest | None = Body(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles('admin', 'manager', 'operator')),
 ) -> PackingListGeneratePdfResponse:
-    _get_received_po_or_404(db, current_user.company_id, received_po_id)
+    record = _get_received_po_or_404(db, current_user.company_id, received_po_id)
     packing_list = _get_packing_list_or_404(db, current_user.company_id, received_po_id)
+    packing_template = _resolve_packing_list_template(
+        db,
+        current_user.company_id,
+        record,
+        template_id=payload.template_id if payload else None,
+        existing_packing_list=packing_list,
+    )
+    _apply_packing_list_template_snapshot(packing_list, packing_template, distributor=record.distributor)
     packing_list.status = 'draft'
     packing_list.file_url = None
     enqueue_processing_job(
@@ -1200,4 +1476,7 @@ def generate_packing_list_pdf_endpoint(
         packing_list_id=packing_list.id,
         status=packing_list.status,
         file_url=packing_list.file_url,
+        template_id=packing_list.template_id,
+        template_name=packing_list.template_name,
+        layout_key=packing_list.layout_key,
     )

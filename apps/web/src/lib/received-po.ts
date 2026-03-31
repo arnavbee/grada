@@ -89,6 +89,8 @@ export interface BarcodeJob {
   status: BarcodeJobStatus;
   template_kind: StickerTemplateKind;
   template_id: string | null;
+  marketplace_template_id: string | null;
+  marketplace_template_name: string | null;
   file_url: string | null;
   total_stickers: number;
   total_pages: number;
@@ -98,6 +100,8 @@ export interface BarcodeJob {
 interface BarcodeJobCreateResponse {
   job_id: string;
   status: BarcodeJobStatus;
+  marketplace_template_id: string | null;
+  marketplace_template_name: string | null;
 }
 
 export interface Invoice {
@@ -162,22 +166,39 @@ export interface PackingList {
   invoice_id: string | null;
   invoice_number: string | null;
   invoice_date: string | null;
+  template_id: string | null;
+  template_name: string | null;
+  layout_key: string;
   status: PackingListStatus;
   file_url: string | null;
   created_at: string;
   cartons: PackingListCarton[];
 }
 
+export interface PackingListCreateInput {
+  template_id?: string | null;
+}
+
 export interface PackingListCreateResponse {
   packing_list_id: string;
   total_cartons: number;
   total_pieces: number;
+  template_id: string | null;
+  template_name: string | null;
+  layout_key: string;
+}
+
+export interface PackingListGeneratePdfInput {
+  template_id?: string | null;
 }
 
 interface PackingListGeneratePdfResponse {
   packing_list_id: string;
   status: PackingListStatus;
   file_url: string | null;
+  template_id: string | null;
+  template_name: string | null;
+  layout_key: string;
 }
 
 interface ReceivedPOUploadResponse {
@@ -264,7 +285,11 @@ export async function confirmReceivedPO(receivedPoId: string): Promise<ReceivedP
 
 export async function createBarcodeJob(
   receivedPoId: string,
-  payload?: { template_kind?: StickerTemplateKind; template_id?: string | null },
+  payload?: {
+    template_kind?: StickerTemplateKind;
+    template_id?: string | null;
+    marketplace_template_id?: string | null;
+  },
 ): Promise<BarcodeJobCreateResponse> {
   return apiRequest<BarcodeJobCreateResponse>(`/received-pos/${receivedPoId}/barcode`, {
     method: "POST",
@@ -330,9 +355,13 @@ export async function getPackingList(receivedPoId: string): Promise<PackingList>
   return apiRequest<PackingList>(`/received-pos/${receivedPoId}/packing-list`);
 }
 
-export async function createPackingList(receivedPoId: string): Promise<PackingListCreateResponse> {
+export async function createPackingList(
+  receivedPoId: string,
+  payload: PackingListCreateInput = {},
+): Promise<PackingListCreateResponse> {
   return apiRequest<PackingListCreateResponse>(`/received-pos/${receivedPoId}/packing-list`, {
     method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 
@@ -352,11 +381,13 @@ export async function updatePackingListCarton(
 
 export async function generatePackingListPdf(
   receivedPoId: string,
+  payload: PackingListGeneratePdfInput = {},
 ): Promise<PackingListGeneratePdfResponse> {
   return apiRequest<PackingListGeneratePdfResponse>(
     `/received-pos/${receivedPoId}/packing-list/generate-pdf`,
     {
       method: "POST",
+      body: JSON.stringify(payload),
     },
   );
 }

@@ -117,7 +117,8 @@ class ProductMeasurementResponse(BaseModel):
 
 
 class MarketplaceExportCreateRequest(BaseModel):
-    marketplace: str = Field(min_length=2, max_length=64)
+    marketplace: str | None = Field(default=None, min_length=2, max_length=64)
+    template_id: str | None = Field(default=None, max_length=36)
     export_format: ExportFormat = 'csv'
     filters: dict[str, Any] | None = None
 
@@ -129,6 +130,8 @@ class MarketplaceExportResponse(BaseModel):
     company_id: str
     requested_by_user_id: str | None
     marketplace: str
+    template_id: str | None = None
+    template_name: str | None = None
     export_format: ExportFormat
     status: ExportStatus
     filters: dict[str, Any]

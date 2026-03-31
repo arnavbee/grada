@@ -111,35 +111,32 @@ export function DispatchDocumentsModuleCard({
           </p>
         </div>
 
-        <div
-          aria-hidden={!isPreviewOpen}
-          className={`pointer-events-none absolute inset-0 bg-kira-brown transition-opacity duration-200 ${
-            isPreviewOpen ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <div className="h-full overflow-hidden">
-            <iframe
-              aria-label={
-                previewKind === "invoice"
-                  ? "Animated commercial invoice workflow preview"
-                  : "Animated barcode generation workflow preview"
-              }
-              className="kira-infographic-embed"
-              key={previewRun}
-              loading="lazy"
-              scrolling="no"
-              src={`${
-                previewKind === "invoice" ? invoiceAnimationSrc : barcodeAnimationSrc
-              }?preview=${previewRun}`}
-              tabIndex={-1}
-              title={
-                previewKind === "invoice"
-                  ? "Animated commercial invoice workflow preview"
-                  : "Animated barcode generation workflow preview"
-              }
-            />
+        {isPreviewOpen ? (
+          <div aria-hidden="false" className="pointer-events-none absolute inset-0 bg-kira-brown">
+            <div className="h-full overflow-hidden">
+              <iframe
+                aria-label={
+                  previewKind === "invoice"
+                    ? "Animated commercial invoice workflow preview"
+                    : "Animated barcode generation workflow preview"
+                }
+                className="kira-infographic-embed"
+                key={previewRun}
+                loading="lazy"
+                scrolling="no"
+                src={`${
+                  previewKind === "invoice" ? invoiceAnimationSrc : barcodeAnimationSrc
+                }?preview=${previewRun}`}
+                tabIndex={-1}
+                title={
+                  previewKind === "invoice"
+                    ? "Animated commercial invoice workflow preview"
+                    : "Animated barcode generation workflow preview"
+                }
+              />
+            </div>
           </div>
-        </div>
+        ) : null}
       </Card>
     </div>
   );

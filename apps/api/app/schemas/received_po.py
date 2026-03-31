@@ -68,6 +68,8 @@ class ReceivedPOConfirmResponse(BaseModel):
 class BarcodeJobCreateResponse(BaseModel):
     job_id: str
     status: BarcodeJobStatus
+    marketplace_template_id: str | None = None
+    marketplace_template_name: str | None = None
 
 
 class BarcodeJobResponse(BaseModel):
@@ -78,6 +80,8 @@ class BarcodeJobResponse(BaseModel):
     status: BarcodeJobStatus
     template_kind: StickerTemplateKind
     template_id: str | None
+    marketplace_template_id: str | None = None
+    marketplace_template_name: str | None = None
     file_url: str | None
     total_stickers: int
     total_pages: int
@@ -90,6 +94,8 @@ class BarcodeJobListItemResponse(BaseModel):
     po_number: str | None
     template_kind: StickerTemplateKind
     template_id: str | None
+    marketplace_template_id: str | None = None
+    marketplace_template_name: str | None = None
     status: BarcodeJobStatus
     total_stickers: int
     total_pages: int

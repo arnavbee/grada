@@ -138,6 +138,15 @@ export interface BuyerDocumentTemplateInput {
   is_active: boolean;
 }
 
+export interface BuyerDocumentTemplateParseResponse {
+  document_type: BuyerDocumentType;
+  file_format: "pdf";
+  sample_file_url: string;
+  layout_key: BuyerInvoiceLayoutKey;
+  detected_headers: string[];
+  defaults: BuyerDocumentTemplateDefaults;
+}
+
 export interface CartonCapacityRule {
   id: string;
   company_id: string;
@@ -216,6 +225,21 @@ export async function deleteBuyerDocumentTemplate(templateId: string): Promise<v
   return apiRequest<void>(`/settings/buyer-document-templates/${templateId}`, {
     method: "DELETE",
   });
+}
+
+export async function parseBuyerDocumentTemplateSample(
+  file: File,
+): Promise<BuyerDocumentTemplateParseResponse> {
+  const body = new FormData();
+  body.append("file", file);
+  body.append("document_type", "invoice");
+  return apiRequest<BuyerDocumentTemplateParseResponse>(
+    "/settings/buyer-document-templates/parse-sample",
+    {
+      method: "POST",
+      body,
+    },
+  );
 }
 
 export async function listCartonRules(): Promise<CartonCapacityRule[]> {

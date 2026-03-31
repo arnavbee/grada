@@ -15,6 +15,7 @@ import type {
   PackingList,
   ReceivedPO,
 } from "@/src/lib/received-po";
+import type { MarketplaceDocumentTemplate } from "@/src/lib/marketplace-document-templates";
 import type { BrandProfile, BuyerDocumentTemplate, CartonCapacityRule } from "@/src/lib/settings";
 
 const {
@@ -42,10 +43,15 @@ const {
   normalizeStickerAssetUrlForPdfMock,
   getBrandProfileMock,
   listBuyerDocumentTemplatesMock,
+  createBuyerDocumentTemplateMock,
+  parseBuyerDocumentTemplateSampleMock,
   listCartonRulesMock,
   createCartonRuleMock,
   updateCartonRuleMock,
   deleteCartonRuleMock,
+  createMarketplaceDocumentTemplateMock,
+  listMarketplaceDocumentTemplatesMock,
+  parseMarketplaceTemplateSampleMock,
 } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   uploadReceivedPOMock: vi.fn(),
@@ -73,10 +79,15 @@ const {
   normalizeStickerAssetUrlForPdfMock: vi.fn(),
   getBrandProfileMock: vi.fn(),
   listBuyerDocumentTemplatesMock: vi.fn(),
+  createBuyerDocumentTemplateMock: vi.fn(),
+  parseBuyerDocumentTemplateSampleMock: vi.fn(),
   listCartonRulesMock: vi.fn(),
   createCartonRuleMock: vi.fn(),
   updateCartonRuleMock: vi.fn(),
   deleteCartonRuleMock: vi.fn(),
+  createMarketplaceDocumentTemplateMock: vi.fn(),
+  listMarketplaceDocumentTemplatesMock: vi.fn(),
+  parseMarketplaceTemplateSampleMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -150,11 +161,25 @@ vi.mock("@/src/lib/sticker-templates", async () => {
 vi.mock("@/src/lib/settings", () => ({
   getBrandProfile: getBrandProfileMock,
   listBuyerDocumentTemplates: listBuyerDocumentTemplatesMock,
+  createBuyerDocumentTemplate: createBuyerDocumentTemplateMock,
+  parseBuyerDocumentTemplateSample: parseBuyerDocumentTemplateSampleMock,
   listCartonRules: listCartonRulesMock,
   createCartonRule: createCartonRuleMock,
   updateCartonRule: updateCartonRuleMock,
   deleteCartonRule: deleteCartonRuleMock,
 }));
+
+vi.mock("@/src/lib/marketplace-document-templates", async () => {
+  const actual = await vi.importActual<typeof import("@/src/lib/marketplace-document-templates")>(
+    "@/src/lib/marketplace-document-templates",
+  );
+  return {
+    ...actual,
+    createMarketplaceDocumentTemplate: createMarketplaceDocumentTemplateMock,
+    listMarketplaceDocumentTemplates: listMarketplaceDocumentTemplatesMock,
+    parseMarketplaceTemplateSample: parseMarketplaceTemplateSampleMock,
+  };
+});
 
 vi.mock("@/src/lib/sticker-asset-pdf", async () => {
   const actual = await vi.importActual<typeof import("@/src/lib/sticker-asset-pdf")>(
@@ -246,6 +271,10 @@ function buildBuyerTemplates(): BuyerDocumentTemplate[] {
   return [];
 }
 
+function buildPackingTemplates(): MarketplaceDocumentTemplate[] {
+  return [];
+}
+
 function buildReceivedPO(status: ReceivedPO["status"]): ReceivedPO {
   return {
     id: "po_1",
@@ -329,6 +358,8 @@ function buildBarcodeJob(status: BarcodeJob["status"], fileUrl: string | null = 
     status,
     template_kind: "styli",
     template_id: null,
+    marketplace_template_id: null,
+    marketplace_template_name: null,
     file_url: fileUrl,
     total_stickers: 1,
     total_pages: 1,
@@ -347,6 +378,9 @@ function buildPackingList(
     invoice_id: "inv_1",
     invoice_number: "INV-2026-001",
     invoice_date: "2026-03-24T00:00:00+00:00",
+    template_id: null,
+    template_name: null,
+    layout_key: "default_v1",
     status,
     file_url: fileUrl,
     created_at: "2026-03-24T00:00:00+00:00",
@@ -414,6 +448,12 @@ describe("received PO dashboard flows", () => {
     getBrandProfileMock.mockResolvedValue(buildBrandProfile());
     listBuyerDocumentTemplatesMock.mockReset();
     listBuyerDocumentTemplatesMock.mockResolvedValue(buildBuyerTemplates());
+    createBuyerDocumentTemplateMock.mockReset();
+    parseBuyerDocumentTemplateSampleMock.mockReset();
+    listMarketplaceDocumentTemplatesMock.mockReset();
+    listMarketplaceDocumentTemplatesMock.mockResolvedValue(buildPackingTemplates());
+    createMarketplaceDocumentTemplateMock.mockReset();
+    parseMarketplaceTemplateSampleMock.mockReset();
     listCartonRulesMock.mockReset();
     listCartonRulesMock.mockResolvedValue(buildCartonRules());
     createCartonRuleMock.mockReset();
@@ -591,6 +631,94 @@ describe("received PO dashboard flows", () => {
     });
   });
 
+  it("can learn an invoice buyer template from a sample before saving it", async () => {
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock.mockResolvedValue(null);
+    getOptionalInvoiceMock.mockResolvedValue(null);
+    getOptionalPackingListMock.mockResolvedValue(null);
+    parseBuyerDocumentTemplateSampleMock.mockResolvedValue({
+      document_type: "invoice",
+      file_format: "pdf",
+      sample_file_url: "/static/uploads/buyer-document-templates/sample.pdf",
+      layout_key: "landmark_v1",
+      detected_headers: ["LANDMARK COMMERCIAL INVOICE", "Bill To GST No: 29AAAAA0000A1Z5"],
+      defaults: {
+        ...DEFAULT_INVOICE_DETAILS,
+        marketplace_name: "Landmark",
+        bill_to_name: "Landmark Buying House",
+        bill_to_address: "Landmark Towers, Bengaluru",
+        bill_to_gst: "29AAAAA0000A1Z5",
+        ship_to_name: "Landmark Warehouse",
+        ship_to_address: "Landmark Logistics Park",
+        ship_to_gst: "29BBBBB0000B1Z5",
+      },
+    });
+    createBuyerDocumentTemplateMock.mockResolvedValue({
+      id: "buyer_template_1",
+      company_id: "co_1",
+      name: "Landmark Invoice",
+      buyer_key: "Landmark",
+      document_type: "invoice",
+      layout_key: "landmark_v1",
+      defaults: {
+        ...DEFAULT_INVOICE_DETAILS,
+        marketplace_name: "Landmark",
+        bill_to_name: "Landmark Buying House",
+        bill_to_address: "Landmark Towers, Bengaluru",
+        bill_to_gst: "29AAAAA0000A1Z5",
+        ship_to_name: "Landmark Warehouse",
+        ship_to_address: "Landmark Logistics Park",
+        ship_to_gst: "29BBBBB0000B1Z5",
+      },
+      is_default: false,
+      is_active: true,
+      created_at: "2026-03-24T00:00:00+00:00",
+      updated_at: "2026-03-24T00:00:00+00:00",
+    });
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    await openDocumentsTab("Invoice");
+    await screen.findByRole("button", { name: "Create or import template" });
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Create or import template" }));
+
+    const fileInput = screen.getByLabelText("Invoice PDF sample") as HTMLInputElement;
+    const sampleFile = new File(["invoice"], "invoice.pdf", { type: "application/pdf" });
+    await userEvent.setup().upload(fileInput, sampleFile);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Import sample" }));
+
+    await waitFor(() => {
+      expect(parseBuyerDocumentTemplateSampleMock).toHaveBeenCalledWith(sampleFile);
+    });
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Create buyer template" }));
+
+    await waitFor(() => {
+      expect(createBuyerDocumentTemplateMock).toHaveBeenCalledWith({
+        name: "Landmark Invoice",
+        buyer_key: "Landmark",
+        document_type: "invoice",
+        layout_key: "landmark_v1",
+        defaults: {
+          ...DEFAULT_INVOICE_DETAILS,
+          marketplace_name: "Landmark",
+          bill_to_name: "Landmark Buying House",
+          bill_to_address: "Landmark Towers, Bengaluru",
+          bill_to_gst: "29AAAAA0000A1Z5",
+          ship_to_name: "Landmark Warehouse",
+          ship_to_address: "Landmark Logistics Park",
+          ship_to_gst: "29BBBBB0000B1Z5",
+        },
+        is_default: false,
+        is_active: true,
+      });
+    });
+    expect(screen.getByText("Buyer template saved.")).toBeTruthy();
+  });
+
   it("shows CGST + SGST for intrastate invoices", async () => {
     getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
     getOptionalBarcodeJobMock.mockResolvedValue(null);
@@ -692,6 +820,8 @@ describe("received PO dashboard flows", () => {
     createBarcodeJobMock.mockResolvedValue({
       job_id: "job_2",
       status: "pending",
+      marketplace_template_id: null,
+      marketplace_template_name: null,
     });
 
     render(<ReceivedPODocumentsView receivedPoId="po_1" />);
@@ -701,7 +831,10 @@ describe("received PO dashboard flows", () => {
     await userEvent.setup().click(screen.getByRole("button", { name: "Generate barcodes" }));
 
     await waitFor(() => {
-      expect(createBarcodeJobMock).toHaveBeenCalledWith("po_1", { template_kind: "styli" });
+      expect(createBarcodeJobMock).toHaveBeenCalledWith("po_1", {
+        template_kind: "styli",
+        marketplace_template_id: null,
+      });
       expect(getOptionalBarcodeJobMock).toHaveBeenLastCalledWith("po_1", "job_2");
     });
     expect(screen.queryByRole("button", { name: "Download PDF" })).toBeNull();
@@ -784,6 +917,139 @@ describe("received PO dashboard flows", () => {
     ).toBeTruthy();
   });
 
+  it("passes the selected marketplace barcode template into barcode generation", async () => {
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock.mockResolvedValue(null);
+    getOptionalInvoiceMock.mockResolvedValue(null);
+    getOptionalPackingListMock.mockResolvedValue(null);
+    listMarketplaceDocumentTemplatesMock.mockImplementation(async (documentType?: string) => {
+      if (documentType === "barcode") {
+        return [
+          {
+            id: "barcode_tpl_1",
+            company_id: "co_1",
+            name: "Styli Barcode",
+            marketplace_key: "styli",
+            document_type: "barcode",
+            template_kind: "sticker",
+            file_format: "pdf",
+            sample_file_url: null,
+            sheet_name: null,
+            header_row_index: 1,
+            columns: [],
+            layout: {
+              sticker_template_kind: "styli",
+              width_mm: 45.03,
+              height_mm: 60,
+            },
+            is_default: true,
+            is_active: true,
+            created_at: "2026-03-24T00:00:00+00:00",
+            updated_at: "2026-03-24T00:00:00+00:00",
+          },
+        ];
+      }
+      return [];
+    });
+    createBarcodeJobMock.mockResolvedValue({
+      job_id: "job_3",
+      status: "pending",
+      marketplace_template_id: "barcode_tpl_1",
+      marketplace_template_name: "Styli Barcode",
+    });
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    await act(async () => {});
+    expect((screen.getByLabelText("Marketplace barcode template") as HTMLSelectElement).value).toBe(
+      "barcode_tpl_1",
+    );
+    await userEvent.setup().click(screen.getByRole("button", { name: "Generate barcodes" }));
+
+    await waitFor(() =>
+      expect(createBarcodeJobMock).toHaveBeenCalledWith("po_1", {
+        template_kind: "styli",
+        marketplace_template_id: "barcode_tpl_1",
+      }),
+    );
+  });
+
+  it("can learn a barcode template from a sample before saving it", async () => {
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock.mockResolvedValue(null);
+    getOptionalInvoiceMock.mockResolvedValue(null);
+    getOptionalPackingListMock.mockResolvedValue(null);
+    parseMarketplaceTemplateSampleMock.mockResolvedValue({
+      document_type: "barcode",
+      template_kind: "sticker",
+      file_format: "png",
+      sample_file_url: "/static/uploads/marketplace-templates/sample.png",
+      sheet_name: null,
+      header_row_index: 1,
+      detected_headers: [],
+      columns: [],
+      layout: {
+        width_mm: 45.03,
+        height_mm: 60,
+        measurement_source: "image_dpi",
+      },
+    });
+    createMarketplaceDocumentTemplateMock.mockResolvedValue({
+      id: "barcode_tpl_new",
+      company_id: "co_1",
+      name: "Styli Barcode",
+      marketplace_key: "Styli",
+      document_type: "barcode",
+      template_kind: "sticker",
+      file_format: "png",
+      sample_file_url: "/static/uploads/marketplace-templates/sample.png",
+      sheet_name: null,
+      header_row_index: 1,
+      columns: [],
+      layout: {
+        sticker_template_kind: "styli",
+        sticker_template_id: null,
+        width_mm: 45.03,
+        height_mm: 60,
+      },
+      is_default: false,
+      is_active: true,
+      created_at: "2026-03-24T00:00:00+00:00",
+      updated_at: "2026-03-24T00:00:00+00:00",
+    });
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    await act(async () => {});
+    await userEvent.setup().click(screen.getByRole("button", { name: "Save template" }));
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).not.toBeNull();
+    await userEvent
+      .setup()
+      .upload(fileInput, new File(["image"], "barcode.png", { type: "image/png" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "Import from sample" }));
+
+    await waitFor(() =>
+      expect(parseMarketplaceTemplateSampleMock).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "barcode.png" }),
+        "barcode",
+      ),
+    );
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Create barcode template" }));
+
+    await waitFor(() =>
+      expect(createMarketplaceDocumentTemplateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          document_type: "barcode",
+          file_format: "png",
+          sample_file_url: "/static/uploads/marketplace-templates/sample.png",
+        }),
+      ),
+    );
+  });
+
   it("stops invoice PDF polling and shows an error when generation fails", async () => {
     vi.useFakeTimers();
     getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
@@ -828,11 +1094,17 @@ describe("received PO dashboard flows", () => {
       packing_list_id: "pl_1",
       total_cartons: 1,
       total_pieces: 20,
+      template_id: null,
+      template_name: null,
+      layout_key: "default_v1",
     });
     generatePackingListPdfMock.mockResolvedValue({
       packing_list_id: "pl_1",
       status: "draft",
       file_url: null,
+      template_id: null,
+      template_name: null,
+      layout_key: "default_v1",
     });
 
     render(<ReceivedPODocumentsView receivedPoId="po_1" />);
@@ -841,7 +1113,7 @@ describe("received PO dashboard flows", () => {
     await openDocumentsTab("Packing List");
     fireEvent.click(screen.getByRole("button", { name: "Generate PDF" }));
     await act(async () => {});
-    expect(generatePackingListPdfMock).toHaveBeenCalledWith("po_1");
+    expect(generatePackingListPdfMock).toHaveBeenCalledWith("po_1", { template_id: null });
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2000);
@@ -868,5 +1140,127 @@ describe("received PO dashboard flows", () => {
     expect(within(dialog).getByRole("heading", { name: "Packing rules" })).toBeTruthy();
     expect(within(dialog).getAllByDisplayValue("Dresses").length).toBeGreaterThan(0);
     expect(listCartonRulesMock).toHaveBeenCalled();
+  });
+
+  it("passes the selected packing list template into draft creation and PDF generation", async () => {
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock.mockResolvedValue(null);
+    getOptionalInvoiceMock.mockResolvedValue(
+      buildInvoice("final", "/static/generated/invoices/inv_1.pdf"),
+    );
+    getOptionalPackingListMock.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      ...buildPackingList("draft"),
+      template_id: "tpl_pack",
+      template_name: "Myntra Packing List",
+      layout_key: "myntra_v1",
+    });
+    listMarketplaceDocumentTemplatesMock.mockResolvedValue([
+      {
+        id: "tpl_pack",
+        company_id: "co_1",
+        name: "Myntra Packing List",
+        marketplace_key: "styli",
+        document_type: "packing_list",
+        template_kind: "pdf_layout",
+        file_format: "pdf",
+        sample_file_url: null,
+        sheet_name: null,
+        header_row_index: 1,
+        columns: [],
+        layout: { layout_key: "myntra_v1", title: "MYNTRA PACKING LIST" },
+        is_default: true,
+        is_active: true,
+        created_at: "2026-03-24T00:00:00+00:00",
+        updated_at: "2026-03-24T00:00:00+00:00",
+      },
+    ]);
+    createPackingListMock.mockResolvedValue({
+      packing_list_id: "pl_1",
+      total_cartons: 1,
+      total_pieces: 20,
+      template_id: "tpl_pack",
+      template_name: "Myntra Packing List",
+      layout_key: "myntra_v1",
+    });
+    generatePackingListPdfMock.mockResolvedValue({
+      packing_list_id: "pl_1",
+      status: "draft",
+      file_url: null,
+      template_id: "tpl_pack",
+      template_name: "Myntra Packing List",
+      layout_key: "myntra_v1",
+    });
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    await act(async () => {});
+    await openDocumentsTab("Packing List");
+
+    const templateSelect = screen.getByLabelText("Packing list template");
+    expect((templateSelect as HTMLSelectElement).value).toBe("tpl_pack");
+
+    fireEvent.click(screen.getByRole("button", { name: "Create packing list draft" }));
+    await waitFor(() =>
+      expect(createPackingListMock).toHaveBeenCalledWith("po_1", { template_id: "tpl_pack" }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate PDF" }));
+    await waitFor(() =>
+      expect(generatePackingListPdfMock).toHaveBeenCalledWith("po_1", {
+        template_id: "tpl_pack",
+      }),
+    );
+  });
+
+  it("can create a packing list template from the packing tab", async () => {
+    getReceivedPOMock.mockResolvedValue(buildReceivedPO("confirmed"));
+    getOptionalBarcodeJobMock.mockResolvedValue(null);
+    getOptionalInvoiceMock.mockResolvedValue(
+      buildInvoice("final", "/static/generated/invoices/inv_1.pdf"),
+    );
+    getOptionalPackingListMock.mockResolvedValue(null);
+    createMarketplaceDocumentTemplateMock.mockResolvedValue({
+      id: "tpl_new",
+      company_id: "co_1",
+      name: "Styli Packing List",
+      marketplace_key: "styli",
+      document_type: "packing_list",
+      template_kind: "pdf_layout",
+      file_format: "pdf",
+      sample_file_url: null,
+      sheet_name: null,
+      header_row_index: 1,
+      columns: [],
+      layout: {
+        layout_key: "default_v1",
+        title: "STYLI PACKING LIST",
+        meta_labels: { po_number: "STYLI PO NUMBER" },
+        column_headers: { quantity: "STYLI QTY" },
+      },
+      is_default: false,
+      is_active: true,
+      created_at: "2026-03-24T00:00:00+00:00",
+      updated_at: "2026-03-24T00:00:00+00:00",
+    });
+
+    render(<ReceivedPODocumentsView receivedPoId="po_1" />);
+
+    await act(async () => {});
+    await openDocumentsTab("Packing List");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save template" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create packing template" }));
+
+    await waitFor(() =>
+      expect(createMarketplaceDocumentTemplateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          document_type: "packing_list",
+          template_kind: "pdf_layout",
+          file_format: "pdf",
+          marketplace_key: "Styli",
+        }),
+      ),
+    );
+    expect(screen.getByText("Packing list template saved.")).toBeTruthy();
   });
 });

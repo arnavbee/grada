@@ -1129,19 +1129,25 @@ def _build_sheet_pdf(
     sticker_height_mm: float,
     draw_sticker,
     max_columns: int = 2,
+    margin_mm: float = 10,
+    horizontal_gutter_mm: float = 5,
+    vertical_gutter_mm: float = 5,
 ) -> tuple[bytes, int]:
     pdf_buffer = BytesIO()
     pdf = canvas.Canvas(pdf_buffer, pagesize=A4, pageCompression=0)
     page_width, page_height = A4
-    margin = 10 * mm
-    gutter = 5 * mm
+    margin = margin_mm * mm
+    horizontal_gutter = horizontal_gutter_mm * mm
+    vertical_gutter = vertical_gutter_mm * mm
     sticker_width = sticker_width_mm * mm
     sticker_height = sticker_height_mm * mm
     usable_width = page_width - 2 * margin
-    columns = max(1, min(max_columns, int((usable_width + gutter) // (sticker_width + gutter))))
-    rows_per_page = max(1, int((page_height - (2 * margin) + gutter) // (sticker_height + gutter)))
+    columns = max(1, min(max_columns, int((usable_width + horizontal_gutter) // (sticker_width + horizontal_gutter))))
+    rows_per_page = max(1, int((page_height - (2 * margin) + vertical_gutter) // (sticker_height + vertical_gutter)))
     stickers_per_page = columns * rows_per_page
     total_pages = max(1, math.ceil(len(records) / stickers_per_page)) if records else 1
+    row_width = sticker_width * columns + horizontal_gutter * max(columns - 1, 0)
+    row_origin_x = margin + max(0, usable_width - row_width) / 2
 
     for index, record in enumerate(records or [{}]):
         slot = index % stickers_per_page
@@ -1150,8 +1156,8 @@ def _build_sheet_pdf(
 
         row = slot // columns
         column = slot % columns
-        x = margin + column * (sticker_width + gutter)
-        y = page_height - margin - sticker_height - row * (sticker_height + gutter)
+        x = row_origin_x + column * (sticker_width + horizontal_gutter)
+        y = page_height - margin - sticker_height - row * (sticker_height + vertical_gutter)
         draw_sticker(pdf, x=x, y=y, sticker=record)
 
     pdf.save()
@@ -1165,7 +1171,8 @@ def build_styli_sheet_pdf(records: list[dict[str, object]]) -> tuple[bytes, int,
         sticker_width_mm=45.03,
         sticker_height_mm=60.0,
         draw_sticker=_draw_styli_sticker,
-        max_columns=2,
+        max_columns=4,
+        margin_mm=7,
     )
     return pdf_content, len(stickers), total_pages
 
@@ -1188,7 +1195,8 @@ def build_custom_sheet_pdf(
             origin_x=x,
             origin_y=y,
         ),
-        max_columns=2,
+        max_columns=4,
+        margin_mm=7,
     )
     return pdf_content, len(stickers), total_pages
 
@@ -1369,7 +1377,20 @@ def _build_packing_list_pdf(
 ) -> bytes:
     """Render a structured landscape A4 packing list PDF matching the sample format."""
     profile = _invoice_profile(invoice, company_settings)
-    marketplace_name = profile['marketplace_name'] or str(received_po.distributor or '').strip()
+    template_snapshot = _json_loads(packing_list.template_snapshot_json)
+    template_layout = template_snapshot.get('layout') if isinstance(template_snapshot.get('layout'), dict) else {}
+    title_text = str(template_layout.get('title') or 'PACKING LIST').strip() or 'PACKING LIST'
+    meta_labels = template_layout.get('meta_labels') if isinstance(template_layout.get('meta_labels'), dict) else {}
+    column_headers = (
+        template_layout.get('column_headers')
+        if isinstance(template_layout.get('column_headers'), dict)
+        else {}
+    )
+    marketplace_name = (
+        str(template_layout.get('marketplace_name') or '').strip()
+        or profile['marketplace_name']
+        or str(received_po.distributor or '').strip()
+    )
     styles = _invoice_styles()
     buffer = BytesIO()
     document = SimpleDocTemplate(
@@ -1455,12 +1476,15 @@ def _build_packing_list_pdf(
     export_mode = invoice.export_mode if invoice else 'Air'
     meta_block = _invoice_label_value_block(
         [
-            ('INVOICE NO', inv_number),
-            ('INVOICE DATE', inv_date_str),
-            ('PO NUMBER', str(received_po.po_number or '-')),
-            ('NO.OF.CARTONS', carton_count_str),
-            ('Gross weight', gross_str),
-            (f'Export Shipment Mode by {marketplace_name}', export_mode),
+            (str(meta_labels.get('invoice_number') or 'INVOICE NO'), inv_number),
+            (str(meta_labels.get('invoice_date') or 'INVOICE DATE'), inv_date_str),
+            (str(meta_labels.get('po_number') or 'PO NUMBER'), str(received_po.po_number or '-')),
+            (str(meta_labels.get('carton_count') or 'NO.OF.CARTONS'), carton_count_str),
+            (str(meta_labels.get('gross_weight') or 'Gross weight'), gross_str),
+            (
+                str(meta_labels.get('shipment_mode') or f'Export Shipment Mode by {marketplace_name}'),
+                export_mode,
+            ),
         ],
         total_width=67 * mm,
         label_width=28 * mm,
@@ -1484,7 +1508,7 @@ def _build_packing_list_pdf(
     ]))
     header_wrapper = Table(
         [
-            [_rich_paragraph('PACKING LIST', styles['title'], bold=True)],
+            [_rich_paragraph(title_text, styles['title'], bold=True)],
             [header_content],
         ],
         colWidths=[267 * mm],
@@ -1524,24 +1548,24 @@ def _build_packing_list_pdf(
         15 * mm,  # Gross Wt
     ]
     header_row = [
-        _paragraph('Carton_No', styles['small']),
-        _paragraph(f'{marketplace_name} PO No', styles['small']),
-        _paragraph(f'{marketplace_name} Option ID', styles['small']),
-        _paragraph('L1 (As in PO)', styles['small']),
-        _paragraph('L4 (As in PO)', styles['small']),
-        _paragraph('Country_Of_Origin', styles['small']),
-        _paragraph('State_Of_Origin', styles['small']),
-        _paragraph('District_Of_Origin', styles['small']),
-        _paragraph('Fabric composition', styles['small']),
-        _paragraph('Model Number', styles['small']),
-        _paragraph('HSN Code', styles['small']),
-        _paragraph(f'{marketplace_name} SKU ID', styles['small']),
-        _paragraph('Size', styles['small']),
-        _paragraph(f'{marketplace_name} Qty', styles['small']),
-        _paragraph('Unit_Rate (As Per PO)', styles['small']),
-        _paragraph('Carton_Dimn', styles['small']),
-        _paragraph('Carton_Net Weight (Kg)', styles['small']),
-        _paragraph('Carton_Gross Weight (Kg)', styles['small']),
+        _paragraph(str(column_headers.get('carton_number') or 'Carton_No'), styles['small']),
+        _paragraph(str(column_headers.get('po_number') or f'{marketplace_name} PO No'), styles['small']),
+        _paragraph(str(column_headers.get('option_id') or f'{marketplace_name} Option ID'), styles['small']),
+        _paragraph(str(column_headers.get('l1') or 'L1 (As in PO)'), styles['small']),
+        _paragraph(str(column_headers.get('l4') or 'L4 (As in PO)'), styles['small']),
+        _paragraph(str(column_headers.get('country_of_origin') or 'Country_Of_Origin'), styles['small']),
+        _paragraph(str(column_headers.get('state_of_origin') or 'State_Of_Origin'), styles['small']),
+        _paragraph(str(column_headers.get('district_of_origin') or 'District_Of_Origin'), styles['small']),
+        _paragraph(str(column_headers.get('fabric') or 'Fabric composition'), styles['small']),
+        _paragraph(str(column_headers.get('model_number') or 'Model Number'), styles['small']),
+        _paragraph(str(column_headers.get('hsn_code') or 'HSN Code'), styles['small']),
+        _paragraph(str(column_headers.get('sku_id') or f'{marketplace_name} SKU ID'), styles['small']),
+        _paragraph(str(column_headers.get('size') or 'Size'), styles['small']),
+        _paragraph(str(column_headers.get('quantity') or f'{marketplace_name} Qty'), styles['small']),
+        _paragraph(str(column_headers.get('unit_rate') or 'Unit_Rate (As Per PO)'), styles['small']),
+        _paragraph(str(column_headers.get('dimensions') or 'Carton_Dimn'), styles['small']),
+        _paragraph(str(column_headers.get('net_weight') or 'Carton_Net Weight (Kg)'), styles['small']),
+        _paragraph(str(column_headers.get('gross_weight') or 'Carton_Gross Weight (Kg)'), styles['small']),
     ]
     table_rows: list[list[object]] = [header_row]
 

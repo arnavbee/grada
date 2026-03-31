@@ -12,7 +12,7 @@ from app.main import app
 from app.models.carton_capacity_rule import CartonCapacityRule
 from app.models.company_settings import CompanySettings
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
-from app.services.received_po_documents import _load_image_reader, _resolve_model_display_value
+from app.services.received_po_documents import _load_image_reader, _resolve_model_display_value, build_styli_sheet_pdf
 
 init_db()
 client_manager = TestClient(app)
@@ -499,6 +499,78 @@ def test_packing_list_creation_assignment_and_carton_update() -> None:
     assert b'STY-2026-00999' in pdf_bytes
 
 
+def test_packing_list_can_use_marketplace_template_layout_override() -> None:
+    headers = _auth_headers()
+    _, received_po_id = _seed_confirmed_received_po(headers)
+
+    invoice_response = client.post(f'/api/v1/received-pos/{received_po_id}/invoice', headers=headers)
+    assert invoice_response.status_code == 201
+
+    create_template = client.post(
+        '/api/v1/marketplace-templates',
+        headers=headers,
+        json={
+            'name': 'Styli Packing List',
+            'marketplace_key': 'styli',
+            'document_type': 'packing_list',
+            'template_kind': 'pdf_layout',
+            'file_format': 'pdf',
+            'sample_file_url': None,
+            'sheet_name': None,
+            'header_row_index': 1,
+            'columns': [],
+            'layout': {
+                'layout_key': 'styli_v1',
+                'title': 'STYLI PACKING LIST',
+                'meta_labels': {
+                    'po_number': 'STYLI PO NUMBER',
+                },
+                'column_headers': {
+                    'quantity': 'STYLI QTY',
+                },
+            },
+            'is_default': True,
+            'is_active': True,
+        },
+    )
+    assert create_template.status_code == 201
+    template_id = create_template.json()['id']
+
+    packing_list = client.post(
+        f'/api/v1/received-pos/{received_po_id}/packing-list',
+        headers=headers,
+        json={'template_id': template_id},
+    )
+    assert packing_list.status_code == 201
+    packing_summary = packing_list.json()
+    assert packing_summary['template_id'] == template_id
+    assert packing_summary['template_name'] == 'Styli Packing List'
+    assert packing_summary['layout_key'] == 'styli_v1'
+
+    detail = client.get(f'/api/v1/received-pos/{received_po_id}/packing-list', headers=headers)
+    assert detail.status_code == 200
+    detail_body = detail.json()
+    assert detail_body['template_id'] == template_id
+    assert detail_body['layout_key'] == 'styli_v1'
+
+    packing_list_pdf = client.post(
+        f'/api/v1/received-pos/{received_po_id}/packing-list/generate-pdf',
+        headers=headers,
+        json={'template_id': template_id},
+    )
+    assert packing_list_pdf.status_code == 200
+    assert packing_list_pdf.json()['template_id'] == template_id
+    assert packing_list_pdf.json()['layout_key'] == 'styli_v1'
+
+    detail_after_pdf_body = _wait_for_packing_list(headers, received_po_id)
+    assert detail_after_pdf_body['status'] == 'final'
+
+    packing_list_path = Path('static') / Path(detail_after_pdf_body['file_url'].removeprefix('/static/'))
+    pdf_bytes = packing_list_path.read_bytes()
+    assert b'STYLI PACKING LIST' in pdf_bytes
+    assert b'STYLI PO NUMBER' in pdf_bytes
+
+
 def test_packing_list_list_endpoint() -> None:
     headers = _auth_headers()
     _, received_po_id = _seed_confirmed_received_po(headers)
@@ -553,6 +625,221 @@ def test_barcode_job_generation_updates_status_and_writes_pdf() -> None:
     assert barcode_items[0]['received_po_id'] == received_po_id
     assert barcode_items[0]['po_number'] == 'STY-2026-00999'
     assert barcode_items[0]['template_kind'] == 'styli'
+
+
+def test_barcode_job_auto_matches_marketplace_template_and_snapshots_it() -> None:
+    headers = _auth_headers()
+    _, received_po_id = _seed_confirmed_received_po(headers)
+
+    create_template = client.post(
+        '/api/v1/sticker-templates',
+        headers=headers,
+        json={
+            'name': 'Styli Barcode Label',
+            'width_mm': 45.03,
+            'height_mm': 60,
+            'border_color': '#000000',
+            'border_radius_mm': 2,
+            'background_color': '#FFFFFF',
+            'is_default': False,
+            'elements': [
+                {
+                    'element_type': 'text_dynamic',
+                    'x_mm': 4,
+                    'y_mm': 4,
+                    'width_mm': 36,
+                    'height_mm': 6,
+                    'z_index': 0,
+                    'properties': {
+                        'field': 'po_number',
+                        'label': 'PO No : ',
+                        'font_size': 10,
+                        'alignment': 'center',
+                    },
+                },
+                {
+                    'element_type': 'barcode',
+                    'x_mm': 5,
+                    'y_mm': 18,
+                    'width_mm': 34,
+                    'height_mm': 14,
+                    'z_index': 1,
+                    'properties': {
+                        'field': 'styli_sku',
+                        'custom_formula': 'styli_sku',
+                        'barcode_type': 'code128',
+                        'show_number': True,
+                        'number_font_size': 7,
+                    },
+                },
+            ],
+        },
+    )
+    assert create_template.status_code == 201
+    sticker_template_id = create_template.json()['id']
+
+    marketplace_template = client.post(
+        '/api/v1/marketplace-templates',
+        headers=headers,
+        json={
+            'name': 'Styli Barcode',
+            'marketplace_key': 'styli',
+            'document_type': 'barcode',
+            'template_kind': 'sticker',
+            'file_format': 'pdf',
+            'sample_file_url': None,
+            'sheet_name': None,
+            'header_row_index': 1,
+            'columns': [],
+            'layout': {
+                'sticker_template_kind': 'custom',
+                'sticker_template_id': sticker_template_id,
+                'width_mm': 45.03,
+                'height_mm': 60,
+            },
+            'is_default': True,
+            'is_active': True,
+        },
+    )
+    assert marketplace_template.status_code == 201
+    marketplace_template_id = marketplace_template.json()['id']
+
+    barcode_job = client.post(f'/api/v1/received-pos/{received_po_id}/barcode', headers=headers)
+    assert barcode_job.status_code == 201
+    assert barcode_job.json()['marketplace_template_id'] == marketplace_template_id
+    assert barcode_job.json()['marketplace_template_name'] == 'Styli Barcode'
+
+    payload = _wait_for_barcode_job(headers, received_po_id)
+    assert payload['status'] == 'done'
+    assert payload['template_kind'] == 'custom'
+    assert payload['template_id'] == sticker_template_id
+    assert payload['marketplace_template_id'] == marketplace_template_id
+    assert payload['marketplace_template_name'] == 'Styli Barcode'
+
+
+def test_parse_buyer_document_template_sample_for_invoice_pdf() -> None:
+    headers = _auth_headers()
+    _, received_po_id = _seed_confirmed_received_po(headers)
+
+    invoice_response = client.post(f'/api/v1/received-pos/{received_po_id}/invoice', headers=headers)
+    assert invoice_response.status_code == 201
+    invoice_update = client.patch(
+        f'/api/v1/received-pos/{received_po_id}/invoice',
+        headers=headers,
+        json={
+            'details': {
+                **invoice_response.json()['details'],
+                'bill_to_name': 'Landmark Buying House',
+                'bill_to_address': 'Landmark Towers, Bengaluru',
+                'bill_to_gst': '29AAAAA0000A1Z5',
+                'ship_to_name': 'Landmark Warehouse',
+                'ship_to_address': 'Landmark Logistics Park',
+                'ship_to_gst': '29BBBBB0000B1Z5',
+            }
+        },
+    )
+    assert invoice_update.status_code == 200
+    pdf_response = client.post(f'/api/v1/received-pos/{received_po_id}/invoice/generate-pdf', headers=headers)
+    assert pdf_response.status_code == 200
+    invoice_payload = _wait_for_invoice(headers, received_po_id)
+    invoice_path = Path('static') / Path(invoice_payload['file_url'].removeprefix('/static/'))
+
+    with invoice_path.open('rb') as sample_file:
+        parsed = client.post(
+            '/api/v1/settings/buyer-document-templates/parse-sample',
+            headers=headers,
+            data={'document_type': 'invoice'},
+            files={'file': ('invoice.pdf', sample_file, 'application/pdf')},
+        )
+
+    assert parsed.status_code == 200
+    body = parsed.json()
+    assert body['document_type'] == 'invoice'
+    assert body['file_format'] == 'pdf'
+    assert body['layout_key'] == 'default_v1'
+    assert body['defaults']['marketplace_name'] == 'Styli'
+    assert body['defaults']['bill_to_name'] == 'Landmark Buying House'
+    assert body['defaults']['ship_to_name'] == 'Landmark Warehouse'
+    assert body['defaults']['bill_to_gst'] == '29AAAAA0000A1Z5'
+    assert body['sample_file_url'].startswith('/static/uploads/buyer-document-templates/')
+
+
+def test_parse_marketplace_template_sample_for_packing_list_pdf() -> None:
+    headers = _auth_headers()
+    _, received_po_id = _seed_confirmed_received_po(headers)
+
+    invoice_response = client.post(f'/api/v1/received-pos/{received_po_id}/invoice', headers=headers)
+    assert invoice_response.status_code == 201
+    packing_response = client.post(f'/api/v1/received-pos/{received_po_id}/packing-list', headers=headers)
+    assert packing_response.status_code == 201
+    pdf_response = client.post(
+        f'/api/v1/received-pos/{received_po_id}/packing-list/generate-pdf',
+        headers=headers,
+    )
+    assert pdf_response.status_code == 200
+    packing_payload = _wait_for_packing_list(headers, received_po_id)
+    packing_path = Path('static') / Path(packing_payload['file_url'].removeprefix('/static/'))
+
+    with packing_path.open('rb') as sample_file:
+        parsed = client.post(
+            '/api/v1/marketplace-templates/parse-sample',
+            headers=headers,
+            data={'document_type': 'packing_list'},
+            files={'file': ('packing-list.pdf', sample_file, 'application/pdf')},
+        )
+
+    assert parsed.status_code == 200
+    body = parsed.json()
+    assert body['document_type'] == 'packing_list'
+    assert body['template_kind'] == 'pdf_layout'
+    assert body['file_format'] == 'pdf'
+    assert body['layout']['title'] == 'PACKING LIST'
+    assert body['layout']['meta_labels']['po_number'] == 'PO NUMBER'
+    assert body['layout']['column_headers']['quantity'] in {'Styli Qty', 'Qty'}
+
+
+def test_parse_marketplace_template_sample_for_barcode_image() -> None:
+    headers = _auth_headers()
+    image = Image.new('RGB', (360, 480), color='white')
+    output = BytesIO()
+    image.save(output, format='PNG', dpi=(203, 203))
+    output.seek(0)
+
+    parsed = client.post(
+        '/api/v1/marketplace-templates/parse-sample',
+        headers=headers,
+        data={'document_type': 'barcode'},
+        files={'file': ('barcode-label.png', output, 'image/png')},
+    )
+
+    assert parsed.status_code == 200
+    body = parsed.json()
+    assert body['document_type'] == 'barcode'
+    assert body['template_kind'] == 'sticker'
+    assert body['file_format'] == 'png'
+    assert abs(float(body['layout']['width_mm']) - 45.03) < 0.3
+    assert abs(float(body['layout']['height_mm']) - 60.06) < 0.3
+    assert body['layout']['measurement_source'] == 'image_dpi'
+
+
+def test_styli_sheet_packs_four_stickers_per_row() -> None:
+    records = [
+        {
+            'po_number': 'STY-2026-00999',
+            'model_number': 'MOD-1',
+            'option_id': f'OPT-{index}',
+            'size': 'M',
+            'quantity': 1,
+            'styli_sku': f'STYLI-SKU-{index}',
+        }
+        for index in range(17)
+    ]
+
+    pdf_content, total_stickers, total_pages = build_styli_sheet_pdf(records)
+
+    assert pdf_content.startswith(b'%PDF-')
+    assert total_stickers == 17
+    assert total_pages == 2
 
 
 def test_custom_sticker_template_preview_and_sheet_generation() -> None:

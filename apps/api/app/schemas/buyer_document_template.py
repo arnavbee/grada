@@ -52,3 +52,12 @@ class BuyerDocumentTemplateResponse(BaseModel):
 class BuyerDocumentTemplateListResponse(BaseModel):
     items: list[BuyerDocumentTemplateResponse]
     total: int
+
+
+class BuyerDocumentTemplateParseResponse(BaseModel):
+    document_type: BuyerDocumentType = 'invoice'
+    file_format: Literal['pdf'] = 'pdf'
+    sample_file_url: str
+    layout_key: InvoiceLayoutKey = 'default_v1'
+    detected_headers: list[str] = Field(default_factory=list)
+    defaults: InvoiceDetails = Field(default_factory=InvoiceDetails)

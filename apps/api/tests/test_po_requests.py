@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 
 from app.db.session import init_db
 from app.main import app
@@ -204,6 +204,117 @@ def test_po_builder_ai_extraction_normalizes_enum_fields(monkeypatch) -> None:
     assert detail_payload['items'][0]['extracted_attributes']['fields']['dress_print']['value'] == 'Plain'
     assert detail_payload['items'][0]['extracted_attributes']['fields']['neck_women']['value'] == 'High Neck'
     assert detail_payload['items'][0]['extracted_attributes']['review_required'] is True
+
+
+def test_po_builder_export_uses_saved_marketplace_template() -> None:
+    headers = _auth_headers('PO Builder Template Co')
+    product = _create_product(headers, title='Template Export Dress', color='Black', sku='HRDS25001')
+
+    create_response = client.post(
+        '/api/v1/po-requests/',
+        headers=headers,
+        json={'product_ids': [product['id']]},
+    )
+    assert create_response.status_code == 201
+    created_payload = create_response.json()
+
+    updated_response = client.put(
+        f"/api/v1/po-requests/{created_payload['id']}/items",
+        headers=headers,
+        json={
+            'items': [
+                {
+                    'id': created_payload['items'][0]['id'],
+                    'po_price': 600,
+                    'osp_inside_price': 95,
+                    'fabric_composition': '100% Polyester',
+                    'size_ratio': {'S': 4, 'M': 0, 'L': 0, 'XL': 0, 'XXL': 0},
+                    'colorways': [{'letter': 'A', 'color_name': 'Black'}],
+                    'extracted_attributes': {
+                        'fields': {
+                            'dress_print': {'value': 'Plain', 'confidence': 92},
+                            'dress_length': {'value': 'Maxi', 'confidence': 95},
+                            'dress_shape': {'value': 'A-Line', 'confidence': 88},
+                            'sleeve_length': {'value': 'Long Sleeves', 'confidence': 90},
+                            'neck_women': {'value': 'High Neck', 'confidence': 82},
+                            'sleeve_styling': {'value': 'Flute Sleeve', 'confidence': 85},
+                            'woven_knits': {'value': 'Woven', 'confidence': 96},
+                        }
+                    },
+                }
+            ]
+        },
+    )
+    assert updated_response.status_code == 200
+
+    sample_workbook = Workbook()
+    sheet = sample_workbook.active
+    sheet.title = 'Marketplace PO'
+    sheet.append(['Core Workbook', '', '', 'Commercial'])
+    sheet.append(['Style Code', 'Brand Name', 'Color', 'PO Qty'])
+    sheet.merge_cells('A1:C1')
+    buffer = BytesIO()
+    sample_workbook.save(buffer)
+
+    parsed = client.post(
+        '/api/v1/marketplace-templates/parse-sample',
+        headers=headers,
+        files={
+            'file': (
+                'marketplace-po.xlsx',
+                buffer.getvalue(),
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            )
+        },
+        data={'document_type': 'po_builder'},
+    )
+    assert parsed.status_code == 200
+    parsed_body = parsed.json()
+    assert parsed_body['header_row_index'] == 2
+    assert parsed_body['columns'][0]['source_field'] == 'sku_id'
+    assert parsed_body['columns'][1]['source_field'] == 'brand_name'
+    assert parsed_body['columns'][3]['source_field'] == 'po_qty'
+
+    created_template = client.post(
+        '/api/v1/marketplace-templates',
+        headers=headers,
+        json={
+            'name': 'Marketplace PO workbook',
+            'marketplace_key': 'myntra',
+            'document_type': 'po_builder',
+            'template_kind': parsed_body['template_kind'],
+            'file_format': parsed_body['file_format'],
+            'sample_file_url': parsed_body['sample_file_url'],
+            'sheet_name': parsed_body['sheet_name'],
+            'header_row_index': parsed_body['header_row_index'],
+            'columns': parsed_body['columns'],
+            'layout': parsed_body['layout'],
+            'is_default': True,
+            'is_active': True,
+        },
+    )
+    assert created_template.status_code == 201
+    template_id = created_template.json()['id']
+
+    export_response = client.get(
+        f"/api/v1/po-requests/{created_payload['id']}/export?format=xlsx&template_id={template_id}",
+        headers=headers,
+    )
+    assert export_response.status_code == 200
+
+    workbook = load_workbook(BytesIO(export_response.content))
+    sheet = workbook['Marketplace PO']
+    merged_ranges = {str(cell_range) for cell_range in sheet.merged_cells.ranges}
+
+    assert sheet['A1'].value == 'Core Workbook'
+    assert sheet['A2'].value == 'Style Code'
+    assert sheet['B2'].value == 'Brand Name'
+    assert sheet['D2'].value == 'PO Qty'
+    assert sheet['A3'].value == 'HRDS25001-A-BLACK-S'
+    assert sheet['B3'].value == 'House Of Raeli'
+    assert sheet['C3'].value == 'Black'
+    assert sheet['D3'].value == 4
+    assert 'A1:C1' in merged_ranges
 
 
 def test_po_ai_retries_with_compact_prompt_when_provider_rejects_prompt_size(monkeypatch) -> None:

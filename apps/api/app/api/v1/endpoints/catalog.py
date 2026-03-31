@@ -29,6 +29,7 @@ from app.models.catalog_template import CatalogTemplate
 from app.models.company import Company
 from app.models.company_settings import CompanySettings
 from app.models.image_label import ImageLabel
+from app.models.marketplace_document_template import MarketplaceDocumentTemplate
 from app.models.marketplace_export import MarketplaceExport
 from app.models.processing_job import ProcessingJob
 from app.models.product import Product
@@ -74,6 +75,12 @@ from app.services.ai import (
     process_ai_correction_retraining,
     process_image_analysis_job,
     process_techpack_ocr_job,
+)
+from app.services.marketplace_document_templates import (
+    loads_json as loads_marketplace_json,
+    marketplace_label,
+    normalize_marketplace_key,
+    normalize_template_columns,
 )
 
 router = APIRouter(prefix='/catalog', tags=['catalog'])
@@ -297,15 +304,10 @@ def _merge_template_defaults_with_allowed(
 
 
 def _normalize_marketplace(raw_marketplace: str) -> str:
-    normalized = re.sub(r'\s+', ' ', raw_marketplace.strip().lower())
-    marketplace_key = MARKETPLACE_ALIASES.get(normalized)
-    if marketplace_key is None:
-        allowed = ', '.join(template['label'] for template in MARKETPLACE_EXPORT_TEMPLATES.values())
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f'Unsupported marketplace "{raw_marketplace}". Allowed: {allowed}.',
-        )
-    return marketplace_key
+    try:
+        return normalize_marketplace_key(raw_marketplace)
+    except ValueError as err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(err)) from err
 
 
 def _normalize_export_filters(raw_filters: dict[str, Any] | None) -> dict[str, Any]:
@@ -653,11 +655,46 @@ def _extract_export_fields(product: Product, image_url: str = '') -> dict[str, s
     }
 
 
-def _collect_export_validation_errors(
-    products: list[Product], marketplace_key: str, primary_image_map: dict[str, str]
-) -> list[str]:
+def _catalog_builtin_template_config(marketplace_key: str) -> dict[str, Any]:
     template = MARKETPLACE_EXPORT_TEMPLATES[marketplace_key]
-    required_fields = template['required_fields']
+    required_fields = set(template['required_fields'])
+    columns = [
+        {'header': header, 'source_field': source_field, 'required': source_field in required_fields}
+        for header, source_field in template['columns']
+    ]
+    return {
+        'marketplace_key': marketplace_key,
+        'label': template['label'],
+        'columns': columns,
+        'required_fields': required_fields,
+    }
+
+
+def _catalog_template_config_from_record(record: MarketplaceDocumentTemplate) -> dict[str, Any]:
+    schema_payload = loads_marketplace_json(record.schema_json)
+    columns = normalize_template_columns(schema_payload.get('columns') if isinstance(schema_payload, dict) else [])
+    required_fields = {
+        str(column.get('source_field'))
+        for column in columns
+        if column.get('source_field') and bool(column.get('required'))
+    }
+    if not columns:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'Marketplace template "{record.name}" has no mapped columns.',
+        )
+    return {
+        'marketplace_key': record.marketplace_key,
+        'label': marketplace_label(record.marketplace_key),
+        'columns': columns,
+        'required_fields': required_fields,
+    }
+
+
+def _collect_export_validation_errors(
+    products: list[Product], template_config: dict[str, Any], primary_image_map: dict[str, str]
+) -> list[str]:
+    required_fields = set(template_config['required_fields'])
     errors: list[str] = []
 
     for product in products:
@@ -840,16 +877,15 @@ def _generate_xlsx_bytes(headers: list[str], rows: list[list[str]]) -> bytes:
 
 
 def _build_export_file(
-    products: list[Product], marketplace_key: str, export_format: str, primary_image_map: dict[str, str]
+    products: list[Product], template_config: dict[str, Any], export_format: str, primary_image_map: dict[str, str]
 ) -> tuple[bytes, int]:
-    template = MARKETPLACE_EXPORT_TEMPLATES[marketplace_key]
-    columns: tuple[tuple[str, str], ...] = template['columns']
-    headers = [column[0] for column in columns]
+    columns = list(template_config['columns'])
+    headers = [str(column.get('header') or '') for column in columns]
     rows: list[list[str]] = []
     for index, product in enumerate(products, start=1):
         fields = _extract_export_fields(product, primary_image_map.get(product.id, ''))
         fields['serial_no'] = str(index)
-        data_row = [fields.get(column_key, '') for _, column_key in columns]
+        data_row = [fields.get(str(column.get('source_field') or ''), '') for column in columns]
         rows.append(data_row)
 
     if export_format == 'csv':
@@ -1022,6 +1058,8 @@ def _to_export_response(record: MarketplaceExport) -> MarketplaceExportResponse:
         company_id=record.company_id,
         requested_by_user_id=record.requested_by_user_id,
         marketplace=record.marketplace,
+        template_id=record.template_id,
+        template_name=record.template_name,
         export_format=record.export_format,
         status=record.status,
         filters=_json_loads(record.filters_json),
@@ -1170,6 +1208,23 @@ def _get_company_template_or_404(db: Session, company_id: str, template_id: str)
     )
     if template is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Template not found.')
+    return template
+
+
+def _get_marketplace_document_template_or_404(
+    db: Session, company_id: str, template_id: str
+) -> MarketplaceDocumentTemplate:
+    template = (
+        db.query(MarketplaceDocumentTemplate)
+        .filter(
+            MarketplaceDocumentTemplate.id == template_id,
+            MarketplaceDocumentTemplate.company_id == company_id,
+            MarketplaceDocumentTemplate.document_type == 'catalog',
+        )
+        .first()
+    )
+    if template is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Marketplace template not found.')
     return template
 
 
@@ -1793,15 +1848,28 @@ def create_export(
     db: DbSession,
     current_user: WriteUser,
 ) -> MarketplaceExportResponse:
-    marketplace_key = _normalize_marketplace(payload.marketplace)
-    template = MARKETPLACE_EXPORT_TEMPLATES[marketplace_key]
+    selected_template: MarketplaceDocumentTemplate | None = None
+    if payload.template_id:
+        selected_template = _get_marketplace_document_template_or_404(db, current_user.company_id, payload.template_id)
+        marketplace_key = selected_template.marketplace_key
+        template_config = _catalog_template_config_from_record(selected_template)
+    else:
+        if not payload.marketplace:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Marketplace is required when no template is selected.',
+            )
+        marketplace_key = _normalize_marketplace(payload.marketplace)
+        template_config = _catalog_builtin_template_config(marketplace_key)
     normalized_filters = _normalize_export_filters(payload.filters)
 
     export = MarketplaceExport(
         id=str(uuid4()),
         company_id=current_user.company_id,
         requested_by_user_id=current_user.id,
-        marketplace=template['label'],
+        marketplace=template_config['label'],
+        template_id=selected_template.id if selected_template else None,
+        template_name=selected_template.name if selected_template else None,
         export_format=payload.export_format,
         status='processing',
         filters_json=_json_dumps(normalized_filters),
@@ -1816,7 +1884,7 @@ def create_export(
         product_ids = [product.id for product in products]
         primary_image_map = _build_primary_image_map(db, current_user.company_id, product_ids)
 
-        validation_errors = _collect_export_validation_errors(products, marketplace_key, primary_image_map)
+        validation_errors = _collect_export_validation_errors(products, template_config, primary_image_map)
         if validation_errors:
             preview = '; '.join(validation_errors[:MAX_EXPORT_VALIDATION_ERRORS])
             overflow = len(validation_errors) - MAX_EXPORT_VALIDATION_ERRORS
@@ -1825,7 +1893,7 @@ def create_export(
 
         file_content, row_count = _build_export_file(
             products=products,
-            marketplace_key=marketplace_key,
+            template_config=template_config,
             export_format=payload.export_format,
             primary_image_map=primary_image_map,
         )

@@ -8,6 +8,7 @@ from app.models.company import Company
 from app.models.company_settings import CompanySettings
 from app.models.image_label import ImageLabel
 from app.models.invoice import Invoice, InvoiceLineItem
+from app.models.marketplace_document_template import MarketplaceDocumentTemplate
 from app.models.marketplace_export import MarketplaceExport
 from app.models.packing_list import PackingList, PackingListCarton, PackingListCartonItem
 from app.models.po_request import PORequest, PORequestItem
@@ -32,6 +33,7 @@ __all__ = [
     'ImageLabel',
     'Invoice',
     'InvoiceLineItem',
+    'MarketplaceDocumentTemplate',
     'MarketplaceExport',
     'PackingList',
     'PackingListCarton',

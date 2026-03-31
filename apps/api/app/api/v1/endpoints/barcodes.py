@@ -37,6 +37,8 @@ def list_barcodes(
             po_number=po_number,
             template_kind=job.template_kind,
             template_id=job.template_id,
+            marketplace_template_id=job.marketplace_template_id,
+            marketplace_template_name=job.marketplace_template_name,
             status=job.status,
             total_stickers=int(job.total_stickers),
             total_pages=int(job.total_pages),

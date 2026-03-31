@@ -1,7 +1,7 @@
 import json
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_roles
@@ -14,6 +14,7 @@ from app.models.user import User
 from app.schemas.buyer_document_template import (
     BuyerDocumentTemplateCreateRequest,
     BuyerDocumentTemplateListResponse,
+    BuyerDocumentTemplateParseResponse,
     BuyerDocumentTemplateResponse,
     BuyerDocumentTemplateUpdateRequest,
 )
@@ -28,7 +29,12 @@ from app.schemas.settings import (
     POBuilderDefaultsResponse,
     POBuilderDefaultsSettings,
 )
-from app.services.buyer_document_templates import json_dumps, json_loads
+from app.services.buyer_document_templates import (
+    json_dumps,
+    json_loads,
+    parse_buyer_template_sample,
+    save_sample_file,
+)
 
 router = APIRouter(prefix='/settings', tags=['settings'])
 
@@ -309,6 +315,47 @@ def create_buyer_document_template(
     db.commit()
     db.refresh(template)
     return _to_buyer_document_template_response(template)
+
+
+@router.post('/buyer-document-templates/parse-sample', response_model=BuyerDocumentTemplateParseResponse)
+async def parse_buyer_document_template_sample(
+    file: UploadFile = File(...),
+    document_type: str = Form(default='invoice'),
+    current_user: User = Depends(require_roles('admin', 'manager')),
+) -> BuyerDocumentTemplateParseResponse:
+    if document_type != 'invoice':
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Only invoice buyer templates are supported.')
+
+    filename = file.filename or 'invoice-template.pdf'
+    if not filename.lower().endswith('.pdf'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Invoice learning currently supports PDF samples only.',
+        )
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Uploaded file is empty.')
+
+    try:
+        parsed = parse_buyer_template_sample(content=content, filename=filename)
+    except Exception as err:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f'Failed to parse sample: {err!s}') from err
+
+    file_url = save_sample_file(
+        company_id=current_user.company_id,
+        filename=filename,
+        content=content,
+        content_type=file.content_type or 'application/pdf',
+    )
+    return BuyerDocumentTemplateParseResponse(
+        document_type='invoice',
+        file_format='pdf',
+        sample_file_url=file_url,
+        layout_key=str(parsed.get('layout_key') or 'default_v1'),
+        detected_headers=[str(value) for value in list(parsed.get('detected_headers') or [])],
+        defaults=InvoiceDetails(**parsed.get('defaults', {})),
+    )
 
 
 @router.patch('/buyer-document-templates/{template_id}', response_model=BuyerDocumentTemplateResponse)

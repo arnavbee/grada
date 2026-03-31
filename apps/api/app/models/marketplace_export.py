@@ -11,6 +11,8 @@ class MarketplaceExport(Base):
     company_id: Mapped[str] = mapped_column(String(36), ForeignKey('companies.id', ondelete='CASCADE'), index=True)
     requested_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     marketplace: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    template_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    template_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     export_format: Mapped[str] = mapped_column(String(16), default='csv', nullable=False)
     status: Mapped[str] = mapped_column(String(32), default='queued', index=True, nullable=False)
     filters_json: Mapped[str] = mapped_column(Text, default='{}', nullable=False)

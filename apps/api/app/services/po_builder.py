@@ -511,22 +511,48 @@ BODY_ALIGNMENT = Alignment(horizontal='center', vertical='center', wrap_text=Tru
 LEFT_BODY_ALIGNMENT = Alignment(horizontal='left', vertical='center', wrap_text=True)
 
 
+def _po_export_field_map(row: PORequestRow) -> dict[str, Any]:
+    return {
+        'sku_id': row.sku_id,
+        'brand_name': row.brand_name,
+        'category_type': row.category_type,
+        'styli_sku_id': row.styli_sku_id or '',
+        'color': row.color,
+        'size': row.size,
+        'l1': row.l1,
+        'fibre_composition': row.fibre_composition or '',
+        'coo': row.coo,
+        'po_price': float(row.po_price) if row.po_price is not None else '',
+        'osp_in_sar': float(row.osp_in_sar) if row.osp_in_sar is not None else '',
+        'po_qty': row.po_qty,
+        'knitted_woven': row.knitted_woven or '',
+        'product_name': row.product_name or '',
+        'dress_print': row.dress_print or '',
+        'dress_length': row.dress_length or '',
+        'dress_shape': row.dress_shape or '',
+        'sleeve_length': row.sleeve_length or '',
+        'neck_women': row.neck_women or '',
+        'sleeve_styling': row.sleeve_styling or '',
+    }
+
+
 def build_po_export_row_values(row: PORequestRow) -> list[Any]:
+    field_map = _po_export_field_map(row)
     return [
-        row.sku_id,
-        row.brand_name,
-        row.category_type,
-        row.styli_sku_id or '',
-        row.color,
-        row.size,
-        row.l1,
-        row.fibre_composition or '',
-        row.coo,
-        float(row.po_price) if row.po_price is not None else '',
-        float(row.osp_in_sar) if row.osp_in_sar is not None else '',
-        row.po_qty,
-        row.knitted_woven or '',
-        row.product_name or '',
+        field_map['sku_id'],
+        field_map['brand_name'],
+        field_map['category_type'],
+        field_map['styli_sku_id'],
+        field_map['color'],
+        field_map['size'],
+        field_map['l1'],
+        field_map['fibre_composition'],
+        field_map['coo'],
+        field_map['po_price'],
+        field_map['osp_in_sar'],
+        field_map['po_qty'],
+        field_map['knitted_woven'],
+        field_map['product_name'],
         '',
         '',
         '',
@@ -535,12 +561,12 @@ def build_po_export_row_values(row: PORequestRow) -> list[Any]:
         '',
         '',
         '',
-        row.dress_print or '',
-        row.dress_length or '',
-        row.dress_shape or '',
-        row.sleeve_length or '',
-        row.neck_women or '',
-        row.sleeve_styling or '',
+        field_map['dress_print'],
+        field_map['dress_length'],
+        field_map['dress_shape'],
+        field_map['sleeve_length'],
+        field_map['neck_women'],
+        field_map['sleeve_styling'],
         '',
         '',
         '',
@@ -563,6 +589,11 @@ def build_po_export_row_values(row: PORequestRow) -> list[Any]:
         '',
         '',
     ]
+
+
+def build_po_export_row_values_from_template(row: PORequestRow, columns: list[dict[str, Any]]) -> list[Any]:
+    field_map = _po_export_field_map(row)
+    return [field_map.get(str(column.get('source_field') or ''), '') for column in columns]
 
 
 def _apply_header_styles(sheet) -> None:
@@ -619,28 +650,101 @@ def _apply_column_widths(sheet) -> None:
         sheet.column_dimensions[column_letter].width = width
 
 
-def build_po_export_xlsx(po_request: PORequest) -> bytes:
+def build_po_export_csv(po_request: PORequest, template_config: dict[str, Any] | None = None) -> str:
+    import csv
+    import io
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    ordered_rows = sorted(po_request.rows, key=lambda row: (row.row_index, row.created_at))
+
+    if template_config is None:
+        writer.writerow(PO_EXPORT_GROUP_ROW)
+        writer.writerow(PO_EXPORT_HEADERS)
+        for row in ordered_rows:
+            writer.writerow(build_po_export_row_values(row))
+        return output.getvalue()
+
+    columns = list(template_config.get('columns') or [])
+    layout = dict(template_config.get('layout') or {})
+    prefix_rows = layout.get('prefix_rows')
+    if isinstance(prefix_rows, list) and prefix_rows:
+        for prefix_row in prefix_rows:
+            writer.writerow(list(prefix_row) if isinstance(prefix_row, list) else [])
+    else:
+        writer.writerow([str(column.get('header') or '') for column in columns])
+
+    for row in ordered_rows:
+        writer.writerow(build_po_export_row_values_from_template(row, columns))
+    return output.getvalue()
+
+
+def build_po_export_xlsx(po_request: PORequest, template_config: dict[str, Any] | None = None) -> bytes:
     workbook = Workbook()
     sheet = workbook.active
-    sheet.title = 'Women_SST_PO'
-
-    sheet.append(PO_EXPORT_GROUP_ROW)
-    sheet.append(PO_EXPORT_HEADERS)
     ordered_rows = sorted(po_request.rows, key=lambda row: (row.row_index, row.created_at))
-    for row in ordered_rows:
-        sheet.append(build_po_export_row_values(row))
 
-    _apply_header_styles(sheet)
-    _apply_column_widths(sheet)
+    if template_config is None:
+        sheet.title = 'Women_SST_PO'
+        sheet.append(PO_EXPORT_GROUP_ROW)
+        sheet.append(PO_EXPORT_HEADERS)
+        for row in ordered_rows:
+            sheet.append(build_po_export_row_values(row))
 
-    sheet.freeze_panes = 'A3'
-    sheet.auto_filter.ref = f'A2:{get_column_letter(len(PO_EXPORT_HEADERS))}{sheet.max_row}'
-    sheet.sheet_view.zoomScale = 85
-    sheet.row_dimensions[1].height = 24
-    sheet.row_dimensions[2].height = 42
+        _apply_header_styles(sheet)
+        _apply_column_widths(sheet)
 
-    for row_index in range(3, sheet.max_row + 1):
-        for column_index in range(1, len(PO_EXPORT_HEADERS) + 1):
+        sheet.freeze_panes = 'A3'
+        sheet.auto_filter.ref = f'A2:{get_column_letter(len(PO_EXPORT_HEADERS))}{sheet.max_row}'
+        sheet.sheet_view.zoomScale = 85
+        sheet.row_dimensions[1].height = 24
+        sheet.row_dimensions[2].height = 42
+
+        data_start_row = 3
+        total_columns = len(PO_EXPORT_HEADERS)
+    else:
+        columns = list(template_config.get('columns') or [])
+        layout = dict(template_config.get('layout') or {})
+        prefix_rows = layout.get('prefix_rows')
+        sheet.title = str(template_config.get('sheet_name') or 'Workbook')
+        if isinstance(prefix_rows, list) and prefix_rows:
+            for prefix_row in prefix_rows:
+                sheet.append(list(prefix_row) if isinstance(prefix_row, list) else [])
+        else:
+            sheet.append([str(column.get('header') or '') for column in columns])
+
+        for row in ordered_rows:
+            sheet.append(build_po_export_row_values_from_template(row, columns))
+
+        column_widths = layout.get('column_widths')
+        if isinstance(column_widths, dict):
+            for column_letter, width in column_widths.items():
+                if isinstance(column_letter, str) and isinstance(width, (int, float)):
+                    sheet.column_dimensions[column_letter].width = float(width)
+
+        merged_ranges = layout.get('merged_ranges')
+        if isinstance(merged_ranges, list):
+            for merged_range in merged_ranges:
+                if not isinstance(merged_range, str):
+                    continue
+                try:
+                    sheet.merge_cells(merged_range)
+                except ValueError:
+                    continue
+
+        header_row_index = int(template_config.get('header_row_index') or 1)
+        freeze_panes = layout.get('freeze_panes')
+        if isinstance(freeze_panes, str) and freeze_panes.strip():
+            sheet.freeze_panes = freeze_panes
+        else:
+            sheet.freeze_panes = f'A{header_row_index + 1}'
+        if columns:
+            sheet.auto_filter.ref = f'A{header_row_index}:{get_column_letter(len(columns))}{sheet.max_row}'
+        data_start_row = header_row_index + 1
+        total_columns = len(columns)
+
+    for row_index in range(data_start_row, sheet.max_row + 1):
+        for column_index in range(1, total_columns + 1):
             cell = sheet.cell(row=row_index, column=column_index)
             cell.border = HEADER_BORDER
             cell.alignment = LEFT_BODY_ALIGNMENT if column_index in {1, 2, 8, 14} else BODY_ALIGNMENT

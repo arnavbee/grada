@@ -16,6 +16,14 @@ import { apiRequest } from "@/src/lib/api-client";
 import { resolveAssetUrl } from "@/src/lib/asset-url";
 import { getResolvedApiOriginUrl } from "@/src/lib/api-url";
 import { cn } from "@/src/lib/cn";
+import {
+  createMarketplaceDocumentTemplate,
+  deleteMarketplaceDocumentTemplate,
+  listMarketplaceDocumentTemplates,
+  parseMarketplaceTemplateSample,
+  type MarketplaceDocumentTemplate,
+  type MarketplaceDocumentTemplateParseResponse,
+} from "@/src/lib/marketplace-document-templates";
 
 type CatalogStatus = "draft" | "processing" | "needs_review" | "ready" | "archived";
 type UploadStatus = "queued" | "uploading" | "completed" | "completed_local" | "failed";
@@ -104,6 +112,14 @@ const MARKETPLACE_OPTIONS = [
   "Flipkart",
   "Nykaa",
 ] as const;
+const MARKETPLACE_KEY_BY_LABEL: Record<(typeof MARKETPLACE_OPTIONS)[number], string> = {
+  Generic: "generic",
+  Myntra: "myntra",
+  Ajio: "ajio",
+  "Amazon IN": "amazon_in",
+  Flipkart: "flipkart",
+  Nykaa: "nykaa",
+};
 const EXPORT_STATUS_OPTIONS: Array<"all" | ExportStatus> = [
   "all",
   "queued",
@@ -164,6 +180,26 @@ const TEMPLATE_LABEL_TO_API_MAP: Record<
   composition: "allowed_compositions",
   wovenKnits: "allowed_woven_knits",
 };
+const CATALOG_EXPORT_SOURCE_FIELDS = [
+  "serial_no",
+  "sku",
+  "title",
+  "brand",
+  "category",
+  "color",
+  "size",
+  "mrp",
+  "description",
+  "fabric",
+  "composition",
+  "woven_knits",
+  "units",
+  "po_price",
+  "osp",
+  "status",
+  "image_preview",
+  "image_url",
+] as const;
 
 interface CatalogProduct {
   id: string;
@@ -256,6 +292,8 @@ interface MarketplaceExportRecord {
   company_id: string;
   requested_by_user_id?: string | null;
   marketplace: string;
+  template_id?: string | null;
+  template_name?: string | null;
   export_format: ExportFormat;
   status: ExportStatus;
   filters: Record<string, unknown>;
@@ -1016,6 +1054,21 @@ export function CatalogView(): JSX.Element {
 
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportMarketplace, setExportMarketplace] = useState<string>(MARKETPLACE_OPTIONS[0]);
+  const [marketplaceTemplates, setMarketplaceTemplates] = useState<MarketplaceDocumentTemplate[]>(
+    [],
+  );
+  const [selectedExportTemplateId, setSelectedExportTemplateId] = useState<string>("");
+  const [isMarketplaceTemplatePanelOpen, setIsMarketplaceTemplatePanelOpen] = useState(false);
+  const [marketplaceTemplateName, setMarketplaceTemplateName] = useState("");
+  const [marketplaceTemplateMarketplace, setMarketplaceTemplateMarketplace] = useState<string>(
+    MARKETPLACE_OPTIONS[0],
+  );
+  const [marketplaceTemplateFile, setMarketplaceTemplateFile] = useState<File | null>(null);
+  const [parsedMarketplaceTemplate, setParsedMarketplaceTemplate] =
+    useState<MarketplaceDocumentTemplateParseResponse | null>(null);
+  const [marketplaceTemplateError, setMarketplaceTemplateError] = useState<string | null>(null);
+  const [isParsingMarketplaceTemplate, setIsParsingMarketplaceTemplate] = useState(false);
+  const [isSavingMarketplaceTemplate, setIsSavingMarketplaceTemplate] = useState(false);
   const [exportFormat, setExportFormat] = useState<ExportFormat>("xlsx");
   const [exportStatusFilter, setExportStatusFilter] = useState<"all" | ExportStatus>("all");
   const [isLearningPanelOpen, setIsLearningPanelOpen] = useState(false);
@@ -1315,6 +1368,50 @@ export function CatalogView(): JSX.Element {
     void loadExportHistory(exportStatusFilter);
   }, [exportStatusFilter, loadExportHistory]);
 
+  const loadMarketplaceTemplates = useCallback(async (): Promise<void> => {
+    if (!hasAccessToken()) {
+      setMarketplaceTemplates([]);
+      setSelectedExportTemplateId("");
+      return;
+    }
+    try {
+      const items = await listMarketplaceDocumentTemplates("catalog");
+      setMarketplaceTemplates(items);
+      setSelectedExportTemplateId((current) => {
+        if (current && items.some((item) => item.id === current)) {
+          return current;
+        }
+        return "";
+      });
+    } catch (error) {
+      setMarketplaceTemplateError(
+        error instanceof Error ? error.message : "Unable to load marketplace templates.",
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMarketplaceTemplates();
+  }, [loadMarketplaceTemplates]);
+
+  useEffect(() => {
+    if (!selectedExportTemplateId) {
+      return;
+    }
+    const matchedTemplate = marketplaceTemplates.find(
+      (item) => item.id === selectedExportTemplateId,
+    );
+    if (!matchedTemplate) {
+      return;
+    }
+    const label = MARKETPLACE_OPTIONS.find(
+      (option) => MARKETPLACE_KEY_BY_LABEL[option] === matchedTemplate.marketplace_key,
+    );
+    if (label) {
+      setExportMarketplace(label);
+    }
+  }, [marketplaceTemplates, selectedExportTemplateId]);
+
   const loadLearningStats = useCallback(async (): Promise<void> => {
     if (!hasAccessToken()) {
       setLearningStats(null);
@@ -1438,7 +1535,8 @@ export function CatalogView(): JSX.Element {
       const created = await apiRequest<MarketplaceExportRecord>("/catalog/exports", {
         method: "POST",
         body: JSON.stringify({
-          marketplace: exportMarketplace,
+          marketplace: selectedExportTemplateId ? undefined : exportMarketplace,
+          template_id: selectedExportTemplateId || undefined,
           export_format: exportFormat,
           filters: exportFilters,
         }),
@@ -1459,6 +1557,107 @@ export function CatalogView(): JSX.Element {
     } finally {
       setIsCreatingExport(false);
       await loadExportHistory(exportStatusFilter);
+    }
+  }
+
+  async function handleParseMarketplaceTemplateSample(): Promise<void> {
+    if (!marketplaceTemplateFile) {
+      setMarketplaceTemplateError("Choose a CSV or XLSX sample first.");
+      return;
+    }
+    setIsParsingMarketplaceTemplate(true);
+    setMarketplaceTemplateError(null);
+    try {
+      const parsed = await parseMarketplaceTemplateSample(marketplaceTemplateFile, "catalog");
+      setParsedMarketplaceTemplate(parsed);
+      setMarketplaceTemplateName((current) =>
+        current.trim() ? current : `${marketplaceTemplateMarketplace} catalog export`,
+      );
+    } catch (error) {
+      setMarketplaceTemplateError(
+        error instanceof Error ? error.message : "Failed to parse marketplace sample.",
+      );
+    } finally {
+      setIsParsingMarketplaceTemplate(false);
+    }
+  }
+
+  function handleMarketplaceTemplateColumnChange(
+    index: number,
+    patch: Partial<MarketplaceDocumentTemplateParseResponse["columns"][number]>,
+  ): void {
+    setParsedMarketplaceTemplate((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        columns: current.columns.map((column, columnIndex) =>
+          columnIndex === index ? { ...column, ...patch } : column,
+        ),
+      };
+    });
+  }
+
+  async function handleSaveMarketplaceTemplate(): Promise<void> {
+    if (!parsedMarketplaceTemplate) {
+      setMarketplaceTemplateError("Upload and parse a marketplace sample first.");
+      return;
+    }
+    if (!marketplaceTemplateName.trim()) {
+      setMarketplaceTemplateError("Template name is required.");
+      return;
+    }
+    setIsSavingMarketplaceTemplate(true);
+    setMarketplaceTemplateError(null);
+    try {
+      const saved = await createMarketplaceDocumentTemplate({
+        name: marketplaceTemplateName.trim(),
+        marketplace_key:
+          MARKETPLACE_KEY_BY_LABEL[
+            marketplaceTemplateMarketplace as keyof typeof MARKETPLACE_KEY_BY_LABEL
+          ] ?? "generic",
+        document_type: "catalog",
+        template_kind: parsedMarketplaceTemplate.template_kind,
+        file_format: parsedMarketplaceTemplate.file_format,
+        sample_file_url: parsedMarketplaceTemplate.sample_file_url,
+        sheet_name: parsedMarketplaceTemplate.sheet_name,
+        header_row_index: parsedMarketplaceTemplate.header_row_index,
+        columns: parsedMarketplaceTemplate.columns,
+        layout: parsedMarketplaceTemplate.layout,
+        is_default: marketplaceTemplates.length === 0,
+        is_active: true,
+      });
+      await loadMarketplaceTemplates();
+      setSelectedExportTemplateId(saved.id);
+      setMarketplaceTemplateName("");
+      setMarketplaceTemplateFile(null);
+      setParsedMarketplaceTemplate(null);
+      setIsMarketplaceTemplatePanelOpen(false);
+    } catch (error) {
+      setMarketplaceTemplateError(
+        error instanceof Error ? error.message : "Failed to save marketplace template.",
+      );
+    } finally {
+      setIsSavingMarketplaceTemplate(false);
+    }
+  }
+
+  async function handleDeleteMarketplaceTemplate(templateId: string): Promise<void> {
+    if (typeof window !== "undefined" && !window.confirm("Delete this marketplace template?")) {
+      return;
+    }
+    setMarketplaceTemplateError(null);
+    try {
+      await deleteMarketplaceDocumentTemplate(templateId);
+      if (selectedExportTemplateId === templateId) {
+        setSelectedExportTemplateId("");
+      }
+      await loadMarketplaceTemplates();
+    } catch (error) {
+      setMarketplaceTemplateError(
+        error instanceof Error ? error.message : "Failed to delete marketplace template.",
+      );
     }
   }
 
@@ -4408,7 +4607,19 @@ export function CatalogView(): JSX.Element {
                   <p className="text-xs text-kira-midgray">
                     Use XLSX for image preview cells. CSV exports image URLs only.
                   </p>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                    <select
+                      className="kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-sm text-kira-darkgray "
+                      onChange={(event) => setSelectedExportTemplateId(event.target.value)}
+                      value={selectedExportTemplateId}
+                    >
+                      <option value="">Built-in marketplace format</option>
+                      {marketplaceTemplates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}
+                        </option>
+                      ))}
+                    </select>
                     <select
                       className="kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-sm text-kira-darkgray "
                       onChange={(event) => setExportMarketplace(event.target.value)}
@@ -4428,16 +4639,196 @@ export function CatalogView(): JSX.Element {
                       <option value="csv">CSV</option>
                       <option value="xlsx">XLSX</option>
                     </select>
-                    <button
-                      className="kira-focus-ring bg-kira-black dark:bg-white px-4 py-2 text-sm font-semibold uppercase tracking-[0.06em] text-kira-offwhite dark:text-black disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={isCreatingExport}
-                      onClick={() => void handleCreateMarketplaceExport()}
-                      type="button"
-                    >
-                      {isCreatingExport ? "Generating..." : "Generate Export"}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        className="kira-focus-ring flex-1 bg-kira-black dark:bg-white px-4 py-2 text-sm font-semibold uppercase tracking-[0.06em] text-kira-offwhite dark:text-black disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={isCreatingExport}
+                        onClick={() => void handleCreateMarketplaceExport()}
+                        type="button"
+                      >
+                        {isCreatingExport ? "Generating..." : "Generate Export"}
+                      </button>
+                      <button
+                        className="kira-focus-ring border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-xs font-semibold uppercase tracking-[0.06em] text-kira-darkgray "
+                        onClick={() => setIsMarketplaceTemplatePanelOpen((current) => !current)}
+                        type="button"
+                      >
+                        {isMarketplaceTemplatePanelOpen ? "Close" : "Templates"}
+                      </button>
+                    </div>
                   </div>
+                  {selectedExportTemplateId ? (
+                    <p className="text-xs text-kira-midgray">
+                      Selected template overrides built-in marketplace column order for this export.
+                    </p>
+                  ) : null}
                   {exportError ? <p className="text-sm text-rose-700">{exportError}</p> : null}
+                  {isMarketplaceTemplatePanelOpen ? (
+                    <div className="space-y-4 border border-kira-warmgray/50 bg-kira-offwhite/70 p-4">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <label className="space-y-1 text-sm text-kira-darkgray ">
+                          <span className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                            Template name
+                          </span>
+                          <input
+                            className="kira-focus-ring w-full border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-sm"
+                            onChange={(event) => setMarketplaceTemplateName(event.target.value)}
+                            placeholder="Amazon IN catalog export"
+                            value={marketplaceTemplateName}
+                          />
+                        </label>
+                        <label className="space-y-1 text-sm text-kira-darkgray ">
+                          <span className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                            Marketplace
+                          </span>
+                          <select
+                            className="kira-focus-ring w-full border border-kira-warmgray/55 bg-kira-offwhite px-3 py-2 text-sm"
+                            onChange={(event) =>
+                              setMarketplaceTemplateMarketplace(event.target.value)
+                            }
+                            value={marketplaceTemplateMarketplace}
+                          >
+                            {MARKETPLACE_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="space-y-1 text-sm text-kira-darkgray ">
+                          <span className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                            Sample CSV/XLSX
+                          </span>
+                          <input
+                            accept=".csv,.xlsx"
+                            className="block w-full text-sm"
+                            onChange={(event) =>
+                              setMarketplaceTemplateFile(event.target.files?.[0] ?? null)
+                            }
+                            type="file"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          disabled={isParsingMarketplaceTemplate || !marketplaceTemplateFile}
+                          onClick={() => void handleParseMarketplaceTemplateSample()}
+                          variant="secondary"
+                        >
+                          {isParsingMarketplaceTemplate ? "Parsing..." : "Parse sample"}
+                        </Button>
+                        <Button
+                          disabled={isSavingMarketplaceTemplate || !parsedMarketplaceTemplate}
+                          onClick={() => void handleSaveMarketplaceTemplate()}
+                        >
+                          {isSavingMarketplaceTemplate ? "Saving..." : "Save template"}
+                        </Button>
+                      </div>
+                      {marketplaceTemplateError ? (
+                        <p className="text-sm text-rose-700">{marketplaceTemplateError}</p>
+                      ) : null}
+                      {parsedMarketplaceTemplate ? (
+                        <div className="space-y-3">
+                          <p className="text-xs text-kira-midgray">
+                            Detected header row {parsedMarketplaceTemplate.header_row_index}
+                            {parsedMarketplaceTemplate.sheet_name
+                              ? ` on sheet ${parsedMarketplaceTemplate.sheet_name}`
+                              : ""}
+                            .
+                          </p>
+                          <div className="overflow-x-auto border border-kira-warmgray/40">
+                            <table className="min-w-full text-sm">
+                              <thead className="bg-kira-warmgray/15 text-left text-xs uppercase tracking-[0.06em] text-kira-midgray">
+                                <tr>
+                                  <th className="px-3 py-2">Sample column</th>
+                                  <th className="px-3 py-2">Map to</th>
+                                  <th className="px-3 py-2">Required</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {parsedMarketplaceTemplate.columns.map((column, index) => (
+                                  <tr
+                                    key={`${column.header}-${index}`}
+                                    className="border-t border-kira-warmgray/30"
+                                  >
+                                    <td className="px-3 py-2">{column.header}</td>
+                                    <td className="px-3 py-2">
+                                      <select
+                                        className="kira-focus-ring w-full border border-kira-warmgray/55 bg-kira-offwhite px-2 py-1 text-sm"
+                                        onChange={(event) =>
+                                          handleMarketplaceTemplateColumnChange(index, {
+                                            source_field: event.target.value || null,
+                                          })
+                                        }
+                                        value={column.source_field ?? ""}
+                                      >
+                                        <option value="">Ignore column</option>
+                                        {CATALOG_EXPORT_SOURCE_FIELDS.map((field) => (
+                                          <option key={field} value={field}>
+                                            {field}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    <td className="px-3 py-2">
+                                      <input
+                                        checked={column.required}
+                                        onChange={(event) =>
+                                          handleMarketplaceTemplateColumnChange(index, {
+                                            required: event.target.checked,
+                                          })
+                                        }
+                                        type="checkbox"
+                                      />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : null}
+                      {marketplaceTemplates.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                            Saved marketplace templates
+                          </p>
+                          <div className="space-y-2">
+                            {marketplaceTemplates.map((template) => (
+                              <div
+                                key={template.id}
+                                className="flex items-center justify-between border border-kira-warmgray/30 px-3 py-2 text-sm"
+                              >
+                                <div>
+                                  <p className="font-medium text-kira-darkgray ">{template.name}</p>
+                                  <p className="text-xs text-kira-midgray">
+                                    {template.marketplace_key} •{" "}
+                                    {template.file_format.toUpperCase()}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() => setSelectedExportTemplateId(template.id)}
+                                    variant="secondary"
+                                  >
+                                    Use
+                                  </Button>
+                                  <Button
+                                    onClick={() =>
+                                      void handleDeleteMarketplaceTemplate(template.id)
+                                    }
+                                    variant="text"
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div className="mt-4 space-y-3">

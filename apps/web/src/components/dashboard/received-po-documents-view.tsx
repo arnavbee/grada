@@ -11,6 +11,13 @@ import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { normalizeStickerAssetUrlForPdf } from "@/src/lib/sticker-asset-pdf";
 import {
+  createMarketplaceDocumentTemplate,
+  listMarketplaceDocumentTemplates,
+  parseMarketplaceTemplateSample,
+  type MarketplaceDocumentTemplate,
+  type MarketplaceDocumentTemplateParseResponse,
+} from "@/src/lib/marketplace-document-templates";
+import {
   type BarcodeJob,
   type ExportMode,
   type Invoice,
@@ -31,10 +38,13 @@ import {
   updatePackingListCarton,
 } from "@/src/lib/received-po";
 import {
+  createBuyerDocumentTemplate,
   getBrandProfile,
   listBuyerDocumentTemplates,
+  parseBuyerDocumentTemplateSample,
   type BrandProfile,
   type BuyerDocumentTemplate,
+  type BuyerDocumentTemplateParseResponse,
 } from "@/src/lib/settings";
 import {
   getStickerTemplate,
@@ -43,6 +53,7 @@ import {
   updateStickerTemplate,
   uploadStickerImage,
   type StickerElement,
+  type StickerTemplateKind,
   type StickerTemplate,
 } from "@/src/lib/sticker-templates";
 import {
@@ -286,6 +297,86 @@ function buildTemplateElementPayload(template: StickerTemplate) {
 const DOC_INPUT_CLASS = "kira-field w-full";
 const DOC_TEXTAREA_CLASS = "kira-textarea min-h-24 w-full";
 
+interface PackingTemplateDraft {
+  name: string;
+  marketplace_key: string;
+  layout_key: string;
+  title: string;
+  po_number_label: string;
+  quantity_header: string;
+}
+
+function buildPackingTemplateDraft(distributor: string | null | undefined): PackingTemplateDraft {
+  const marketplaceKey = String(distributor ?? "").trim() || "generic";
+  const marketplaceLabel = marketplaceKey || "Marketplace";
+  return {
+    name: `${marketplaceLabel} Packing List`,
+    marketplace_key: marketplaceKey,
+    layout_key: "default_v1",
+    title: `${marketplaceLabel.toUpperCase()} PACKING LIST`,
+    po_number_label: `${marketplaceLabel.toUpperCase()} PO NUMBER`,
+    quantity_header: `${marketplaceLabel.toUpperCase()} QTY`,
+  };
+}
+
+interface BarcodeTemplateDraft {
+  name: string;
+  marketplace_key: string;
+  sticker_template_kind: StickerTemplateKind;
+  sticker_template_id: string;
+  width_mm: string;
+  height_mm: string;
+}
+
+function buildBarcodeTemplateDraft(distributor: string | null | undefined): BarcodeTemplateDraft {
+  const marketplaceKey = String(distributor ?? "").trim() || "generic";
+  const marketplaceLabel = marketplaceKey || "Marketplace";
+  return {
+    name: `${marketplaceLabel} Barcode`,
+    marketplace_key: marketplaceKey,
+    sticker_template_kind: "styli",
+    sticker_template_id: "",
+    width_mm: "45.03",
+    height_mm: "60",
+  };
+}
+
+interface InvoiceTemplateDraft {
+  name: string;
+  buyer_key: string;
+  layout_key: "default_v1" | "landmark_v1";
+}
+
+function buildInvoiceTemplateDraft(distributor: string | null | undefined): InvoiceTemplateDraft {
+  const buyerKey = String(distributor ?? "").trim() || "generic";
+  const buyerLabel = buyerKey || "Marketplace";
+  return {
+    name: `${buyerLabel} Invoice`,
+    buyer_key: buyerKey,
+    layout_key: "default_v1",
+  };
+}
+
+function resolveBarcodeMarketplaceConfig(template: MarketplaceDocumentTemplate | null): {
+  stickerTemplateKind: StickerTemplateKind;
+  stickerTemplateId: string | null;
+  widthMm: number | null;
+  heightMm: number | null;
+} {
+  const layout = (template?.layout ?? {}) as Record<string, unknown>;
+  const rawKind = String(layout.sticker_template_kind ?? "styli");
+  const stickerTemplateKind: StickerTemplateKind = rawKind === "custom" ? "custom" : "styli";
+  const rawTemplateId = String(layout.sticker_template_id ?? "").trim();
+  const widthValue = Number(layout.width_mm);
+  const heightValue = Number(layout.height_mm);
+  return {
+    stickerTemplateKind,
+    stickerTemplateId: rawTemplateId || null,
+    widthMm: Number.isFinite(widthValue) ? widthValue : null,
+    heightMm: Number.isFinite(heightValue) ? heightValue : null,
+  };
+}
+
 function brandProfileToInvoiceDetails(profile: BrandProfile): InvoiceDetails {
   return {
     marketplace_name: "",
@@ -342,6 +433,19 @@ function mergeBuyerTemplateDefaults(
   return merged;
 }
 
+function mergeInvoiceDetails(
+  base: InvoiceDetails,
+  overrides: Partial<InvoiceDetails>,
+): InvoiceDetails {
+  const merged: InvoiceDetails = { ...base };
+  for (const [key, value] of Object.entries(overrides)) {
+    if (typeof value === "string" && value.trim()) {
+      merged[key as keyof InvoiceDetails] = value;
+    }
+  }
+  return merged;
+}
+
 function matchBuyerTemplate(
   templates: BuyerDocumentTemplate[],
   distributor: string | null | undefined,
@@ -367,6 +471,32 @@ function matchBuyerTemplate(
   return templates.find((template) => template.is_default) ?? null;
 }
 
+function matchMarketplaceTemplate(
+  templates: MarketplaceDocumentTemplate[],
+  marketplaceName: string | null | undefined,
+): MarketplaceDocumentTemplate | null {
+  const normalizedMarketplace = normalizeBuyerKey(marketplaceName);
+  if (!normalizedMarketplace) {
+    return templates.find((template) => template.is_default) ?? null;
+  }
+  const exactMatch =
+    templates.find(
+      (template) => normalizeBuyerKey(template.marketplace_key) === normalizedMarketplace,
+    ) ?? null;
+  if (exactMatch) {
+    return exactMatch;
+  }
+  const containsMatch =
+    templates.find((template) => {
+      const marketplaceKey = normalizeBuyerKey(template.marketplace_key);
+      return marketplaceKey.length > 0 && normalizedMarketplace.includes(marketplaceKey);
+    }) ?? null;
+  if (containsMatch) {
+    return containsMatch;
+  }
+  return templates.find((template) => template.is_default) ?? null;
+}
+
 export function ReceivedPODocumentsView({
   receivedPoId,
 }: ReceivedPODocumentsViewProps): JSX.Element {
@@ -378,12 +508,18 @@ export function ReceivedPODocumentsView({
   const [activeBarcodeJobId, setActiveBarcodeJobId] = useState<string | null>(null);
   const [stickerTemplates, setStickerTemplates] = useState<StickerTemplate[]>([]);
   const [selectedBarcodeTemplate, setSelectedBarcodeTemplate] = useState<string>("styli");
+  const [barcodeTemplates, setBarcodeTemplates] = useState<MarketplaceDocumentTemplate[]>([]);
+  const [selectedBarcodeMarketplaceTemplateId, setSelectedBarcodeMarketplaceTemplateId] = useState<
+    string | null
+  >(null);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [buyerTemplates, setBuyerTemplates] = useState<BuyerDocumentTemplate[]>([]);
   const [selectedBuyerTemplateId, setSelectedBuyerTemplateId] = useState<string | null>(null);
   const [brandProfile, setBrandProfile] = useState<BrandProfile | null>(null);
   const [packingList, setPackingList] = useState<PackingList | null>(null);
+  const [packingTemplates, setPackingTemplates] = useState<MarketplaceDocumentTemplate[]>([]);
+  const [selectedPackingTemplateId, setSelectedPackingTemplateId] = useState<string | null>(null);
   const [numberOfCartons, setNumberOfCartons] = useState("0");
   const [exportMode, setExportMode] = useState<ExportMode>("Air");
   const [grossWeight, setGrossWeight] = useState("");
@@ -393,9 +529,33 @@ export function ReceivedPODocumentsView({
     useState<InvoiceDetails>(EMPTY_INVOICE_DETAILS);
   const [invoiceDetailsDialogOpen, setInvoiceDetailsDialogOpen] = useState(false);
   const [invoiceEditorOpen, setInvoiceEditorOpen] = useState(false);
+  const [invoiceTemplateEditorOpen, setInvoiceTemplateEditorOpen] = useState(false);
+  const [invoiceTemplateDraft, setInvoiceTemplateDraft] = useState<InvoiceTemplateDraft>(
+    buildInvoiceTemplateDraft(null),
+  );
+  const [invoiceTemplateSampleFile, setInvoiceTemplateSampleFile] = useState<File | null>(null);
+  const [parsedInvoiceTemplateSample, setParsedInvoiceTemplateSample] =
+    useState<BuyerDocumentTemplateParseResponse | null>(null);
+  const [isParsingInvoiceTemplate, setIsParsingInvoiceTemplate] = useState(false);
   const [activeTab, setActiveTab] = useState<DocumentWorkspaceTab>("barcode");
   const [packingListPreviewOpen, setPackingListPreviewOpen] = useState(false);
   const [packingRulesDialogOpen, setPackingRulesDialogOpen] = useState(false);
+  const [barcodeTemplateEditorOpen, setBarcodeTemplateEditorOpen] = useState(false);
+  const [barcodeTemplateDraft, setBarcodeTemplateDraft] = useState<BarcodeTemplateDraft>(
+    buildBarcodeTemplateDraft(null),
+  );
+  const [barcodeTemplateSampleFile, setBarcodeTemplateSampleFile] = useState<File | null>(null);
+  const [parsedBarcodeTemplateSample, setParsedBarcodeTemplateSample] =
+    useState<MarketplaceDocumentTemplateParseResponse | null>(null);
+  const [isParsingBarcodeTemplate, setIsParsingBarcodeTemplate] = useState(false);
+  const [packingTemplateEditorOpen, setPackingTemplateEditorOpen] = useState(false);
+  const [packingTemplateDraft, setPackingTemplateDraft] = useState<PackingTemplateDraft>(
+    buildPackingTemplateDraft(null),
+  );
+  const [packingTemplateSampleFile, setPackingTemplateSampleFile] = useState<File | null>(null);
+  const [parsedPackingTemplateSample, setParsedPackingTemplateSample] =
+    useState<MarketplaceDocumentTemplateParseResponse | null>(null);
+  const [isParsingPackingTemplate, setIsParsingPackingTemplate] = useState(false);
   const [cartonDrafts, setCartonDrafts] = useState<Record<string, CartonDraftState>>({});
   const [statusLine, setStatusLine] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -416,6 +576,23 @@ export function ReceivedPODocumentsView({
       "Select template"
     );
   }, [selectedBarcodeTemplate, stickerTemplates]);
+  const selectedBarcodeMarketplaceTemplate = useMemo(
+    () =>
+      barcodeTemplates.find((template) => template.id === selectedBarcodeMarketplaceTemplateId) ??
+      null,
+    [barcodeTemplates, selectedBarcodeMarketplaceTemplateId],
+  );
+  const barcodeMarketplaceSummary = useMemo(() => {
+    if (!selectedBarcodeMarketplaceTemplate) {
+      return "Current sticker selection";
+    }
+    const config = resolveBarcodeMarketplaceConfig(selectedBarcodeMarketplaceTemplate);
+    const sizeSummary =
+      config.widthMm && config.heightMm
+        ? ` · ${config.widthMm.toFixed(2)} × ${config.heightMm.toFixed(2)} mm`
+        : "";
+    return `${selectedBarcodeMarketplaceTemplate.name} · ${config.stickerTemplateKind}${sizeSummary}`;
+  }, [selectedBarcodeMarketplaceTemplate]);
   const selectedBuyerTemplate = useMemo(
     () => buyerTemplates.find((template) => template.id === selectedBuyerTemplateId) ?? null,
     [buyerTemplates, selectedBuyerTemplateId],
@@ -426,6 +603,18 @@ export function ReceivedPODocumentsView({
     }
     return `${selectedBuyerTemplate.name} · ${selectedBuyerTemplate.layout_key}`;
   }, [selectedBuyerTemplate]);
+  const selectedPackingTemplate = useMemo(
+    () => packingTemplates.find((template) => template.id === selectedPackingTemplateId) ?? null,
+    [packingTemplates, selectedPackingTemplateId],
+  );
+  const packingTemplateSummary = useMemo(() => {
+    if (!selectedPackingTemplate) {
+      return "Current default layout";
+    }
+    return `${selectedPackingTemplate.name} · ${
+      String(selectedPackingTemplate.layout.layout_key ?? "default_v1") || "default_v1"
+    }`;
+  }, [selectedPackingTemplate]);
 
   useEffect(() => {
     let active = true;
@@ -437,16 +626,20 @@ export function ReceivedPODocumentsView({
           nextInvoice,
           nextPackingList,
           nextTemplates,
+          nextBarcodeTemplates,
           nextBuyerTemplates,
           nextBrandProfile,
+          nextPackingTemplates,
         ] = await Promise.all([
           getReceivedPO(receivedPoId),
           getOptionalBarcodeJob(receivedPoId),
           getOptionalInvoice(receivedPoId),
           getOptionalPackingList(receivedPoId),
           loadTemplatesWithElements(),
+          listMarketplaceDocumentTemplates("barcode"),
           listBuyerDocumentTemplates(),
           getBrandProfile(),
+          listMarketplaceDocumentTemplates("packing_list"),
         ]);
         if (!active) {
           return;
@@ -463,19 +656,43 @@ export function ReceivedPODocumentsView({
           matchedBuyerTemplate,
           nextReceivedPO.distributor,
         );
+        const matchedPackingTemplate =
+          (nextPackingList?.template_id
+            ? nextPackingTemplates.find((template) => template.id === nextPackingList.template_id)
+            : null) ?? matchMarketplaceTemplate(nextPackingTemplates, nextReceivedPO.distributor);
+        const matchedBarcodeTemplate =
+          (nextBarcodeJob?.marketplace_template_id
+            ? nextBarcodeTemplates.find(
+                (template) => template.id === nextBarcodeJob.marketplace_template_id,
+              )
+            : null) ?? matchMarketplaceTemplate(nextBarcodeTemplates, nextReceivedPO.distributor);
+        const matchedBarcodeConfig = resolveBarcodeMarketplaceConfig(matchedBarcodeTemplate);
         const defaultTemplateId = nextTemplates.find((template) => template.is_default)?.id ?? null;
         setReceivedPO(nextReceivedPO);
         setBarcodeJob(nextBarcodeJob);
         setActiveBarcodeJobId(nextBarcodeJob?.id ?? null);
         setStickerTemplates(nextTemplates);
+        setBarcodeTemplates(nextBarcodeTemplates);
+        setSelectedBarcodeMarketplaceTemplateId(matchedBarcodeTemplate?.id ?? null);
+        setBarcodeTemplateDraft(buildBarcodeTemplateDraft(nextReceivedPO.distributor));
         setBuyerTemplates(nextBuyerTemplates);
         setBrandProfile(nextBrandProfile);
         setSelectedBuyerTemplateId(matchedBuyerTemplate?.id ?? null);
+        setInvoiceTemplateDraft(buildInvoiceTemplateDraft(nextReceivedPO.distributor));
+        setPackingTemplates(nextPackingTemplates);
+        setSelectedPackingTemplateId(matchedPackingTemplate?.id ?? null);
+        setPackingTemplateDraft(buildPackingTemplateDraft(nextReceivedPO.distributor));
         setSelectedBarcodeTemplate(
           requestedTemplateId &&
             nextTemplates.some((template) => template.id === requestedTemplateId)
             ? requestedTemplateId
-            : (nextBarcodeJob?.template_id ?? defaultTemplateId ?? "styli"),
+            : nextBarcodeJob?.template_kind === "custom"
+              ? (nextBarcodeJob.template_id ?? defaultTemplateId ?? "styli")
+              : nextBarcodeJob?.template_kind === "styli"
+                ? "styli"
+                : matchedBarcodeConfig.stickerTemplateKind === "custom"
+                  ? (matchedBarcodeConfig.stickerTemplateId ?? defaultTemplateId ?? "styli")
+                  : "styli",
         );
         setInvoice(nextInvoice);
         setNumberOfCartons(nextInvoice?.number_of_cartons?.toString() ?? "0");
@@ -506,6 +723,17 @@ export function ReceivedPODocumentsView({
   }, [receivedPoId, requestedTemplateId]);
 
   useEffect(() => {
+    if (!receivedPO || packingList) {
+      return;
+    }
+    const matchedPackingTemplate = matchMarketplaceTemplate(
+      packingTemplates,
+      receivedPO.distributor,
+    );
+    setSelectedPackingTemplateId(matchedPackingTemplate?.id ?? null);
+  }, [packingList, packingTemplates, receivedPO]);
+
+  useEffect(() => {
     if (!receivedPO || !brandProfile) {
       return;
     }
@@ -524,6 +752,29 @@ export function ReceivedPODocumentsView({
   }, [brandProfile, invoice, receivedPO, selectedBuyerTemplate]);
 
   useEffect(() => {
+    if (!receivedPO || barcodeJob) {
+      return;
+    }
+    const matchedBarcodeTemplate = matchMarketplaceTemplate(
+      barcodeTemplates,
+      receivedPO.distributor,
+    );
+    setSelectedBarcodeMarketplaceTemplateId(matchedBarcodeTemplate?.id ?? null);
+  }, [barcodeJob, barcodeTemplates, receivedPO]);
+
+  useEffect(() => {
+    if (!selectedBarcodeMarketplaceTemplate || barcodeJob) {
+      return;
+    }
+    const config = resolveBarcodeMarketplaceConfig(selectedBarcodeMarketplaceTemplate);
+    if (config.stickerTemplateKind === "custom" && config.stickerTemplateId) {
+      setSelectedBarcodeTemplate(config.stickerTemplateId);
+      return;
+    }
+    setSelectedBarcodeTemplate("styli");
+  }, [barcodeJob, selectedBarcodeMarketplaceTemplate]);
+
+  useEffect(() => {
     const targetBarcodeJobId = activeBarcodeJobId ?? barcodeJob?.id ?? null;
     if (
       !barcodeJob ||
@@ -537,6 +788,9 @@ export function ReceivedPODocumentsView({
         const nextBarcodeJob = await getOptionalBarcodeJob(receivedPoId, targetBarcodeJobId);
         if (nextBarcodeJob) {
           setBarcodeJob(nextBarcodeJob);
+          setSelectedBarcodeMarketplaceTemplateId(
+            nextBarcodeJob.marketplace_template_id ?? selectedBarcodeMarketplaceTemplateId,
+          );
           if (!["pending", "generating"].includes(nextBarcodeJob.status)) {
             if (nextBarcodeJob.status === "failed") {
               setWorkingKey(null);
@@ -553,7 +807,7 @@ export function ReceivedPODocumentsView({
       }
     }, 2000);
     return () => window.clearInterval(interval);
-  }, [activeBarcodeJobId, barcodeJob, receivedPoId]);
+  }, [activeBarcodeJobId, barcodeJob, receivedPoId, selectedBarcodeMarketplaceTemplateId]);
 
   useEffect(() => {
     if (!invoice || invoice.status === "final") {
@@ -597,6 +851,7 @@ export function ReceivedPODocumentsView({
         const nextPackingList = await getOptionalPackingList(receivedPoId);
         if (nextPackingList) {
           setPackingList(nextPackingList);
+          setSelectedPackingTemplateId(nextPackingList.template_id ?? selectedPackingTemplateId);
           setCartonDrafts(buildCartonDrafts(nextPackingList));
           if (nextPackingList.status === "final") {
             setWorkingKey(null);
@@ -613,7 +868,7 @@ export function ReceivedPODocumentsView({
       }
     }, 2000);
     return () => window.clearInterval(interval);
-  }, [packingList, receivedPoId, workingKey]);
+  }, [packingList, receivedPoId, selectedPackingTemplateId, workingKey]);
 
   const openFile = (fileUrl: string | null): void => {
     const resolved = resolveFileUrl(fileUrl);
@@ -713,8 +968,15 @@ export function ReceivedPODocumentsView({
       const createdJob = await createBarcodeJob(
         receivedPoId,
         templateKind === "styli"
-          ? { template_kind: "styli" }
-          : { template_kind: "custom", template_id: templateId },
+          ? {
+              template_kind: "styli",
+              marketplace_template_id: selectedBarcodeMarketplaceTemplateId,
+            }
+          : {
+              template_kind: "custom",
+              template_id: templateId,
+              marketplace_template_id: selectedBarcodeMarketplaceTemplateId,
+            },
       );
       setActiveBarcodeJobId(createdJob.job_id);
       setBarcodeJob({
@@ -723,6 +985,8 @@ export function ReceivedPODocumentsView({
         status: createdJob.status,
         template_kind: templateKind,
         template_id: templateId,
+        marketplace_template_id: createdJob.marketplace_template_id,
+        marketplace_template_name: createdJob.marketplace_template_name,
         file_url: null,
         total_stickers: receivedPO?.items.length ?? barcodeJob?.total_stickers ?? 0,
         total_pages: 0,
@@ -737,6 +1001,65 @@ export function ReceivedPODocumentsView({
       );
     } finally {
       setWorkingKey(null);
+    }
+  };
+
+  const handleCreateBarcodeTemplate = async (): Promise<void> => {
+    try {
+      setWorkingKey("barcode-template-create");
+      setError(null);
+      const createdTemplate = await createMarketplaceDocumentTemplate({
+        name: barcodeTemplateDraft.name,
+        marketplace_key: barcodeTemplateDraft.marketplace_key,
+        document_type: "barcode",
+        template_kind: "sticker",
+        file_format: parsedBarcodeTemplateSample?.file_format ?? "pdf",
+        sample_file_url: parsedBarcodeTemplateSample?.sample_file_url ?? null,
+        header_row_index: 1,
+        columns: [],
+        layout: {
+          sticker_template_kind: barcodeTemplateDraft.sticker_template_kind,
+          sticker_template_id:
+            barcodeTemplateDraft.sticker_template_kind === "custom"
+              ? barcodeTemplateDraft.sticker_template_id || null
+              : null,
+          width_mm: Number(barcodeTemplateDraft.width_mm) || null,
+          height_mm: Number(barcodeTemplateDraft.height_mm) || null,
+        },
+        is_default: false,
+        is_active: true,
+      });
+      setBarcodeTemplates((current) => [createdTemplate, ...current]);
+      setSelectedBarcodeMarketplaceTemplateId(createdTemplate.id);
+      setBarcodeTemplateEditorOpen(false);
+      setStatusLine("Barcode marketplace template saved.");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to save barcode template.");
+    } finally {
+      setWorkingKey(null);
+    }
+  };
+
+  const handleParseBarcodeTemplateSample = async (): Promise<void> => {
+    if (!barcodeTemplateSampleFile) {
+      setError("Choose a barcode PDF or image sample first.");
+      return;
+    }
+    try {
+      setIsParsingBarcodeTemplate(true);
+      setError(null);
+      const parsed = await parseMarketplaceTemplateSample(barcodeTemplateSampleFile, "barcode");
+      setParsedBarcodeTemplateSample(parsed);
+      setBarcodeTemplateDraft((current) => ({
+        ...current,
+        width_mm: String(parsed.layout.width_mm ?? current.width_mm),
+        height_mm: String(parsed.layout.height_mm ?? current.height_mm),
+      }));
+      setStatusLine("Barcode sample parsed. Review the inferred dimensions, then save.");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to parse barcode sample.");
+    } finally {
+      setIsParsingBarcodeTemplate(false);
     }
   };
 
@@ -760,6 +1083,56 @@ export function ReceivedPODocumentsView({
       setStatusLine("Invoice draft created.");
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "Failed to create invoice.");
+    } finally {
+      setWorkingKey(null);
+    }
+  };
+
+  const handleParseInvoiceTemplateSample = async (): Promise<void> => {
+    if (!invoiceTemplateSampleFile) {
+      setError("Choose an invoice PDF sample first.");
+      return;
+    }
+    try {
+      setIsParsingInvoiceTemplate(true);
+      setError(null);
+      const parsed = await parseBuyerDocumentTemplateSample(invoiceTemplateSampleFile);
+      const learnedBuyerKey = parsed.defaults.marketplace_name.trim();
+      setParsedInvoiceTemplateSample(parsed);
+      setInvoiceTemplateDraft((current) => ({
+        ...current,
+        name: learnedBuyerKey ? `${learnedBuyerKey} Invoice` : current.name,
+        buyer_key: learnedBuyerKey || current.buyer_key,
+        layout_key: parsed.layout_key,
+      }));
+      setInvoiceDetailsDraft((current) => mergeInvoiceDetails(current, parsed.defaults));
+      setStatusLine("Invoice sample parsed. Review the inferred defaults, then save the template.");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to parse invoice sample.");
+    } finally {
+      setIsParsingInvoiceTemplate(false);
+    }
+  };
+
+  const handleCreateInvoiceTemplate = async (): Promise<void> => {
+    try {
+      setWorkingKey("invoice-template-create");
+      setError(null);
+      const createdTemplate = await createBuyerDocumentTemplate({
+        name: invoiceTemplateDraft.name,
+        buyer_key: invoiceTemplateDraft.buyer_key,
+        document_type: "invoice",
+        layout_key: invoiceTemplateDraft.layout_key,
+        defaults: invoiceDetailsDraft,
+        is_default: false,
+        is_active: true,
+      });
+      setBuyerTemplates((current) => [createdTemplate, ...current]);
+      setSelectedBuyerTemplateId(createdTemplate.id);
+      setInvoiceTemplateEditorOpen(false);
+      setStatusLine("Buyer template saved.");
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "Failed to save buyer template.");
     } finally {
       setWorkingKey(null);
     }
@@ -886,9 +1259,10 @@ export function ReceivedPODocumentsView({
       setActiveTab("packing");
       setWorkingKey("packing-list-create");
       setError(null);
-      await createPackingList(receivedPoId);
+      await createPackingList(receivedPoId, { template_id: selectedPackingTemplateId });
       const nextPackingList = await getOptionalPackingList(receivedPoId);
       setPackingList(nextPackingList);
+      setSelectedPackingTemplateId(nextPackingList?.template_id ?? selectedPackingTemplateId);
       setCartonDrafts(buildCartonDrafts(nextPackingList));
       setStatusLine("Packing list created from confirmed PO quantities.");
     } catch (nextError) {
@@ -930,11 +1304,16 @@ export function ReceivedPODocumentsView({
       if (!packingList) {
         await handleCreatePackingList();
       }
-      const generation = await generatePackingListPdf(receivedPoId);
+      const generation = await generatePackingListPdf(receivedPoId, {
+        template_id: selectedPackingTemplateId,
+      });
       setPackingList((current) =>
         current
           ? {
               ...current,
+              template_id: generation.template_id,
+              template_name: generation.template_name,
+              layout_key: generation.layout_key,
               status: generation.status,
               file_url: generation.file_url,
             }
@@ -946,6 +1325,84 @@ export function ReceivedPODocumentsView({
       setError(
         nextError instanceof Error ? nextError.message : "Failed to generate packing list PDF.",
       );
+    }
+  };
+
+  const handleCreatePackingTemplate = async (): Promise<void> => {
+    try {
+      setWorkingKey("packing-template-create");
+      setError(null);
+      const createdTemplate = await createMarketplaceDocumentTemplate({
+        name: packingTemplateDraft.name,
+        marketplace_key: packingTemplateDraft.marketplace_key,
+        document_type: "packing_list",
+        template_kind: "pdf_layout",
+        file_format: parsedPackingTemplateSample?.file_format ?? "pdf",
+        sample_file_url: parsedPackingTemplateSample?.sample_file_url ?? null,
+        header_row_index: 1,
+        columns: [],
+        layout: {
+          layout_key: packingTemplateDraft.layout_key || "default_v1",
+          title: packingTemplateDraft.title,
+          meta_labels: {
+            po_number: packingTemplateDraft.po_number_label,
+          },
+          column_headers: {
+            quantity: packingTemplateDraft.quantity_header,
+          },
+        },
+        is_default: false,
+        is_active: true,
+      });
+      setPackingTemplates((current) => [createdTemplate, ...current]);
+      setSelectedPackingTemplateId(createdTemplate.id);
+      setPackingTemplateEditorOpen(false);
+      setStatusLine("Packing list template saved.");
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error ? nextError.message : "Failed to save packing list template.",
+      );
+    } finally {
+      setWorkingKey(null);
+    }
+  };
+
+  const handleParsePackingTemplateSample = async (): Promise<void> => {
+    if (!packingTemplateSampleFile) {
+      setError("Choose a packing list PDF sample first.");
+      return;
+    }
+    try {
+      setIsParsingPackingTemplate(true);
+      setError(null);
+      const parsed = await parseMarketplaceTemplateSample(
+        packingTemplateSampleFile,
+        "packing_list",
+      );
+      setParsedPackingTemplateSample(parsed);
+      const layout = parsed.layout as Record<string, unknown>;
+      const metaLabels =
+        typeof layout.meta_labels === "object" && layout.meta_labels
+          ? (layout.meta_labels as Record<string, unknown>)
+          : {};
+      const columnHeaders =
+        typeof layout.column_headers === "object" && layout.column_headers
+          ? (layout.column_headers as Record<string, unknown>)
+          : {};
+      setPackingTemplateDraft((current) => ({
+        ...current,
+        layout_key: String(layout.layout_key ?? current.layout_key),
+        title: String(layout.title ?? current.title),
+        po_number_label: String(metaLabels.po_number ?? current.po_number_label),
+        quantity_header: String(columnHeaders.quantity ?? current.quantity_header),
+      }));
+      setStatusLine("Packing list sample parsed. Review the inferred labels, then save.");
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error ? nextError.message : "Failed to parse packing list sample.",
+      );
+    } finally {
+      setIsParsingPackingTemplate(false);
     }
   };
 
@@ -1031,6 +1488,200 @@ export function ReceivedPODocumentsView({
               title="Barcode sheet"
             >
               <div className="space-y-3 text-sm text-kira-darkgray dark:text-gray-200">
+                <div className="rounded-2xl border border-kira-warmgray/25 bg-kira-offwhite/40 p-4 dark:border-white/10 dark:bg-white/5">
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-end">
+                    <label className="block">
+                      <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                        Marketplace barcode template
+                      </span>
+                      <select
+                        aria-label="Marketplace barcode template"
+                        className={DOC_INPUT_CLASS}
+                        onChange={(event) =>
+                          setSelectedBarcodeMarketplaceTemplateId(event.target.value || null)
+                        }
+                        value={selectedBarcodeMarketplaceTemplateId ?? ""}
+                      >
+                        <option value="">Use sticker selection directly</option>
+                        {barcodeTemplates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <Button
+                      onClick={() => setBarcodeTemplateEditorOpen((current) => !current)}
+                      variant="secondary"
+                    >
+                      {barcodeTemplateEditorOpen ? "Hide template form" : "Save template"}
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-xs text-kira-midgray">{barcodeMarketplaceSummary}</p>
+                  {barcodeTemplateEditorOpen ? (
+                    <div className="mt-4 space-y-5">
+                      <div className="rounded-xl border border-kira-warmgray/20 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                        <p className="text-sm font-semibold text-kira-black dark:text-white">
+                          Import from sample
+                        </p>
+                        <p className="mt-1 text-xs text-kira-midgray">
+                          Upload a barcode PDF or image sample and we&apos;ll infer the sticker
+                          dimensions for you.
+                        </p>
+                        <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr),auto]">
+                          <input
+                            accept=".pdf,.png,.jpg,.jpeg,.webp"
+                            className={DOC_INPUT_CLASS}
+                            onChange={(event) =>
+                              setBarcodeTemplateSampleFile(event.target.files?.[0] ?? null)
+                            }
+                            type="file"
+                          />
+                          <Button
+                            disabled={isParsingBarcodeTemplate}
+                            onClick={handleParseBarcodeTemplateSample}
+                            variant="secondary"
+                          >
+                            {isParsingBarcodeTemplate ? "Parsing..." : "Import from sample"}
+                          </Button>
+                        </div>
+                        {parsedBarcodeTemplateSample ? (
+                          <p className="mt-2 text-xs text-kira-midgray">
+                            Learned size: {String(parsedBarcodeTemplateSample.layout.width_mm)} ×{" "}
+                            {String(parsedBarcodeTemplateSample.layout.height_mm)} mm
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="rounded-xl border border-kira-warmgray/20 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                        <p className="text-sm font-semibold text-kira-black dark:text-white">
+                          Create manually
+                        </p>
+                        <p className="mt-1 text-xs text-kira-midgray">
+                          Set the marketplace key, sticker source, and dimensions yourself.
+                        </p>
+                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                          <label className="block text-sm">
+                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                              Template name
+                            </span>
+                            <input
+                              className={DOC_INPUT_CLASS}
+                              onChange={(event) =>
+                                setBarcodeTemplateDraft((current) => ({
+                                  ...current,
+                                  name: event.target.value,
+                                }))
+                              }
+                              type="text"
+                              value={barcodeTemplateDraft.name}
+                            />
+                          </label>
+                          <label className="block text-sm">
+                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                              Marketplace key
+                            </span>
+                            <input
+                              className={DOC_INPUT_CLASS}
+                              onChange={(event) =>
+                                setBarcodeTemplateDraft((current) => ({
+                                  ...current,
+                                  marketplace_key: event.target.value,
+                                }))
+                              }
+                              type="text"
+                              value={barcodeTemplateDraft.marketplace_key}
+                            />
+                          </label>
+                          <label className="block text-sm">
+                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                              Sticker source
+                            </span>
+                            <select
+                              className={DOC_INPUT_CLASS}
+                              onChange={(event) =>
+                                setBarcodeTemplateDraft((current) => ({
+                                  ...current,
+                                  sticker_template_kind: event.target.value as StickerTemplateKind,
+                                }))
+                              }
+                              value={barcodeTemplateDraft.sticker_template_kind}
+                            >
+                              <option value="styli">Standard format</option>
+                              <option value="custom">Custom sticker template</option>
+                            </select>
+                          </label>
+                          <label className="block text-sm">
+                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                              Custom sticker template
+                            </span>
+                            <select
+                              className={DOC_INPUT_CLASS}
+                              disabled={barcodeTemplateDraft.sticker_template_kind !== "custom"}
+                              onChange={(event) =>
+                                setBarcodeTemplateDraft((current) => ({
+                                  ...current,
+                                  sticker_template_id: event.target.value,
+                                }))
+                              }
+                              value={barcodeTemplateDraft.sticker_template_id}
+                            >
+                              <option value="">Select custom sticker template</option>
+                              {stickerTemplates.map((template) => (
+                                <option key={template.id} value={template.id}>
+                                  {template.name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block text-sm">
+                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                              Width (mm)
+                            </span>
+                            <input
+                              className={DOC_INPUT_CLASS}
+                              onChange={(event) =>
+                                setBarcodeTemplateDraft((current) => ({
+                                  ...current,
+                                  width_mm: event.target.value,
+                                }))
+                              }
+                              type="number"
+                              value={barcodeTemplateDraft.width_mm}
+                            />
+                          </label>
+                          <label className="block text-sm">
+                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                              Height (mm)
+                            </span>
+                            <input
+                              className={DOC_INPUT_CLASS}
+                              onChange={(event) =>
+                                setBarcodeTemplateDraft((current) => ({
+                                  ...current,
+                                  height_mm: event.target.value,
+                                }))
+                              }
+                              type="number"
+                              value={barcodeTemplateDraft.height_mm}
+                            />
+                          </label>
+                          <div className="md:col-span-2">
+                            <Button
+                              disabled={workingKey === "barcode-template-create"}
+                              onClick={handleCreateBarcodeTemplate}
+                              variant="secondary"
+                            >
+                              {workingKey === "barcode-template-create"
+                                ? "Saving..."
+                                : "Create barcode template"}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-kira-brown/10 px-2 py-1 text-xs font-medium uppercase tracking-[0.08em] text-kira-brown dark:bg-kira-brown/20 dark:text-amber-200">
                     {selectedBarcodeTemplate === "styli" ? "Standard format" : "Custom template"}
@@ -1179,6 +1830,136 @@ export function ReceivedPODocumentsView({
                         ? ` · matched with buyer key "${selectedBuyerTemplate.buyer_key}"`
                         : ""}
                     </p>
+                    <div className="mt-3">
+                      <Button
+                        onClick={() => setInvoiceTemplateEditorOpen((current) => !current)}
+                        variant="secondary"
+                      >
+                        {invoiceTemplateEditorOpen
+                          ? "Hide template setup"
+                          : "Create or import template"}
+                      </Button>
+                    </div>
+                    {invoiceTemplateEditorOpen ? (
+                      <div className="mt-4 space-y-4 rounded-2xl border border-kira-warmgray/20 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-kira-black dark:text-white">
+                            Import from sample
+                          </p>
+                          <p className="text-xs text-kira-midgray">
+                            Upload an existing invoice PDF and we&apos;ll prefill the buyer layout
+                            and destination blocks before you save the template.
+                          </p>
+                          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-end">
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Invoice PDF sample
+                              </span>
+                              <input
+                                accept="application/pdf"
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setInvoiceTemplateSampleFile(event.target.files?.[0] ?? null)
+                                }
+                                type="file"
+                              />
+                            </label>
+                            <Button
+                              disabled={isParsingInvoiceTemplate}
+                              onClick={handleParseInvoiceTemplateSample}
+                              variant="secondary"
+                            >
+                              {isParsingInvoiceTemplate ? "Parsing..." : "Import sample"}
+                            </Button>
+                          </div>
+                          {parsedInvoiceTemplateSample ? (
+                            <p className="text-xs text-kira-midgray">
+                              Learned layout: {parsedInvoiceTemplateSample.layout_key}
+                              {parsedInvoiceTemplateSample.detected_headers.length > 0
+                                ? ` · detected ${parsedInvoiceTemplateSample.detected_headers.join(", ")}`
+                                : ""}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-kira-black dark:text-white">
+                            Create manually
+                          </p>
+                          <p className="text-xs text-kira-midgray">
+                            The template will save the current invoice details. Use the invoice
+                            details editor if you want to adjust addresses, GST fields, or stamp
+                            defaults first.
+                          </p>
+                          <div className="grid gap-3 md:grid-cols-3">
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Template name
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setInvoiceTemplateDraft((current) => ({
+                                    ...current,
+                                    name: event.target.value,
+                                  }))
+                                }
+                                value={invoiceTemplateDraft.name}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Buyer key
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setInvoiceTemplateDraft((current) => ({
+                                    ...current,
+                                    buyer_key: event.target.value,
+                                  }))
+                                }
+                                value={invoiceTemplateDraft.buyer_key}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Layout
+                              </span>
+                              <select
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setInvoiceTemplateDraft((current) => ({
+                                    ...current,
+                                    layout_key: event.target.value as "default_v1" | "landmark_v1",
+                                  }))
+                                }
+                                value={invoiceTemplateDraft.layout_key}
+                              >
+                                <option value="default_v1">Default v1</option>
+                                <option value="landmark_v1">Landmark v1</option>
+                              </select>
+                            </label>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              onClick={() => setInvoiceDetailsDialogOpen(true)}
+                              variant="secondary"
+                            >
+                              Edit template defaults
+                            </Button>
+                            <Button
+                              disabled={workingKey === "invoice-template-create"}
+                              onClick={handleCreateInvoiceTemplate}
+                              variant="secondary"
+                            >
+                              {workingKey === "invoice-template-create"
+                                ? "Saving..."
+                                : "Create buyer template"}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="kira-muted-panel">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1306,6 +2087,136 @@ export function ReceivedPODocumentsView({
                         ? ` · matched with buyer key "${selectedBuyerTemplate.buyer_key}"`
                         : ""}
                     </p>
+                    <div className="mt-3">
+                      <Button
+                        onClick={() => setInvoiceTemplateEditorOpen((current) => !current)}
+                        variant="secondary"
+                      >
+                        {invoiceTemplateEditorOpen
+                          ? "Hide template setup"
+                          : "Create or import template"}
+                      </Button>
+                    </div>
+                    {invoiceTemplateEditorOpen ? (
+                      <div className="mt-4 space-y-4 rounded-2xl border border-kira-warmgray/20 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-kira-black dark:text-white">
+                            Import from sample
+                          </p>
+                          <p className="text-xs text-kira-midgray">
+                            Upload an existing invoice PDF and we&apos;ll prefill the buyer layout
+                            and destination blocks before you save the template.
+                          </p>
+                          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-end">
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Invoice PDF sample
+                              </span>
+                              <input
+                                accept="application/pdf"
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setInvoiceTemplateSampleFile(event.target.files?.[0] ?? null)
+                                }
+                                type="file"
+                              />
+                            </label>
+                            <Button
+                              disabled={isParsingInvoiceTemplate}
+                              onClick={handleParseInvoiceTemplateSample}
+                              variant="secondary"
+                            >
+                              {isParsingInvoiceTemplate ? "Parsing..." : "Import sample"}
+                            </Button>
+                          </div>
+                          {parsedInvoiceTemplateSample ? (
+                            <p className="text-xs text-kira-midgray">
+                              Learned layout: {parsedInvoiceTemplateSample.layout_key}
+                              {parsedInvoiceTemplateSample.detected_headers.length > 0
+                                ? ` · detected ${parsedInvoiceTemplateSample.detected_headers.join(", ")}`
+                                : ""}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-kira-black dark:text-white">
+                            Create manually
+                          </p>
+                          <p className="text-xs text-kira-midgray">
+                            The template will save the current invoice details. Use the invoice
+                            details editor if you want to adjust addresses, GST fields, or stamp
+                            defaults first.
+                          </p>
+                          <div className="grid gap-3 md:grid-cols-3">
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Template name
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setInvoiceTemplateDraft((current) => ({
+                                    ...current,
+                                    name: event.target.value,
+                                  }))
+                                }
+                                value={invoiceTemplateDraft.name}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Buyer key
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setInvoiceTemplateDraft((current) => ({
+                                    ...current,
+                                    buyer_key: event.target.value,
+                                  }))
+                                }
+                                value={invoiceTemplateDraft.buyer_key}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Layout
+                              </span>
+                              <select
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setInvoiceTemplateDraft((current) => ({
+                                    ...current,
+                                    layout_key: event.target.value as "default_v1" | "landmark_v1",
+                                  }))
+                                }
+                                value={invoiceTemplateDraft.layout_key}
+                              >
+                                <option value="default_v1">Default v1</option>
+                                <option value="landmark_v1">Landmark v1</option>
+                              </select>
+                            </label>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              onClick={() => setInvoiceDetailsDialogOpen(true)}
+                              variant="secondary"
+                            >
+                              Edit template defaults
+                            </Button>
+                            <Button
+                              disabled={workingKey === "invoice-template-create"}
+                              onClick={handleCreateInvoiceTemplate}
+                              variant="secondary"
+                            >
+                              {workingKey === "invoice-template-create"
+                                ? "Saving..."
+                                : "Create buyer template"}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="kira-muted-panel">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1434,12 +2345,400 @@ export function ReceivedPODocumentsView({
                 </p>
               ) : null}
               {!packingList ? (
-                <p className="text-xs leading-5 text-kira-midgray">
-                  Packing rules apply when a new packing list draft is created.
-                </p>
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-kira-warmgray/25 bg-kira-offwhite/40 p-4 dark:border-white/10 dark:bg-white/5">
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-end">
+                      <label className="block text-sm">
+                        <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                          Packing list template
+                        </span>
+                        <select
+                          aria-label="Packing list template"
+                          className={DOC_INPUT_CLASS}
+                          onChange={(event) =>
+                            setSelectedPackingTemplateId(event.target.value || null)
+                          }
+                          value={selectedPackingTemplateId ?? ""}
+                        >
+                          <option value="">Use current default layout</option>
+                          {packingTemplates.map((template) => (
+                            <option key={template.id} value={template.id}>
+                              {template.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <Button
+                        onClick={() => setPackingTemplateEditorOpen((current) => !current)}
+                        variant="secondary"
+                      >
+                        {packingTemplateEditorOpen ? "Hide template form" : "Save template"}
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-kira-midgray">
+                      {packingTemplateSummary}
+                      {selectedPackingTemplate
+                        ? ` · matched with marketplace key "${selectedPackingTemplate.marketplace_key}"`
+                        : ""}
+                    </p>
+                    {packingTemplateEditorOpen ? (
+                      <div className="mt-4 space-y-5">
+                        <div className="rounded-xl border border-kira-warmgray/20 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                          <p className="text-sm font-semibold text-kira-black dark:text-white">
+                            Import from sample
+                          </p>
+                          <p className="mt-1 text-xs text-kira-midgray">
+                            Upload an existing packing list PDF and we&apos;ll infer the title and
+                            key labels for you.
+                          </p>
+                          <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr),auto]">
+                            <input
+                              accept=".pdf"
+                              className={DOC_INPUT_CLASS}
+                              onChange={(event) =>
+                                setPackingTemplateSampleFile(event.target.files?.[0] ?? null)
+                              }
+                              type="file"
+                            />
+                            <Button
+                              disabled={isParsingPackingTemplate}
+                              onClick={handleParsePackingTemplateSample}
+                              variant="secondary"
+                            >
+                              {isParsingPackingTemplate ? "Parsing..." : "Import from sample"}
+                            </Button>
+                          </div>
+                          {parsedPackingTemplateSample ? (
+                            <p className="mt-2 text-xs text-kira-midgray">
+                              Learned title:{" "}
+                              {String(
+                                (parsedPackingTemplateSample.layout as Record<string, unknown>)
+                                  .title ?? packingTemplateDraft.title,
+                              )}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="rounded-xl border border-kira-warmgray/20 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                          <p className="text-sm font-semibold text-kira-black dark:text-white">
+                            Create manually
+                          </p>
+                          <p className="mt-1 text-xs text-kira-midgray">
+                            Set the marketplace key, title, and visible labels yourself.
+                          </p>
+                          <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Template name
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    name: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.name}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Marketplace key
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    marketplace_key: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.marketplace_key}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Layout key
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    layout_key: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.layout_key}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Title
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    title: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.title}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                PO label
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    po_number_label: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.po_number_label}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Quantity header
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    quantity_header: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.quantity_header}
+                              />
+                            </label>
+                            <div className="md:col-span-2">
+                              <Button
+                                disabled={workingKey === "packing-template-create"}
+                                onClick={handleCreatePackingTemplate}
+                                variant="secondary"
+                              >
+                                {workingKey === "packing-template-create"
+                                  ? "Saving..."
+                                  : "Create packing template"}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                  <p className="text-xs leading-5 text-kira-midgray">
+                    Packing rules apply when a new packing list draft is created.
+                  </p>
+                </div>
               ) : null}
               {packingList ? (
                 <div className="space-y-3 text-sm text-kira-midgray">
+                  <div className="rounded-2xl border border-kira-warmgray/25 bg-kira-offwhite/40 p-4 dark:border-white/10 dark:bg-white/5">
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-end">
+                      <label className="block text-sm">
+                        <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                          Packing list template
+                        </span>
+                        <select
+                          aria-label="Packing list template"
+                          className={DOC_INPUT_CLASS}
+                          onChange={(event) =>
+                            setSelectedPackingTemplateId(event.target.value || null)
+                          }
+                          value={selectedPackingTemplateId ?? ""}
+                        >
+                          <option value="">Use current default layout</option>
+                          {packingTemplates.map((template) => (
+                            <option key={template.id} value={template.id}>
+                              {template.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <Button
+                        onClick={() => setPackingTemplateEditorOpen((current) => !current)}
+                        variant="secondary"
+                      >
+                        {packingTemplateEditorOpen ? "Hide template form" : "Save template"}
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-kira-midgray">
+                      {packingTemplateSummary}
+                      {selectedPackingTemplate
+                        ? ` · matched with marketplace key "${selectedPackingTemplate.marketplace_key}"`
+                        : ""}
+                    </p>
+                    {packingTemplateEditorOpen ? (
+                      <div className="mt-4 space-y-5">
+                        <div className="rounded-xl border border-kira-warmgray/20 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                          <p className="text-sm font-semibold text-kira-black dark:text-white">
+                            Import from sample
+                          </p>
+                          <p className="mt-1 text-xs text-kira-midgray">
+                            Upload an existing packing list PDF and we&apos;ll infer the title and
+                            key labels for you.
+                          </p>
+                          <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr),auto]">
+                            <input
+                              accept=".pdf"
+                              className={DOC_INPUT_CLASS}
+                              onChange={(event) =>
+                                setPackingTemplateSampleFile(event.target.files?.[0] ?? null)
+                              }
+                              type="file"
+                            />
+                            <Button
+                              disabled={isParsingPackingTemplate}
+                              onClick={handleParsePackingTemplateSample}
+                              variant="secondary"
+                            >
+                              {isParsingPackingTemplate ? "Parsing..." : "Import from sample"}
+                            </Button>
+                          </div>
+                          {parsedPackingTemplateSample ? (
+                            <p className="mt-2 text-xs text-kira-midgray">
+                              Learned title:{" "}
+                              {String(
+                                (parsedPackingTemplateSample.layout as Record<string, unknown>)
+                                  .title ?? packingTemplateDraft.title,
+                              )}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="rounded-xl border border-kira-warmgray/20 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                          <p className="text-sm font-semibold text-kira-black dark:text-white">
+                            Create manually
+                          </p>
+                          <p className="mt-1 text-xs text-kira-midgray">
+                            Set the marketplace key, title, and visible labels yourself.
+                          </p>
+                          <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Template name
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    name: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.name}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Marketplace key
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    marketplace_key: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.marketplace_key}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Layout key
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    layout_key: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.layout_key}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Title
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    title: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.title}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                PO label
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    po_number_label: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.po_number_label}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Quantity header
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setPackingTemplateDraft((current) => ({
+                                    ...current,
+                                    quantity_header: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={packingTemplateDraft.quantity_header}
+                              />
+                            </label>
+                            <div className="md:col-span-2">
+                              <Button
+                                disabled={workingKey === "packing-template-create"}
+                                onClick={handleCreatePackingTemplate}
+                                variant="secondary"
+                              >
+                                {workingKey === "packing-template-create"
+                                  ? "Saving..."
+                                  : "Create packing template"}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                   <p>
                     Packing list is ready. Review the full carton breakdown in Preview, then
                     generate the final PDF when everything looks right.
@@ -1484,6 +2783,7 @@ export function ReceivedPODocumentsView({
                 }`}
                 onClick={() => {
                   setSelectedBarcodeTemplate("styli");
+                  setSelectedBarcodeMarketplaceTemplateId(null);
                   setTemplatePickerOpen(false);
                 }}
                 type="button"
@@ -1507,6 +2807,7 @@ export function ReceivedPODocumentsView({
                   key={template.id}
                   onClick={() => {
                     setSelectedBarcodeTemplate(template.id);
+                    setSelectedBarcodeMarketplaceTemplateId(null);
                     setTemplatePickerOpen(false);
                   }}
                   type="button"

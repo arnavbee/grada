@@ -38,6 +38,7 @@ class BarcodeGenerateResponse(BaseModel):
 class CreateBarcodeJobRequest(BaseModel):
     template_kind: StickerTemplateKind = 'styli'
     template_id: str | None = Field(default=None, max_length=64)
+    marketplace_template_id: str | None = Field(default=None, max_length=64)
 
 
 class StickerElementBase(BaseModel):

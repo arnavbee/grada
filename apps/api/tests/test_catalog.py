@@ -296,6 +296,91 @@ def test_generic_export_has_catalog_shape() -> None:
     assert '1,GENERIC-SHAPE-1,' in csv_contents
 
 
+def test_marketplace_template_parse_and_custom_catalog_export() -> None:
+    headers = _auth_headers()
+
+    create_product = client.post(
+        '/api/v1/catalog/products',
+        headers=headers,
+        json={
+            'sku': 'AMZ-CUSTOM-1',
+            'title': 'Custom Export Dress',
+            'brand': 'Kira',
+            'category': 'DRESSES',
+            'color': 'Blue',
+            'size': 'M',
+            'status': 'ready',
+            'ai_attributes': {'mrp': 1499, 'description': 'Reference description'},
+        },
+    )
+    assert create_product.status_code == 201
+
+    sample_bytes = (
+        b'seller-sku,item-name,brand-name,color-name,size-name,standard-price,image-preview\n'
+        b'EXAMPLE-SKU,Example Name,Kira,Blue,M,1499,\n'
+    )
+    parsed = client.post(
+        '/api/v1/marketplace-templates/parse-sample',
+        headers=headers,
+        files={'file': ('amazon-template.csv', sample_bytes, 'text/csv')},
+        data={'document_type': 'catalog'},
+    )
+    assert parsed.status_code == 200
+    parsed_body = parsed.json()
+    assert parsed_body['file_format'] == 'csv'
+    assert parsed_body['header_row_index'] == 1
+    assert parsed_body['columns'][0]['source_field'] == 'sku'
+    assert parsed_body['columns'][1]['source_field'] == 'title'
+
+    columns = parsed_body['columns']
+    for column in columns:
+        if column['source_field'] in {'sku', 'title', 'brand', 'mrp'}:
+            column['required'] = True
+
+    created_template = client.post(
+        '/api/v1/marketplace-templates',
+        headers=headers,
+        json={
+            'name': 'Amazon custom catalog',
+            'marketplace_key': 'amazon_in',
+            'document_type': 'catalog',
+            'template_kind': parsed_body['template_kind'],
+            'file_format': parsed_body['file_format'],
+            'sample_file_url': parsed_body['sample_file_url'],
+            'sheet_name': parsed_body['sheet_name'],
+            'header_row_index': parsed_body['header_row_index'],
+            'columns': columns,
+            'layout': parsed_body['layout'],
+            'is_default': True,
+            'is_active': True,
+        },
+    )
+    assert created_template.status_code == 201
+    template_body = created_template.json()
+    assert template_body['marketplace_key'] == 'amazon_in'
+
+    export_response = client.post(
+        '/api/v1/catalog/exports',
+        headers=headers,
+        json={
+            'template_id': template_body['id'],
+            'export_format': 'csv',
+            'filters': {'status': 'ready'},
+        },
+    )
+    assert export_response.status_code == 201
+    export_body = export_response.json()
+    assert export_body['status'] == 'completed'
+    assert export_body['template_id'] == template_body['id']
+    assert export_body['template_name'] == 'Amazon custom catalog'
+
+    csv_path = Path('static') / export_body['file_url'].removeprefix('/static/')
+    assert csv_path.exists()
+    csv_contents = csv_path.read_text(encoding='utf-8')
+    assert 'seller-sku,item-name,brand-name,color-name,size-name,standard-price,image-preview' in csv_contents
+    assert 'AMZ-CUSTOM-1,Custom Export Dress,Kira,Blue,M,1499.00,' in csv_contents
+
+
 def test_analyze_image_returns_hash_and_source_context(monkeypatch) -> None:
     headers = _auth_headers()
 

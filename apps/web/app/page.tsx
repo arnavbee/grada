@@ -1,16 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FooterBrand } from "@/src/components/FooterBrand";
 import { GridBackground } from "@/src/components/GridBackground";
 import { DispatchDocumentsModuleCard } from "@/src/components/marketing/dispatch-documents-module-card";
@@ -18,8 +10,8 @@ import { MarketplaceExportsModuleCard } from "@/src/components/marketing/marketp
 import { ReceivedPoProcessingModuleCard } from "@/src/components/marketing/received-po-processing-module-card";
 import { SectionEyebrow } from "@/src/components/marketing/section-eyebrow";
 import { SmartCatalogModuleCard } from "@/src/components/marketing/smart-catalog-module-card";
+import { WorkflowTabs } from "@/src/components/marketing/workflow-tabs";
 import { Card } from "@/src/components/ui/card";
-import { cn } from "@/src/lib/cn";
 
 const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
 const marketplaceExportsAnimationSrc = "/marketing/grada-marketplace-exports-animated.html";
@@ -389,8 +381,8 @@ export default function LandingPage(): JSX.Element {
 
               <div className="mt-5 flex flex-wrap gap-2">
                 {marketplaceCoverage.map((marketplace) => (
-                  <HoverCard key={marketplace.label}>
-                    <HoverCardTrigger asChild>
+                  <div className="group relative" key={marketplace.label}>
+                    <div className="relative">
                       <button
                         className="kira-focus-ring flex min-h-11 items-center justify-center rounded-full border border-kira-warmgray/45 bg-white/85 px-4 py-2 text-kira-darkgray transition-colors hover:border-kira-brown/45 hover:text-kira-black dark:border-white/10 dark:bg-kira-offwhite/95 dark:text-kira-black"
                         type="button"
@@ -398,17 +390,17 @@ export default function LandingPage(): JSX.Element {
                         <MarketplaceCoverageLogo marketplace={marketplace} />
                         <span className="sr-only">{marketplace.label}</span>
                       </button>
-                    </HoverCardTrigger>
-                    <HoverCardContent className="border-kira-warmgray/40 bg-kira-offwhite/95 dark:border-white/10 dark:bg-[rgba(24,31,27,0.98)]">
-                      <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                        Coverage
-                      </p>
-                      <p className="mt-2 text-base font-semibold text-kira-black">
-                        {marketplace.label}
-                      </p>
-                      <p className="mt-2 leading-6 text-kira-darkgray">{marketplace.detail}</p>
-                    </HoverCardContent>
-                  </HoverCard>
+                      <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-3 w-72 -translate-x-1/2 translate-y-1 rounded-2xl border border-kira-warmgray/40 bg-kira-offwhite/95 p-4 text-sm text-kira-black opacity-0 shadow-xl transition duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 dark:border-white/10 dark:bg-[rgba(24,31,27,0.98)]">
+                        <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
+                          Coverage
+                        </p>
+                        <p className="mt-2 text-base font-semibold text-kira-black">
+                          {marketplace.label}
+                        </p>
+                        <p className="mt-2 leading-6 text-kira-darkgray">{marketplace.detail}</p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
 
@@ -529,69 +521,7 @@ export default function LandingPage(): JSX.Element {
           </p>
         </div>
 
-        <Tabs className="mt-6 gap-6" defaultValue="catalog">
-          <TabsList className="w-full flex-wrap justify-start gap-2 rounded-none border-0 bg-transparent p-0">
-            {workflowViews.map((view) => (
-              <TabsTrigger
-                className="min-w-[10rem] justify-start rounded-full border border-kira-warmgray/40 bg-white/55 px-5 py-3 text-left dark:border-white/10 dark:bg-white/6 dark:text-kira-midgray data-[state=active]:border-kira-brown/15 data-[state=active]:bg-[linear-gradient(135deg,rgba(160,111,66,0.96),rgba(22,33,29,0.92))] data-[state=active]:text-kira-offwhite data-[state=active]:shadow-none dark:data-[state=active]:border-white/10 dark:data-[state=active]:bg-[linear-gradient(135deg,rgba(209,164,111,0.92),rgba(41,54,48,0.96))] dark:data-[state=active]:text-kira-offwhite"
-                key={view.value}
-                value={view.value}
-              >
-                {view.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          {workflowViews.map((view) => (
-            <TabsContent className="mt-0" key={view.value} value={view.value}>
-              <div
-                className={cn(
-                  "rounded-[28px] border border-kira-warmgray/35 p-6 md:p-7 dark:border-white/10",
-                  view.panelTone,
-                )}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="max-w-3xl">
-                    <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                      {view.eyebrow}
-                    </p>
-                    <h3 className="mt-3 text-[2rem] leading-tight text-kira-black md:text-[2.6rem]">
-                      {view.title}
-                    </h3>
-                    <p className="mt-4 text-base leading-7 text-kira-darkgray">{view.detail}</p>
-                  </div>
-                  <div
-                    className={cn(
-                      "w-full rounded-[24px] border border-kira-warmgray/35 p-5 dark:border-white/10 lg:max-w-sm",
-                      view.carryTone,
-                    )}
-                  >
-                    <SectionEyebrow linePosition="after">{view.label}</SectionEyebrow>
-                    <h4 className="mt-4 text-2xl leading-tight">{view.carryTitle}</h4>
-                    <p className="mt-3 text-sm leading-7 text-kira-darkgray">{view.carryDetail}</p>
-                  </div>
-                </div>
-
-                <Separator className="my-5" />
-
-                <div className="grid gap-3 md:grid-cols-3">
-                  {view.bullets.map((bullet) => (
-                    <div
-                      className={cn(
-                        "flex h-full items-start gap-3 rounded-2xl border border-kira-warmgray/30 px-4 py-4 dark:border-white/10",
-                        view.panelTone,
-                      )}
-                      key={bullet}
-                    >
-                      <span className={cn("mt-2 h-2 w-2 rounded-full", view.bulletTone)} />
-                      <p className="text-sm leading-6 text-kira-darkgray">{bullet}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+        <WorkflowTabs views={workflowViews} />
       </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-[1.2fr_0.8fr]">
@@ -602,14 +532,21 @@ export default function LandingPage(): JSX.Element {
           <SectionEyebrow linePosition="before">Ops FAQ</SectionEyebrow>
           <h2 className="mt-3 text-3xl">What Grada is actually replacing.</h2>
 
-          <Accordion className="mt-5" collapsible defaultValue="manual-rebuilds" type="single">
+          <div className="mt-5">
             {playbookQuestions.map((question) => (
-              <AccordionItem key={question.value} value={question.value}>
-                <AccordionTrigger>{question.title}</AccordionTrigger>
-                <AccordionContent>{question.detail}</AccordionContent>
-              </AccordionItem>
+              <details
+                className="group border-b border-kira-warmgray/30 last:border-b-0"
+                key={question.value}
+              >
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-4 py-4 text-left text-sm font-semibold text-kira-black marker:content-none hover:text-kira-brown">
+                  <span>{question.title}</span>
+                  <span className="shrink-0 text-kira-midgray group-open:hidden">+</span>
+                  <span className="hidden shrink-0 text-kira-midgray group-open:inline">-</span>
+                </summary>
+                <div className="pb-4 text-sm leading-6 text-kira-darkgray">{question.detail}</div>
+              </details>
             ))}
-          </Accordion>
+          </div>
         </Card>
 
         <Card

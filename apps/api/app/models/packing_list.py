@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, utcnow
@@ -25,6 +25,15 @@ class PackingList(Base):
     )
     invoice_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
     invoice_date: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    template_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey('marketplace_document_templates.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
+    template_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    layout_key: Mapped[str] = mapped_column(String(64), default='default_v1', nullable=False)
+    template_snapshot_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(32), default='draft', index=True, nullable=False)
     file_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)

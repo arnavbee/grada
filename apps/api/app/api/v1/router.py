@@ -6,6 +6,7 @@ from app.api.v1.endpoints.barcode import router as barcode_router
 from app.api.v1.endpoints.barcodes import router as barcodes_router
 from app.api.v1.endpoints.catalog import router as catalog_router
 from app.api.v1.endpoints.invoices import router as invoices_router
+from app.api.v1.endpoints.marketplace_templates import router as marketplace_templates_router
 from app.api.v1.endpoints.packing_lists import router as packing_lists_router
 from app.api.v1.endpoints.po_requests import router as po_requests_router
 from app.api.v1.endpoints.received_pos import router as received_pos_router
@@ -22,6 +23,7 @@ api_router.include_router(barcode_router)
 api_router.include_router(barcodes_router)
 api_router.include_router(catalog_router)
 api_router.include_router(invoices_router)
+api_router.include_router(marketplace_templates_router)
 api_router.include_router(packing_lists_router)
 api_router.include_router(settings_router)
 api_router.include_router(sticker_templates_router)

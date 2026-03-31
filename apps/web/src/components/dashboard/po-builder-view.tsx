@@ -7,6 +7,14 @@ import { Button } from "@/src/components/ui/button";
 import { apiRequest } from "@/src/lib/api-client";
 import { resolveAssetUrl } from "@/src/lib/asset-url";
 import { getResolvedApiBaseUrl } from "@/src/lib/api-url";
+import {
+  createMarketplaceDocumentTemplate,
+  deleteMarketplaceDocumentTemplate,
+  listMarketplaceDocumentTemplates,
+  parseMarketplaceTemplateSample,
+  type MarketplaceDocumentTemplate,
+  type MarketplaceDocumentTemplateParseResponse,
+} from "@/src/lib/marketplace-document-templates";
 import { getPOBuilderDefaults, type POBuilderDefaults } from "@/src/lib/settings";
 import {
   ATTRIBUTE_LABELS,
@@ -104,6 +112,45 @@ interface POBuilderViewProps {
 }
 
 type ExportFormat = "xlsx" | "csv";
+
+const MARKETPLACE_OPTIONS = [
+  "Generic",
+  "Myntra",
+  "Ajio",
+  "Amazon IN",
+  "Flipkart",
+  "Nykaa",
+] as const;
+const MARKETPLACE_KEY_BY_LABEL: Record<(typeof MARKETPLACE_OPTIONS)[number], string> = {
+  Generic: "generic",
+  Myntra: "myntra",
+  Ajio: "ajio",
+  "Amazon IN": "amazon_in",
+  Flipkart: "flipkart",
+  Nykaa: "nykaa",
+};
+const PO_BUILDER_SOURCE_FIELDS = [
+  "sku_id",
+  "brand_name",
+  "category_type",
+  "styli_sku_id",
+  "color",
+  "size",
+  "l1",
+  "fibre_composition",
+  "coo",
+  "po_price",
+  "osp_in_sar",
+  "po_qty",
+  "knitted_woven",
+  "product_name",
+  "dress_print",
+  "dress_length",
+  "dress_shape",
+  "sleeve_length",
+  "neck_women",
+  "sleeve_styling",
+] as const;
 
 interface PreviewColumn {
   group: string;
@@ -224,6 +271,21 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
   const [isExporting, setIsExporting] = useState(false);
   const [isLoadingRequest, setIsLoadingRequest] = useState(Boolean(initialPoRequestId));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [marketplaceTemplates, setMarketplaceTemplates] = useState<MarketplaceDocumentTemplate[]>(
+    [],
+  );
+  const [selectedExportTemplateId, setSelectedExportTemplateId] = useState<string>("");
+  const [isTemplateManagerOpen, setIsTemplateManagerOpen] = useState(false);
+  const [marketplaceTemplateName, setMarketplaceTemplateName] = useState("");
+  const [marketplaceTemplateMarketplace, setMarketplaceTemplateMarketplace] = useState<string>(
+    MARKETPLACE_OPTIONS[0],
+  );
+  const [marketplaceTemplateFile, setMarketplaceTemplateFile] = useState<File | null>(null);
+  const [parsedMarketplaceTemplate, setParsedMarketplaceTemplate] =
+    useState<MarketplaceDocumentTemplateParseResponse | null>(null);
+  const [marketplaceTemplateError, setMarketplaceTemplateError] = useState<string | null>(null);
+  const [isParsingMarketplaceTemplate, setIsParsingMarketplaceTemplate] = useState(false);
+  const [isSavingMarketplaceTemplate, setIsSavingMarketplaceTemplate] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -242,6 +304,26 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
       }
     };
     void fetchProducts();
+  }, []);
+
+  const loadMarketplaceTemplates = async (): Promise<void> => {
+    try {
+      const items = await listMarketplaceDocumentTemplates("po_builder");
+      setMarketplaceTemplates(items);
+      setSelectedExportTemplateId((current) => {
+        if (current && items.some((item) => item.id === current)) {
+          return current;
+        }
+        return "";
+      });
+    } catch (error) {
+      console.error(error);
+      setMarketplaceTemplateError("Could not load PO marketplace templates.");
+    }
+  };
+
+  useEffect(() => {
+    void loadMarketplaceTemplates();
   }, []);
 
   useEffect(() => {
@@ -427,8 +509,12 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
     try {
       const cookieMatch = document.cookie.match(/(?:^|; )kira_access_token=([^;]*)/);
       const token = cookieMatch ? decodeURIComponent(cookieMatch[1] ?? "") : null;
+      const query = new URLSearchParams({ format });
+      if (selectedExportTemplateId) {
+        query.set("template_id", selectedExportTemplateId);
+      }
       const response = await fetch(
-        `${getResolvedApiBaseUrl()}/po-requests/${poRequestId}/export?format=${format}`,
+        `${getResolvedApiBaseUrl()}/po-requests/${poRequestId}/export?${query.toString()}`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         },
@@ -452,6 +538,110 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
       setErrorMessage(error instanceof Error ? error.message : "Failed to export workbook.");
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleParseMarketplaceTemplateSample = async () => {
+    if (!marketplaceTemplateFile) {
+      setMarketplaceTemplateError("Choose a sample XLSX or CSV first.");
+      return;
+    }
+    setIsParsingMarketplaceTemplate(true);
+    setMarketplaceTemplateError(null);
+    try {
+      const parsed = await parseMarketplaceTemplateSample(marketplaceTemplateFile, "po_builder");
+      setParsedMarketplaceTemplate(parsed);
+      setMarketplaceTemplateName((current) =>
+        current.trim() ? current : `${marketplaceTemplateMarketplace} PO workbook`,
+      );
+    } catch (error) {
+      console.error(error);
+      setMarketplaceTemplateError(
+        error instanceof Error ? error.message : "Failed to parse workbook sample.",
+      );
+    } finally {
+      setIsParsingMarketplaceTemplate(false);
+    }
+  };
+
+  const handleMarketplaceTemplateColumnChange = (
+    index: number,
+    patch: Partial<MarketplaceDocumentTemplateParseResponse["columns"][number]>,
+  ) => {
+    setParsedMarketplaceTemplate((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        columns: current.columns.map((column, columnIndex) =>
+          columnIndex === index ? { ...column, ...patch } : column,
+        ),
+      };
+    });
+  };
+
+  const handleSaveMarketplaceTemplate = async () => {
+    if (!parsedMarketplaceTemplate) {
+      setMarketplaceTemplateError("Upload and parse a workbook sample first.");
+      return;
+    }
+    if (!marketplaceTemplateName.trim()) {
+      setMarketplaceTemplateError("Template name is required.");
+      return;
+    }
+    setIsSavingMarketplaceTemplate(true);
+    setMarketplaceTemplateError(null);
+    try {
+      const saved = await createMarketplaceDocumentTemplate({
+        name: marketplaceTemplateName.trim(),
+        marketplace_key:
+          MARKETPLACE_KEY_BY_LABEL[
+            marketplaceTemplateMarketplace as keyof typeof MARKETPLACE_KEY_BY_LABEL
+          ] ?? "generic",
+        document_type: "po_builder",
+        template_kind: parsedMarketplaceTemplate.template_kind,
+        file_format: parsedMarketplaceTemplate.file_format,
+        sample_file_url: parsedMarketplaceTemplate.sample_file_url,
+        sheet_name: parsedMarketplaceTemplate.sheet_name,
+        header_row_index: parsedMarketplaceTemplate.header_row_index,
+        columns: parsedMarketplaceTemplate.columns,
+        layout: parsedMarketplaceTemplate.layout,
+        is_default: marketplaceTemplates.length === 0,
+        is_active: true,
+      });
+      await loadMarketplaceTemplates();
+      setSelectedExportTemplateId(saved.id);
+      setMarketplaceTemplateName("");
+      setMarketplaceTemplateFile(null);
+      setParsedMarketplaceTemplate(null);
+      setIsTemplateManagerOpen(false);
+    } catch (error) {
+      console.error(error);
+      setMarketplaceTemplateError(
+        error instanceof Error ? error.message : "Failed to save workbook template.",
+      );
+    } finally {
+      setIsSavingMarketplaceTemplate(false);
+    }
+  };
+
+  const handleDeleteMarketplaceTemplate = async (templateId: string) => {
+    if (typeof window !== "undefined" && !window.confirm("Delete this workbook template?")) {
+      return;
+    }
+    setMarketplaceTemplateError(null);
+    try {
+      await deleteMarketplaceDocumentTemplate(templateId);
+      if (selectedExportTemplateId === templateId) {
+        setSelectedExportTemplateId("");
+      }
+      await loadMarketplaceTemplates();
+    } catch (error) {
+      console.error(error);
+      setMarketplaceTemplateError(
+        error instanceof Error ? error.message : "Failed to delete workbook template.",
+      );
     }
   };
 
@@ -1066,7 +1256,19 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                     This is the row-level shape that will be written to the Women_SST workbook.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="kira-focus-ring rounded-md border border-kira-warmgray bg-kira-offwhite/70 px-3 py-2 text-sm text-kira-darkgray"
+                    onChange={(event) => setSelectedExportTemplateId(event.target.value)}
+                    value={selectedExportTemplateId}
+                  >
+                    <option value="">Built-in workbook</option>
+                    {marketplaceTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
                   <Button disabled={isExporting} onClick={() => void handleExport("xlsx")}>
                     {isExporting ? "Preparing workbook..." : "Download PO (.xlsx)"}
                   </Button>
@@ -1077,8 +1279,182 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                   >
                     {isExporting ? "Preparing workbook..." : "Download PO (.csv)"}
                   </Button>
+                  <Button
+                    onClick={() => setIsTemplateManagerOpen((current) => !current)}
+                    variant="secondary"
+                  >
+                    {isTemplateManagerOpen ? "Close templates" : "Manage templates"}
+                  </Button>
                 </div>
               </div>
+
+              {isTemplateManagerOpen ? (
+                <div className="space-y-4 border-b border-kira-warmgray/60 bg-kira-warmgray/10 px-6 py-5">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <label className="space-y-1 text-sm text-kira-darkgray">
+                      <span className="text-xs uppercase tracking-[0.12em] text-kira-darkgray/60">
+                        Template name
+                      </span>
+                      <input
+                        className="w-full rounded-xl border border-kira-warmgray bg-kira-offwhite/70 px-3 py-2 text-kira-black outline-none transition focus:border-kira-brown dark:bg-white/10"
+                        onChange={(event) => setMarketplaceTemplateName(event.target.value)}
+                        placeholder="Amazon IN PO workbook"
+                        value={marketplaceTemplateName}
+                      />
+                    </label>
+                    <label className="space-y-1 text-sm text-kira-darkgray">
+                      <span className="text-xs uppercase tracking-[0.12em] text-kira-darkgray/60">
+                        Marketplace
+                      </span>
+                      <select
+                        className="w-full rounded-xl border border-kira-warmgray bg-kira-offwhite/70 px-3 py-2 text-kira-black outline-none transition focus:border-kira-brown dark:bg-white/10"
+                        onChange={(event) => setMarketplaceTemplateMarketplace(event.target.value)}
+                        value={marketplaceTemplateMarketplace}
+                      >
+                        {MARKETPLACE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="space-y-1 text-sm text-kira-darkgray">
+                      <span className="text-xs uppercase tracking-[0.12em] text-kira-darkgray/60">
+                        Sample workbook
+                      </span>
+                      <input
+                        accept=".xlsx,.csv"
+                        className="block w-full text-sm"
+                        onChange={(event) =>
+                          setMarketplaceTemplateFile(event.target.files?.[0] ?? null)
+                        }
+                        type="file"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      disabled={isParsingMarketplaceTemplate || !marketplaceTemplateFile}
+                      onClick={() => void handleParseMarketplaceTemplateSample()}
+                      variant="secondary"
+                    >
+                      {isParsingMarketplaceTemplate ? "Parsing..." : "Parse workbook"}
+                    </Button>
+                    <Button
+                      disabled={isSavingMarketplaceTemplate || !parsedMarketplaceTemplate}
+                      onClick={() => void handleSaveMarketplaceTemplate()}
+                    >
+                      {isSavingMarketplaceTemplate ? "Saving..." : "Save template"}
+                    </Button>
+                  </div>
+
+                  {marketplaceTemplateError ? (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {marketplaceTemplateError}
+                    </div>
+                  ) : null}
+
+                  {parsedMarketplaceTemplate ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-kira-darkgray">
+                        Detected header row {parsedMarketplaceTemplate.header_row_index}
+                        {parsedMarketplaceTemplate.sheet_name
+                          ? ` on sheet ${parsedMarketplaceTemplate.sheet_name}`
+                          : ""}
+                        .
+                      </p>
+                      <div className="overflow-x-auto rounded-2xl border border-kira-warmgray/60">
+                        <table className="min-w-full text-sm">
+                          <thead className="bg-kira-warmgray/18 text-left text-xs uppercase tracking-[0.14em] text-kira-darkgray/70">
+                            <tr>
+                              <th className="px-3 py-2">Sample column</th>
+                              <th className="px-3 py-2">Map to</th>
+                              <th className="px-3 py-2">Required</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {parsedMarketplaceTemplate.columns.map((column, index) => (
+                              <tr
+                                key={`${column.header}-${index}`}
+                                className="border-t border-kira-warmgray/40"
+                              >
+                                <td className="px-3 py-2">{column.header}</td>
+                                <td className="px-3 py-2">
+                                  <select
+                                    className="w-full rounded-lg border border-kira-warmgray bg-kira-offwhite/70 px-3 py-2 text-sm text-kira-black outline-none transition focus:border-kira-brown dark:bg-white/10"
+                                    onChange={(event) =>
+                                      handleMarketplaceTemplateColumnChange(index, {
+                                        source_field: event.target.value || null,
+                                      })
+                                    }
+                                    value={column.source_field ?? ""}
+                                  >
+                                    <option value="">Ignore column</option>
+                                    {PO_BUILDER_SOURCE_FIELDS.map((field) => (
+                                      <option key={field} value={field}>
+                                        {field}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <input
+                                    checked={column.required}
+                                    onChange={(event) =>
+                                      handleMarketplaceTemplateColumnChange(index, {
+                                        required: event.target.checked,
+                                      })
+                                    }
+                                    type="checkbox"
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {marketplaceTemplates.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs uppercase tracking-[0.12em] text-kira-darkgray/60">
+                        Saved workbook templates
+                      </p>
+                      <div className="space-y-2">
+                        {marketplaceTemplates.map((template) => (
+                          <div
+                            key={template.id}
+                            className="flex items-center justify-between rounded-2xl border border-kira-warmgray/50 bg-kira-offwhite/55 px-4 py-3"
+                          >
+                            <div>
+                              <p className="font-medium text-kira-black">{template.name}</p>
+                              <p className="text-xs text-kira-darkgray/70">
+                                {template.marketplace_key} · {template.file_format.toUpperCase()}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => setSelectedExportTemplateId(template.id)}
+                                variant="secondary"
+                              >
+                                Use
+                              </Button>
+                              <Button
+                                onClick={() => void handleDeleteMarketplaceTemplate(template.id)}
+                                variant="text"
+                              >
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div className="max-h-[70vh] overflow-auto">
                 <table className="min-w-[2600px] text-left text-sm">

@@ -37,16 +37,30 @@ class PackingListCartonResponse(BaseModel):
     items: list[PackingListCartonItemResponse] = Field(default_factory=list)
 
 
+class PackingListCreateRequest(BaseModel):
+    template_id: str | None = Field(default=None, max_length=36)
+
+
 class PackingListCreateResponse(BaseModel):
     packing_list_id: str
     total_cartons: int
     total_pieces: int
+    template_id: str | None = None
+    template_name: str | None = None
+    layout_key: str = 'default_v1'
+
+
+class PackingListGeneratePdfRequest(BaseModel):
+    template_id: str | None = Field(default=None, max_length=36)
 
 
 class PackingListGeneratePdfResponse(BaseModel):
     packing_list_id: str
     status: PackingListStatus
     file_url: str | None = None
+    template_id: str | None = None
+    template_name: str | None = None
+    layout_key: str = 'default_v1'
 
 
 class PackingListResponse(BaseModel):
@@ -58,6 +72,9 @@ class PackingListResponse(BaseModel):
     invoice_id: str | None = None
     invoice_number: str | None = None
     invoice_date: datetime | None = None
+    template_id: str | None = None
+    template_name: str | None = None
+    layout_key: str = 'default_v1'
     status: PackingListStatus
     file_url: str | None
     created_at: datetime

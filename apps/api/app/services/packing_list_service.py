@@ -53,6 +53,10 @@ def assign_cartons_for_received_po(
     received_po: ReceivedPO,
     company_id: str,
     invoice: Invoice | None = None,
+    template_id: str | None = None,
+    template_name: str | None = None,
+    layout_key: str = 'default_v1',
+    template_snapshot_json: str | None = None,
 ) -> tuple[PackingList, int, int]:
     line_items = sorted(
         list(received_po.items),
@@ -80,6 +84,10 @@ def assign_cartons_for_received_po(
         invoice_id=invoice.id if invoice else None,
         invoice_number=invoice.invoice_number if invoice else None,
         invoice_date=invoice.invoice_date if invoice else None,
+        template_id=template_id,
+        template_name=template_name,
+        layout_key=layout_key,
+        template_snapshot_json=template_snapshot_json,
     )
     db.add(packing_list)
     db.flush()
