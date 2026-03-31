@@ -121,7 +121,7 @@ const marketplaceCoverage: MarketplaceCoverageItem[] = [
     label: "Flipkart",
     detail: "Marketplace-specific formats from one source.",
     logo: {
-      className: "h-6 w-auto object-contain",
+      className: "h-6 w-auto origin-center scale-125 object-contain",
       height: 26,
       kind: "image",
       src: "https://upload.wikimedia.org/wikipedia/commons/e/e5/Flipkart_logo_%282026%29.svg",
@@ -278,16 +278,16 @@ function MarketplaceCoverageLogo({
 
   if (marketplace.logo.kind === "amazon") {
     return (
-      <span className="relative inline-flex h-5 items-start font-sans text-[0.95rem] font-medium lowercase tracking-[-0.05em] text-[#171717]">
-        <span className="relative inline-block pr-2">
+      <span className="relative inline-flex h-5 w-[6.2rem] items-start justify-center font-sans text-[0.95rem] font-medium lowercase tracking-[-0.05em] text-[#171717]">
+        <span className="relative inline-flex">
           amazon
-          <span className="absolute -right-1 top-0 text-[0.5rem] font-semibold tracking-normal text-[#f59e0b]">
+          <span className="absolute -right-4 top-0 text-[0.5rem] font-semibold tracking-normal text-[#f59e0b]">
             .in
           </span>
         </span>
         <svg
           aria-hidden="true"
-          className="absolute -bottom-0.5 left-0 h-2 w-[3.65rem]"
+          className="absolute -bottom-0.5 left-1/2 h-2 w-[3.65rem] -translate-x-1/2"
           viewBox="0 0 58 12"
         >
           <path
