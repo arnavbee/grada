@@ -19,6 +19,7 @@ import { ReceivedPoProcessingModuleCard } from "@/src/components/marketing/recei
 import { SectionEyebrow } from "@/src/components/marketing/section-eyebrow";
 import { SmartCatalogModuleCard } from "@/src/components/marketing/smart-catalog-module-card";
 import { Card } from "@/src/components/ui/card";
+import { cn } from "@/src/lib/cn";
 
 const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
 const marketplaceExportsAnimationSrc = "/marketing/grada-marketplace-exports-animated.html";
@@ -161,6 +162,9 @@ const workflowViews = [
     label: "Catalog AI",
     eyebrow: "Phase 01",
     title: "Lock the product record before the business starts improvising.",
+    panelTone: "kira-tint-warm",
+    carryTone: "kira-tint-mixed",
+    bulletTone: "bg-kira-brown",
     detail: "Turn product images and team knowledge into one reusable catalog record.",
     bullets: [
       "Extract key attributes from product imagery.",
@@ -175,6 +179,9 @@ const workflowViews = [
     label: "PO Review",
     eyebrow: "Phase 02",
     title: "Review the received PO once, then stop reconciling downstream mistakes.",
+    panelTone: "kira-tint-sage",
+    carryTone: "kira-tint-sage",
+    bulletTone: "bg-kira-brown dark:bg-[#8E9B87]",
     detail: "Upload the PO, verify parsed rows, and confirm one operational version.",
     bullets: [
       "Accept PDF, XLS, and XLSX files.",
@@ -189,6 +196,9 @@ const workflowViews = [
     label: "Dispatch Docs",
     eyebrow: "Phase 03",
     title: "Generate dispatch-ready outputs from approved data, not from memory.",
+    panelTone: "kira-tint-mixed",
+    carryTone: "kira-tint-warm",
+    bulletTone: "bg-[#C47F56]",
     detail: "Generate barcodes, invoices, packing lists, and stickers from the confirmed PO.",
     bullets: [
       "Create barcode sheets and sticker templates.",
@@ -318,9 +328,10 @@ export default function LandingPage(): JSX.Element {
     <main className="relative w-full max-w-none space-y-6 p-4 md:space-y-8 md:p-8">
       <GridBackground />
 
-      <section className="surface-card animate-enter relative overflow-hidden p-6 md:p-10">
-        <div className="kira-float-slow absolute -right-24 top-0 h-72 w-72 rounded-full bg-kira-brown/10 blur-3xl" />
-        <div className="kira-float-fast absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-[#A6B09B]/18 blur-3xl" />
+      <section className="surface-card kira-tint-mixed animate-enter relative overflow-hidden p-6 md:p-10">
+        <div className="kira-float-slow absolute -right-24 top-0 h-72 w-72 rounded-full bg-kira-brown/16 blur-3xl" />
+        <div className="kira-float-fast absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-kira-brown/14 blur-3xl dark:bg-[#A6B09B]/24" />
+        <div className="absolute right-24 top-28 h-36 w-36 rounded-full bg-[#D7B08B]/14 blur-3xl" />
         <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
           <div className="relative z-10 flex h-full flex-col md:col-span-7">
             <div className="flex flex-wrap gap-y-2">
@@ -367,7 +378,7 @@ export default function LandingPage(): JSX.Element {
 
           <div className="relative z-10 md:col-span-5">
             <Card
-              className="animate-enter h-full overflow-hidden border-kira-darkgray/15 p-6 md:p-7"
+              className="animate-enter kira-tint-warm h-full overflow-hidden border-kira-darkgray/15 p-6 md:p-7"
               style={{ animationDelay: "120ms" }}
             >
               <SectionEyebrow linePosition="after">Operational Spine</SectionEyebrow>
@@ -482,7 +493,7 @@ export default function LandingPage(): JSX.Element {
           </div>
 
           <Card
-            className="animate-enter rounded-[32px] border-kira-darkgray/15 p-6 md:p-7"
+            className="animate-enter kira-tint-mixed rounded-[32px] border-kira-darkgray/15 p-6 md:p-7"
             style={{ animationDelay: "240ms" }}
           >
             <SectionEyebrow linePosition="after">Why This Feels Different</SectionEyebrow>
@@ -505,7 +516,7 @@ export default function LandingPage(): JSX.Element {
       </section>
 
       <section
-        className="surface-card animate-enter overflow-hidden p-5 md:p-7"
+        className="surface-card kira-tint-sage animate-enter overflow-hidden p-5 md:p-7"
         style={{ animationDelay: "240ms" }}
       >
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -522,7 +533,7 @@ export default function LandingPage(): JSX.Element {
           <TabsList className="w-full flex-wrap justify-start gap-2 rounded-none border-0 bg-transparent p-0">
             {workflowViews.map((view) => (
               <TabsTrigger
-                className="min-w-[10rem] justify-start rounded-full border border-kira-warmgray/40 bg-white/55 px-5 py-3 text-left dark:border-white/10 dark:bg-white/6 dark:text-kira-midgray data-[state=active]:border-kira-black/10 data-[state=active]:bg-kira-black data-[state=active]:text-kira-offwhite data-[state=active]:shadow-none dark:data-[state=active]:border-white/10 dark:data-[state=active]:bg-kira-offwhite dark:data-[state=active]:text-[#141b18]"
+                className="min-w-[10rem] justify-start rounded-full border border-kira-warmgray/40 bg-white/55 px-5 py-3 text-left dark:border-white/10 dark:bg-white/6 dark:text-kira-midgray data-[state=active]:border-kira-brown/15 data-[state=active]:bg-[linear-gradient(135deg,rgba(160,111,66,0.96),rgba(22,33,29,0.92))] data-[state=active]:text-kira-offwhite data-[state=active]:shadow-none dark:data-[state=active]:border-white/10 dark:data-[state=active]:bg-[linear-gradient(135deg,rgba(209,164,111,0.92),rgba(41,54,48,0.96))] dark:data-[state=active]:text-kira-offwhite"
                 key={view.value}
                 value={view.value}
               >
@@ -533,7 +544,12 @@ export default function LandingPage(): JSX.Element {
 
           {workflowViews.map((view) => (
             <TabsContent className="mt-0" key={view.value} value={view.value}>
-              <div className="rounded-[28px] border border-kira-warmgray/35 bg-white/60 p-6 md:p-7 dark:border-white/10 dark:bg-white/5">
+              <div
+                className={cn(
+                  "rounded-[28px] border border-kira-warmgray/35 p-6 md:p-7 dark:border-white/10",
+                  view.panelTone,
+                )}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="max-w-3xl">
                     <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
@@ -544,7 +560,12 @@ export default function LandingPage(): JSX.Element {
                     </h3>
                     <p className="mt-4 text-base leading-7 text-kira-darkgray">{view.detail}</p>
                   </div>
-                  <div className="w-full rounded-[24px] border border-kira-warmgray/35 bg-kira-offwhite/70 p-5 dark:border-white/10 dark:bg-white/6 lg:max-w-sm">
+                  <div
+                    className={cn(
+                      "w-full rounded-[24px] border border-kira-warmgray/35 p-5 dark:border-white/10 lg:max-w-sm",
+                      view.carryTone,
+                    )}
+                  >
                     <SectionEyebrow linePosition="after">{view.label}</SectionEyebrow>
                     <h4 className="mt-4 text-2xl leading-tight">{view.carryTitle}</h4>
                     <p className="mt-3 text-sm leading-7 text-kira-darkgray">{view.carryDetail}</p>
@@ -556,10 +577,13 @@ export default function LandingPage(): JSX.Element {
                 <div className="grid gap-3 md:grid-cols-3">
                   {view.bullets.map((bullet) => (
                     <div
-                      className="flex h-full items-start gap-3 rounded-2xl border border-kira-warmgray/30 bg-kira-offwhite/70 px-4 py-4 dark:border-white/10 dark:bg-white/6"
+                      className={cn(
+                        "flex h-full items-start gap-3 rounded-2xl border border-kira-warmgray/30 px-4 py-4 dark:border-white/10",
+                        view.panelTone,
+                      )}
                       key={bullet}
                     >
-                      <span className="mt-2 h-2 w-2 rounded-full bg-kira-brown" />
+                      <span className={cn("mt-2 h-2 w-2 rounded-full", view.bulletTone)} />
                       <p className="text-sm leading-6 text-kira-darkgray">{bullet}</p>
                     </div>
                   ))}
@@ -572,7 +596,7 @@ export default function LandingPage(): JSX.Element {
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-[1.2fr_0.8fr]">
         <Card
-          className="animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7"
+          className="animate-enter kira-tint-warm p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7"
           style={{ animationDelay: "320ms" }}
         >
           <SectionEyebrow linePosition="before">Ops FAQ</SectionEyebrow>
@@ -589,7 +613,7 @@ export default function LandingPage(): JSX.Element {
         </Card>
 
         <Card
-          className="animate-enter p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7"
+          className="animate-enter kira-tint-sage p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7"
           style={{ animationDelay: "380ms" }}
         >
           <SectionEyebrow linePosition="after">Get Started</SectionEyebrow>
@@ -618,7 +642,7 @@ export default function LandingPage(): JSX.Element {
       </section>
 
       <section
-        className="kira-surface-elevated animate-enter overflow-hidden rounded-2xl border border-kira-warmgray/35"
+        className="kira-tint-deep animate-enter overflow-hidden rounded-2xl border border-kira-warmgray/35"
         style={{ animationDelay: "520ms" }}
       >
         <div className="kira-marquee flex min-w-max items-center gap-6 py-3">
@@ -634,7 +658,10 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <Card className="animate-enter p-5 md:p-7" style={{ animationDelay: "560ms" }}>
+      <Card
+        className="animate-enter kira-tint-mixed p-5 md:p-7"
+        style={{ animationDelay: "560ms" }}
+      >
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <SectionEyebrow linePosition="before">Ready to Scale</SectionEyebrow>

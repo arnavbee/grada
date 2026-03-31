@@ -72,12 +72,16 @@ export function DispatchDocumentsModuleCard({
       ref={containerRef}
     >
       <Card
-        className="animate-enter relative h-full min-h-[22rem] overflow-hidden rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
+        className="animate-enter kira-tint-warm relative h-full min-h-[22rem] overflow-hidden rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
         style={{ animationDelay: `${120 + index * 80}ms` }}
         tabIndex={0}
       >
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div className="absolute -right-8 top-0 h-40 w-40 rounded-full bg-[#C47F56]/18 blur-3xl transition-transform duration-500 group-hover:scale-110" />
+          <div className="absolute left-0 bottom-6 h-32 w-32 rounded-full bg-[#B6A285]/14 blur-3xl transition-transform duration-500 group-hover:scale-110" />
+        </div>
         <div
-          className={`transition-opacity duration-200 ${isPreviewOpen ? "opacity-0" : "opacity-100"}`}
+          className={`relative z-10 transition-opacity duration-200 ${isPreviewOpen ? "opacity-0" : "opacity-100"}`}
         >
           <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
             Module {index + 1}

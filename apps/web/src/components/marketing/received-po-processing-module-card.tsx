@@ -69,12 +69,16 @@ export function ReceivedPoProcessingModuleCard({
     >
       <Card
         aria-label="Received PO Processing module with infographic preview"
-        className="animate-enter relative h-full min-h-[22rem] overflow-hidden rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
+        className="animate-enter kira-tint-mixed relative h-full min-h-[22rem] overflow-hidden rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
         style={{ animationDelay: `${120 + index * 80}ms` }}
         tabIndex={0}
       >
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-8 top-3 h-36 w-36 rounded-full bg-kira-brown/12 blur-3xl transition-transform duration-500 group-hover:scale-110 dark:bg-[#A6B09B]/16" />
+          <div className="absolute right-2 bottom-2 h-40 w-40 rounded-full bg-kira-brown/12 blur-3xl transition-transform duration-500 group-hover:scale-110" />
+        </div>
         <div
-          className={`transition-opacity duration-200 ${isPreviewOpen ? "opacity-0" : "opacity-100"}`}
+          className={`relative z-10 transition-opacity duration-200 ${isPreviewOpen ? "opacity-0" : "opacity-100"}`}
         >
           <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
             Module {index + 1}

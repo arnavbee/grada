@@ -71,12 +71,16 @@ export function MarketplaceExportsModuleCard({
     >
       <Card
         aria-label="Marketplace Exports module with infographic preview"
-        className="animate-enter relative h-full min-h-[22rem] overflow-hidden rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
+        className="animate-enter kira-tint-sage relative h-full min-h-[22rem] overflow-hidden rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
         style={{ animationDelay: `${120 + index * 80}ms` }}
         tabIndex={0}
       >
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div className="absolute -right-10 top-0 h-44 w-44 rounded-full bg-kira-brown/14 blur-3xl transition-transform duration-500 group-hover:scale-110 dark:bg-[#8E9B87]/18" />
+          <div className="absolute left-6 bottom-4 h-32 w-32 rounded-full bg-kira-brown/10 blur-3xl transition-transform duration-500 group-hover:scale-110" />
+        </div>
         <div
-          className={`transition-opacity duration-200 ${isPreviewOpen ? "opacity-0" : "opacity-100"}`}
+          className={`relative z-10 transition-opacity duration-200 ${isPreviewOpen ? "opacity-0" : "opacity-100"}`}
         >
           <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
             Module {index + 1}

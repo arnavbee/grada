@@ -71,12 +71,16 @@ export function SmartCatalogModuleCard({
     >
       <Card
         aria-label="Smart Catalog module with infographic preview"
-        className="animate-enter relative h-full min-h-[22rem] overflow-hidden rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
+        className="animate-enter kira-tint-warm relative h-full min-h-[22rem] overflow-hidden rounded-[28px] border-kira-warmgray/35 p-6 transition-transform duration-300 hover:-translate-y-1"
         style={{ animationDelay: `${120 + index * 80}ms` }}
         tabIndex={0}
       >
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-16 top-0 h-40 w-40 rounded-full bg-kira-brown/16 blur-3xl transition-transform duration-500 group-hover:scale-110" />
+          <div className="absolute right-0 top-14 h-44 w-44 rounded-full bg-kira-brown/10 blur-3xl transition-transform duration-500 group-hover:scale-110 dark:bg-[#A6B09B]/14" />
+        </div>
         <div
-          className={`transition-opacity duration-200 ${isPreviewOpen ? "opacity-0" : "opacity-100"}`}
+          className={`relative z-10 transition-opacity duration-200 ${isPreviewOpen ? "opacity-0" : "opacity-100"}`}
         >
           <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
             Module {index + 1}

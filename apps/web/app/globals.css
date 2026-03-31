@@ -79,7 +79,7 @@ body {
   @apply font-sans antialiased;
   background:
     radial-gradient(circle at top left, rgba(160, 111, 66, 0.12), transparent 28%),
-    radial-gradient(circle at top right, rgba(132, 148, 124, 0.1), transparent 22%),
+    radial-gradient(circle at top right, rgba(183, 140, 99, 0.1), transparent 22%),
     linear-gradient(180deg, var(--kira-bg-top) 0%, var(--kira-bg) 55%, var(--kira-bg-alt) 100%);
   color: var(--kira-ink);
   min-height: 100vh;
@@ -120,6 +120,60 @@ small {
     border-color 220ms ease,
     box-shadow 220ms ease,
     color 220ms ease;
+}
+
+.kira-tint-warm {
+  background:
+    radial-gradient(circle at top left, rgba(160, 111, 66, 0.16), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.3), transparent 32%),
+    linear-gradient(180deg, rgba(255, 251, 246, 0.98) 0%, rgba(247, 238, 227, 0.98) 100%);
+}
+
+.kira-tint-sage {
+  background:
+    radial-gradient(circle at top right, rgba(160, 111, 66, 0.16), transparent 36%),
+    radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.28), transparent 30%),
+    linear-gradient(180deg, rgba(255, 251, 246, 0.98) 0%, rgba(246, 238, 229, 0.98) 100%);
+}
+
+.kira-tint-mixed {
+  background:
+    radial-gradient(circle at top left, rgba(160, 111, 66, 0.14), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(183, 140, 99, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(255, 252, 248, 0.98) 0%, rgba(244, 238, 229, 0.98) 100%);
+}
+
+.kira-tint-deep {
+  background:
+    radial-gradient(circle at top left, rgba(160, 111, 66, 0.18), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(183, 140, 99, 0.14), transparent 38%),
+    linear-gradient(135deg, rgba(255, 250, 243, 0.96) 0%, rgba(240, 235, 226, 0.94) 100%);
+}
+
+html[data-theme="dark"] .kira-tint-warm {
+  background:
+    radial-gradient(circle at top left, rgba(209, 164, 111, 0.18), transparent 36%),
+    linear-gradient(180deg, rgba(34, 43, 38, 0.96) 0%, rgba(20, 27, 24, 0.98) 100%);
+}
+
+html[data-theme="dark"] .kira-tint-sage {
+  background:
+    radial-gradient(circle at top right, rgba(145, 157, 149, 0.2), transparent 38%),
+    linear-gradient(180deg, rgba(31, 39, 35, 0.96) 0%, rgba(18, 24, 21, 0.98) 100%);
+}
+
+html[data-theme="dark"] .kira-tint-mixed {
+  background:
+    radial-gradient(circle at top left, rgba(209, 164, 111, 0.16), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(145, 157, 149, 0.16), transparent 36%),
+    linear-gradient(180deg, rgba(32, 40, 36, 0.96) 0%, rgba(18, 24, 21, 0.98) 100%);
+}
+
+html[data-theme="dark"] .kira-tint-deep {
+  background:
+    radial-gradient(circle at top left, rgba(209, 164, 111, 0.18), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(145, 157, 149, 0.15), transparent 38%),
+    linear-gradient(135deg, rgba(37, 46, 41, 0.98) 0%, rgba(22, 29, 25, 0.98) 100%);
 }
 
 .kira-surface-elevated {
