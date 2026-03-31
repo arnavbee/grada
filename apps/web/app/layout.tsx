@@ -1,7 +1,5 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { GeistMono } from "geist/font/mono";
-import { GeistSans } from "geist/font/sans";
 
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/src/components/theme-toggle";
@@ -30,11 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={cn(GeistSans.variable, GeistMono.variable, "font-sans")}
-    >
+    <html lang="en" suppressHydrationWarning className={cn("font-sans")}>
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeToggle />

@@ -31,9 +31,6 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      geist:
-        specifier: ^1.7.0
-        version: 1.7.0(next@14.2.17(@babel/core@7.29.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
       lucide-react:
         specifier: ^1.7.0
         version: 1.7.0(react@18.3.1)
@@ -4003,14 +4000,6 @@ packages:
       {
         integrity: sha512-sR9BNCjBg6LNgwvxlBd0sBABvQitkLzoVY9MYYROQVX/FvfJ4Mai9LsGhDgd8qYdds0bY77VzYd5iuB+v5rwQQ==,
       }
-
-  geist@1.7.0:
-    resolution:
-      {
-        integrity: sha512-ZaoiZwkSf0DwwB1ncdLKp+ggAldqxl5L1+SXaNIBGkPAqcu+xjVJLxlf3/S8vLt9UHx1xu5fz3lbzKCj5iOVdQ==,
-      }
-    peerDependencies:
-      next: ">=13.2.0"
 
   generator-function@2.0.1:
     resolution:
@@ -9772,10 +9761,6 @@ snapshots:
   functions-have-names@1.2.3: {}
 
   fuzzysort@3.1.0: {}
-
-  geist@1.7.0(next@14.2.17(@babel/core@7.29.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)):
-    dependencies:
-      next: 14.2.17(@babel/core@7.29.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
   generator-function@2.0.1: {}
 
