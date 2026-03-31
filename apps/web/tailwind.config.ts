@@ -29,31 +29,56 @@ const config: Config = {
         },
         "cube-dot": {
           "0%": {
-            transform: "perspective(120px) rotateX(-32deg) rotateY(28deg) scale(0.78)",
-            opacity: "0.72",
-            boxShadow: "inset -1px -1px 0 rgba(255, 255, 255, 0.45), 0 0 0 rgba(0, 0, 0, 0)",
+            transform: "translateY(0) rotate(0deg)",
+            opacity: "0.95",
+            boxShadow: "inset 1px 1px 0 rgba(255, 255, 255, 0.45), 0 0 0 rgba(0, 0, 0, 0)",
+          },
+          "12.5%": {
+            transform: "translateY(-24%) rotate(90deg)",
+            opacity: "1",
+            boxShadow:
+              "inset -1px 1px 0 rgba(255, 255, 255, 0.5), 0 5px 9px rgba(45, 27, 13, 0.24)",
           },
           "25%": {
-            transform: "perspective(120px) rotateX(24deg) rotateY(-26deg) scale(1.03)",
+            transform: "translateY(0) rotate(180deg)",
+            opacity: "0.96",
+            boxShadow:
+              "inset 1px -1px 0 rgba(255, 255, 255, 0.42), 0 1px 3px rgba(45, 27, 13, 0.16)",
+          },
+          "37.5%": {
+            transform: "translateY(-24%) rotate(270deg)",
             opacity: "1",
-            boxShadow: "inset 2px 2px 0 rgba(255, 255, 255, 0.5), 0 4px 8px rgba(45, 27, 13, 0.22)",
+            boxShadow:
+              "inset -1px 1px 0 rgba(255, 255, 255, 0.5), 0 5px 9px rgba(45, 27, 13, 0.24)",
           },
           "50%": {
-            transform: "perspective(120px) rotateX(-20deg) rotateY(34deg) scale(0.94)",
-            opacity: "0.92",
+            transform: "translateY(0) rotate(360deg)",
+            opacity: "0.96",
             boxShadow:
-              "inset -2px 1px 0 rgba(255, 255, 255, 0.35), 0 2px 6px rgba(45, 27, 13, 0.2)",
+              "inset 1px -1px 0 rgba(255, 255, 255, 0.42), 0 1px 3px rgba(45, 27, 13, 0.16)",
           },
-          "75%": {
-            transform: "perspective(120px) rotateX(26deg) rotateY(-30deg) scale(1.04)",
+          "62.5%": {
+            transform: "translateY(-24%) rotate(450deg)",
             opacity: "1",
             boxShadow:
-              "inset 2px -1px 0 rgba(255, 255, 255, 0.4), 0 5px 10px rgba(45, 27, 13, 0.22)",
+              "inset -1px 1px 0 rgba(255, 255, 255, 0.5), 0 5px 9px rgba(45, 27, 13, 0.24)",
+          },
+          "75%": {
+            transform: "translateY(0) rotate(540deg)",
+            opacity: "0.96",
+            boxShadow:
+              "inset 1px -1px 0 rgba(255, 255, 255, 0.42), 0 1px 3px rgba(45, 27, 13, 0.16)",
+          },
+          "87.5%": {
+            transform: "translateY(-24%) rotate(630deg)",
+            opacity: "1",
+            boxShadow:
+              "inset -1px 1px 0 rgba(255, 255, 255, 0.5), 0 5px 9px rgba(45, 27, 13, 0.24)",
           },
           "100%": {
-            transform: "perspective(120px) rotateX(-32deg) rotateY(28deg) scale(0.78)",
-            opacity: "0.72",
-            boxShadow: "inset -1px -1px 0 rgba(255, 255, 255, 0.45), 0 0 0 rgba(0, 0, 0, 0)",
+            transform: "translateY(0) rotate(720deg)",
+            opacity: "0.95",
+            boxShadow: "inset 1px 1px 0 rgba(255, 255, 255, 0.45), 0 0 0 rgba(0, 0, 0, 0)",
           },
         },
         "letter-spacing": {
@@ -67,7 +92,7 @@ const config: Config = {
       },
       animation: {
         enter: "enter 420ms ease-out both",
-        "cube-dot": "cube-dot 1.35s cubic-bezier(0.6, 0.06, 0.2, 0.98) infinite",
+        "cube-dot": "cube-dot 1.35s linear infinite",
         "letter-spacing": "letter-spacing 800ms cubic-bezier(0.16, 1, 0.3, 1) both",
         "fade-in-up": "fade-in-up 800ms cubic-bezier(0.16, 1, 0.3, 1) both",
       },

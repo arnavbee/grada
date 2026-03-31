@@ -30,7 +30,7 @@ export function FooterBrand() {
       <h2 className="text-[4rem] font-bold leading-none tracking-tighter md:text-[8rem] lg:text-[10rem]">
         Grada
         {isVisible ? (
-          <span className="inline-block ml-2 mb-2 h-4 w-4 animate-cube-dot rounded-[2px] bg-kira-brown md:mb-4 md:h-8 md:w-8" />
+          <span className="inline-block ml-2 mb-2 h-4 w-4 origin-bottom animate-cube-dot rounded-[2px] bg-kira-brown md:mb-4 md:h-8 md:w-8" />
         ) : (
           <span className="inline-block ml-2 mb-2 h-4 w-4 bg-transparent md:mb-4 md:h-8 md:w-8" />
         )}
