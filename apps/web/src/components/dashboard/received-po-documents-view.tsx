@@ -10,6 +10,7 @@ import { PackingRulesPanel } from "@/src/components/dashboard/packing-rules-pane
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { normalizeStickerAssetUrlForPdf } from "@/src/lib/sticker-asset-pdf";
+import { cn } from "@/src/lib/cn";
 import {
   createMarketplaceDocumentTemplate,
   listMarketplaceDocumentTemplates,
@@ -296,6 +297,107 @@ function buildTemplateElementPayload(template: StickerTemplate) {
 }
 const DOC_INPUT_CLASS = "kira-field w-full";
 const DOC_TEXTAREA_CLASS = "kira-textarea min-h-24 w-full";
+
+type SurfaceTone = "neutral" | "active" | "success" | "warning";
+
+function toneClasses(tone: SurfaceTone): string {
+  if (tone === "success") {
+    return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200";
+  }
+  if (tone === "active") {
+    return "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-200";
+  }
+  if (tone === "warning") {
+    return "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200";
+  }
+  return "border-kira-warmgray/25 bg-kira-warmgray/14 text-kira-darkgray dark:border-white/10 dark:bg-white/8 dark:text-gray-300";
+}
+
+function resolveDocumentTone(status: string | null | undefined): SurfaceTone {
+  const normalized = String(status ?? "")
+    .trim()
+    .toLowerCase();
+  if (normalized === "final" || normalized === "done") {
+    return "success";
+  }
+  if (normalized === "draft" || normalized === "pending" || normalized === "generating") {
+    return "active";
+  }
+  if (normalized === "failed" || normalized === "requires invoice") {
+    return "warning";
+  }
+  return "neutral";
+}
+
+function StatusPill({ label, tone }: { label: string; tone: SurfaceTone }): JSX.Element {
+  return (
+    <span
+      className={cn(
+        "inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]",
+        toneClasses(tone),
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}): JSX.Element {
+  return (
+    <div className="rounded-2xl border border-kira-warmgray/15 bg-white/75 p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
+      <p className="text-[11px] uppercase tracking-[0.16em] text-kira-midgray">{label}</p>
+      <p className="mt-2 text-xl font-semibold tracking-[-0.02em] text-kira-black dark:text-white">
+        {value}
+      </p>
+      <p className="mt-1 text-xs leading-5 text-kira-midgray dark:text-gray-400">{detail}</p>
+    </div>
+  );
+}
+
+function WorkspaceTabCard({
+  active,
+  label,
+  summary,
+  tone,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  summary: string;
+  tone: SurfaceTone;
+  onClick: () => void;
+}): JSX.Element {
+  return (
+    <button
+      className={cn(
+        "group min-w-[220px] rounded-[22px] border px-4 py-4 text-left transition duration-200",
+        active
+          ? "border-kira-brown/25 bg-white shadow-[0_18px_45px_-28px_rgba(95,66,44,0.55)] dark:border-white/15 dark:bg-white/10"
+          : "border-transparent bg-white/45 hover:border-kira-warmgray/25 hover:bg-white/75 dark:bg-white/[0.04] dark:hover:border-white/10 dark:hover:bg-white/[0.07]",
+      )}
+      onClick={onClick}
+      type="button"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold tracking-[-0.01em] text-kira-black dark:text-white">
+            {label}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-kira-midgray dark:text-gray-400">{summary}</p>
+        </div>
+        <StatusPill label={active ? "Open" : "Ready"} tone={active ? "active" : tone} />
+      </div>
+    </button>
+  );
+}
 
 interface PackingTemplateDraft {
   name: string;
@@ -1406,6 +1508,44 @@ export function ReceivedPODocumentsView({
     }
   };
 
+  const workspaceTabs = [
+    {
+      key: "barcode",
+      label: "Barcode",
+      summary: barcodeJob
+        ? `${barcodeJob.total_stickers} stickers · ${barcodeJob.total_pages || 0} pages`
+        : selectedBarcodeTemplate === "styli"
+          ? "Standard format selected"
+          : "Custom sticker template selected",
+      tone: resolveDocumentTone(barcodeJob?.status ?? "not generated"),
+    },
+    {
+      key: "invoice",
+      label: "Invoice",
+      summary: invoice
+        ? `${invoice.invoice_number} · ${formatDocumentCurrency(invoice.total_amount)}`
+        : "Draft not created yet",
+      tone: resolveDocumentTone(invoice?.status ?? "not created"),
+    },
+    {
+      key: "packing",
+      label: "Packing List",
+      summary: packingList
+        ? `${packingList.cartons.length} cartons · ${totalPieces} pieces`
+        : invoice
+          ? "Ready to create once carton planning starts"
+          : "Blocked until invoice exists",
+      tone: resolveDocumentTone(
+        packingList?.status ?? (invoice ? "not created" : "requires invoice"),
+      ),
+    },
+  ] as Array<{
+    key: DocumentWorkspaceTab;
+    label: string;
+    summary: string;
+    tone: SurfaceTone;
+  }>;
+
   return (
     <DashboardShell
       subtitle="Generate the three downstream documents from the confirmed marketplace PO."
@@ -1413,57 +1553,122 @@ export function ReceivedPODocumentsView({
     >
       <div className="space-y-6">
         {loading ? (
-          <Card className="p-5 text-sm text-kira-darkgray dark:text-gray-200">
+          <Card className="rounded-[28px] border border-kira-warmgray/15 p-5 text-sm text-kira-darkgray shadow-[0_24px_70px_-48px_rgba(76,56,37,0.45)] dark:text-gray-200">
             Loading document workspace...
           </Card>
         ) : null}
-        {error ? <Card className="p-4 text-sm text-kira-warmgray">{error}</Card> : null}
+        {error ? (
+          <Card className="rounded-[24px] border border-rose-500/20 bg-rose-500/10 p-4 text-sm text-rose-700 dark:border-rose-400/15 dark:bg-rose-400/10 dark:text-rose-200">
+            {error}
+          </Card>
+        ) : null}
         {statusLine ? (
-          <Card className="p-4 text-sm text-kira-darkgray dark:text-gray-200">{statusLine}</Card>
+          <Card className="rounded-[24px] border border-sky-500/15 bg-sky-500/10 p-4 text-sm text-sky-700 dark:border-sky-400/15 dark:bg-sky-400/10 dark:text-sky-200">
+            {statusLine}
+          </Card>
         ) : null}
 
+        <Card className="overflow-hidden rounded-[32px] border border-kira-warmgray/15 bg-gradient-to-br from-[#fffaf1] via-[#f8f1e8] to-[#f2ebe4] p-0 shadow-[0_30px_90px_-55px_rgba(76,56,37,0.55)] dark:border-white/10 dark:from-[#181411] dark:via-[#141416] dark:to-[#13161d]">
+          <div className="grid gap-5 p-5 md:grid-cols-[minmax(0,1.35fr),minmax(320px,0.9fr)] md:p-6">
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusPill
+                  label={receivedPO?.status ?? "loading"}
+                  tone={resolveDocumentTone(receivedPO?.status ?? "neutral")}
+                />
+                <StatusPill label={receivedPO?.distributor || "Marketplace"} tone="neutral" />
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.2em] text-kira-midgray">
+                  Dispatch Workspace
+                </p>
+                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-kira-black dark:text-white">
+                  {receivedPO?.po_number || "Received PO"}
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-kira-darkgray dark:text-gray-300">
+                  Choose or learn marketplace templates, review the operational defaults, and
+                  generate production-ready downstream documents from one screen.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <SummaryMetric
+                  detail={selectedBuyerTemplate ? buyerTemplateSummary : "Brand defaults in use"}
+                  label="Invoice state"
+                  value={invoice ? invoice.status : "Setup"}
+                />
+                <SummaryMetric
+                  detail={
+                    selectedPackingTemplate
+                      ? packingTemplateSummary
+                      : "Carton planning follows current defaults"
+                  }
+                  label="Packing state"
+                  value={packingList ? `${packingList.cartons.length} cartons` : "Pending"}
+                />
+                <SummaryMetric
+                  detail={
+                    selectedBarcodeMarketplaceTemplate
+                      ? barcodeMarketplaceSummary
+                      : selectedStickerTemplateName
+                  }
+                  label="Barcode state"
+                  value={barcodeJob ? `${barcodeJob.total_stickers} labels` : "Ready"}
+                />
+              </div>
+            </div>
+            <div className="rounded-[28px] border border-white/50 bg-white/70 p-4 backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-kira-midgray">Workflow</p>
+              <div className="mt-4 space-y-3">
+                {[
+                  {
+                    step: "1",
+                    title: "Pick the output",
+                    body: "Switch between barcode, invoice, and packing list to focus the workspace.",
+                  },
+                  {
+                    step: "2",
+                    title: "Choose or learn a template",
+                    body: "Use the saved marketplace template, create one manually, or import from a sample file.",
+                  },
+                  {
+                    step: "3",
+                    title: "Generate the final document",
+                    body: "Review the current defaults, then create the draft or export the finished PDF.",
+                  },
+                ].map((item) => (
+                  <div
+                    className="flex gap-3 rounded-2xl border border-kira-warmgray/15 bg-white/75 p-3 dark:border-white/10 dark:bg-white/[0.03]"
+                    key={item.step}
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-kira-black text-sm font-semibold text-white dark:bg-white dark:text-kira-black">
+                      {item.step}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-kira-black dark:text-white">
+                        {item.title}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-kira-midgray dark:text-gray-400">
+                        {item.body}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </Card>
+
         <div className="overflow-x-auto">
-          <div className="inline-flex min-w-full gap-2 rounded-2xl border border-kira-warmgray/25 bg-kira-offwhite/40 p-2 dark:border-white/10 dark:bg-white/5">
-            {(
-              [
-                {
-                  key: "barcode",
-                  label: "Barcode",
-                  summary: barcodeJob
-                    ? `${barcodeJob.total_stickers} stickers`
-                    : selectedBarcodeTemplate === "styli"
-                      ? "Standard format"
-                      : "Custom template",
-                },
-                {
-                  key: "invoice",
-                  label: "Invoice",
-                  summary: invoice ? invoice.invoice_number : "Draft not created",
-                },
-                {
-                  key: "packing",
-                  label: "Packing List",
-                  summary: packingList
-                    ? `${packingList.cartons.length} cartons`
-                    : invoice
-                      ? "Ready to create"
-                      : "Requires invoice",
-                },
-              ] as Array<{ key: DocumentWorkspaceTab; label: string; summary: string }>
-            ).map((tab) => (
-              <button
-                className={`min-w-[190px] rounded-xl px-4 py-3 text-left transition ${
-                  activeTab === tab.key
-                    ? "bg-white text-kira-black shadow-sm dark:bg-white/10 dark:text-white"
-                    : "text-kira-darkgray hover:bg-white/70 dark:text-gray-300 dark:hover:bg-white/5"
-                }`}
+          <div className="inline-flex min-w-full gap-3 rounded-[28px] border border-kira-warmgray/20 bg-kira-offwhite/35 p-3 shadow-[0_24px_70px_-55px_rgba(76,56,37,0.45)] dark:border-white/10 dark:bg-white/5">
+            {workspaceTabs.map((tab) => (
+              <WorkspaceTabCard
+                active={activeTab === tab.key}
                 key={tab.key}
+                label={tab.label}
                 onClick={() => setActiveTab(tab.key)}
-                type="button"
-              >
-                <p className="text-sm font-semibold">{tab.label}</p>
-                <p className="mt-1 text-xs text-kira-midgray dark:text-gray-400">{tab.summary}</p>
-              </button>
+                summary={tab.summary}
+                tone={tab.tone}
+              />
             ))}
           </div>
         </div>
