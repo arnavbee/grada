@@ -29,56 +29,34 @@ const config: Config = {
         },
         "cube-dot": {
           "0%": {
-            transform: "translateY(0) rotate(0deg)",
-            opacity: "0.95",
-            boxShadow: "inset 1px 1px 0 rgba(255, 255, 255, 0.45), 0 0 0 rgba(0, 0, 0, 0)",
-          },
-          "12.5%": {
-            transform: "translateY(-24%) rotate(90deg)",
-            opacity: "1",
+            transform: "perspective(140px) rotateX(0deg) rotateY(0deg)",
+            opacity: "0.96",
             boxShadow:
-              "inset -1px 1px 0 rgba(255, 255, 255, 0.5), 0 5px 9px rgba(45, 27, 13, 0.24)",
+              "inset 1px 1px 0 rgba(255, 255, 255, 0.42), 0 1px 4px rgba(45, 27, 13, 0.16)",
           },
           "25%": {
-            transform: "translateY(0) rotate(180deg)",
-            opacity: "0.96",
-            boxShadow:
-              "inset 1px -1px 0 rgba(255, 255, 255, 0.42), 0 1px 3px rgba(45, 27, 13, 0.16)",
-          },
-          "37.5%": {
-            transform: "translateY(-24%) rotate(270deg)",
+            transform: "perspective(140px) rotateX(90deg) rotateY(0deg)",
             opacity: "1",
             boxShadow:
-              "inset -1px 1px 0 rgba(255, 255, 255, 0.5), 0 5px 9px rgba(45, 27, 13, 0.24)",
+              "inset -1px 1px 0 rgba(255, 255, 255, 0.5), 0 2px 6px rgba(45, 27, 13, 0.22)",
           },
           "50%": {
-            transform: "translateY(0) rotate(360deg)",
-            opacity: "0.96",
-            boxShadow:
-              "inset 1px -1px 0 rgba(255, 255, 255, 0.42), 0 1px 3px rgba(45, 27, 13, 0.16)",
-          },
-          "62.5%": {
-            transform: "translateY(-24%) rotate(450deg)",
+            transform: "perspective(140px) rotateX(90deg) rotateY(90deg)",
             opacity: "1",
             boxShadow:
-              "inset -1px 1px 0 rgba(255, 255, 255, 0.5), 0 5px 9px rgba(45, 27, 13, 0.24)",
+              "inset 1px -1px 0 rgba(255, 255, 255, 0.5), 0 2px 6px rgba(45, 27, 13, 0.22)",
           },
           "75%": {
-            transform: "translateY(0) rotate(540deg)",
-            opacity: "0.96",
-            boxShadow:
-              "inset 1px -1px 0 rgba(255, 255, 255, 0.42), 0 1px 3px rgba(45, 27, 13, 0.16)",
-          },
-          "87.5%": {
-            transform: "translateY(-24%) rotate(630deg)",
+            transform: "perspective(140px) rotateX(180deg) rotateY(180deg)",
             opacity: "1",
             boxShadow:
-              "inset -1px 1px 0 rgba(255, 255, 255, 0.5), 0 5px 9px rgba(45, 27, 13, 0.24)",
+              "inset -1px -1px 0 rgba(255, 255, 255, 0.45), 0 2px 6px rgba(45, 27, 13, 0.2)",
           },
           "100%": {
-            transform: "translateY(0) rotate(720deg)",
-            opacity: "0.95",
-            boxShadow: "inset 1px 1px 0 rgba(255, 255, 255, 0.45), 0 0 0 rgba(0, 0, 0, 0)",
+            transform: "perspective(140px) rotateX(360deg) rotateY(360deg)",
+            opacity: "0.96",
+            boxShadow:
+              "inset 1px 1px 0 rgba(255, 255, 255, 0.42), 0 1px 4px rgba(45, 27, 13, 0.16)",
           },
         },
         "letter-spacing": {
