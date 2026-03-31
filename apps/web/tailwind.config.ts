@@ -70,7 +70,7 @@ const config: Config = {
       },
       animation: {
         enter: "enter 420ms ease-out both",
-        "cube-dot": "cube-dot 1.35s linear infinite",
+        "cube-dot": "cube-dot 2.4s cubic-bezier(0.38, 0.02, 0.2, 0.98) infinite",
         "letter-spacing": "letter-spacing 800ms cubic-bezier(0.16, 1, 0.3, 1) both",
         "fade-in-up": "fade-in-up 800ms cubic-bezier(0.16, 1, 0.3, 1) both",
       },

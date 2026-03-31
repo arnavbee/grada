@@ -218,53 +218,39 @@ html[data-theme="dark"] .kira-tint-deep {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 2px;
   transform-style: preserve-3d;
-  background: linear-gradient(140deg, #c99766 0%, #a06f42 52%, #8f5d31 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -1px 0 rgba(56, 31, 15, 0.24);
 }
 
-.kira-cube-dot::before,
-.kira-cube-dot::after {
-  content: "";
+.kira-cube-face {
   position: absolute;
-  border-radius: 2px;
+  inset: 0;
 }
 
-.kira-cube-dot::before {
-  left: 100%;
-  top: 12%;
-  width: 36%;
-  height: 76%;
-  transform: skewY(-42deg);
-  transform-origin: left center;
-  background: linear-gradient(180deg, #8f5d31 0%, #7e4f27 100%);
-  opacity: 0.92;
+.kira-cube-face-top {
+  clip-path: polygon(50% 0, 100% 28%, 50% 56%, 0 28%);
+  background: linear-gradient(160deg, #e1bb93 0%, #c99766 100%);
 }
 
-.kira-cube-dot::after {
-  left: 9%;
-  top: -34%;
-  width: 82%;
-  height: 34%;
-  transform: skewX(-48deg);
-  transform-origin: left bottom;
-  background: linear-gradient(180deg, #e1bb93 0%, #cca175 100%);
-  opacity: 0.95;
+.kira-cube-face-left {
+  clip-path: polygon(0 28%, 50% 56%, 50% 100%, 0 72%);
+  background: linear-gradient(180deg, #ba8758 0%, #a06f42 100%);
 }
 
-html[data-theme="dark"] .kira-cube-dot {
-  background: linear-gradient(140deg, #e2b989 0%, #d1a46f 52%, #b98852 100%);
+.kira-cube-face-right {
+  clip-path: polygon(100% 28%, 50% 56%, 50% 100%, 100% 72%);
+  background: linear-gradient(180deg, #97663c 0%, #8f5d31 100%);
 }
 
-html[data-theme="dark"] .kira-cube-dot::before {
-  background: linear-gradient(180deg, #b98852 0%, #9f723f 100%);
+html[data-theme="dark"] .kira-cube-face-top {
+  background: linear-gradient(160deg, #f0d3ae 0%, #dfba8e 100%);
 }
 
-html[data-theme="dark"] .kira-cube-dot::after {
-  background: linear-gradient(180deg, #f0d3ae 0%, #dfba8e 100%);
+html[data-theme="dark"] .kira-cube-face-left {
+  background: linear-gradient(180deg, #d2a573 0%, #c1905a 100%);
+}
+
+html[data-theme="dark"] .kira-cube-face-right {
+  background: linear-gradient(180deg, #b9844d 0%, #a9733f 100%);
 }
 
 @keyframes modal-open {

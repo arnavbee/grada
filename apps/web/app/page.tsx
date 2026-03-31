@@ -340,7 +340,11 @@ export default function LandingPage(): JSX.Element {
                 className="mb-1 ml-0 inline-block h-3 w-3 [perspective:160px] md:mb-3 md:ml-1 md:h-6 md:w-6"
                 style={{ animationDelay: "400ms" }}
               >
-                <span className="kira-cube-dot animate-cube-dot" />
+                <span className="kira-cube-dot animate-cube-dot">
+                  <span className="kira-cube-face kira-cube-face-top" />
+                  <span className="kira-cube-face kira-cube-face-left" />
+                  <span className="kira-cube-face kira-cube-face-right" />
+                </span>
               </span>
             </h1>
 

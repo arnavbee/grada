@@ -31,7 +31,11 @@ export function FooterBrand() {
         Grada
         {isVisible ? (
           <span className="ml-2 mb-2 inline-block h-4 w-4 [perspective:160px] md:mb-4 md:h-8 md:w-8">
-            <span className="kira-cube-dot animate-cube-dot" />
+            <span className="kira-cube-dot animate-cube-dot">
+              <span className="kira-cube-face kira-cube-face-top" />
+              <span className="kira-cube-face kira-cube-face-left" />
+              <span className="kira-cube-face kira-cube-face-right" />
+            </span>
           </span>
         ) : (
           <span className="inline-block ml-2 mb-2 h-4 w-4 bg-transparent md:mb-4 md:h-8 md:w-8" />
