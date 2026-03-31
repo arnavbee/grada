@@ -213,47 +213,57 @@ html[data-theme="dark"] .kira-tint-deep {
   @apply rounded-xl border border-kira-warmgray/20 bg-kira-offwhite/50 p-3 dark:border-white/10 dark:bg-white/5;
 }
 
+.kira-cube-shell {
+  display: inline-block;
+  perspective: 260px;
+  perspective-origin: 50% 50%;
+}
+
 .kira-cube-dot {
+  --cube-depth: 6px;
   position: relative;
   display: block;
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
+  transform-origin: center center;
+  will-change: transform;
 }
 
 .kira-cube-face {
   position: absolute;
   inset: 0;
-  backface-visibility: hidden;
+  backface-visibility: visible;
+  border: 0.5px solid rgba(76, 47, 22, 0.1);
 }
 
 .kira-cube-face-front {
-  transform: translateZ(50%);
+  transform: translateZ(var(--cube-depth));
   background: linear-gradient(180deg, #ba8758 0%, #a06f42 100%);
 }
 
 .kira-cube-face-back {
-  transform: rotateY(180deg) translateZ(50%);
+  transform: rotateY(180deg) translateZ(var(--cube-depth));
   background: linear-gradient(180deg, #a06f42 0%, #8f5d31 100%);
 }
 
 .kira-cube-face-right {
-  transform: rotateY(90deg) translateZ(50%);
+  transform: rotateY(90deg) translateZ(var(--cube-depth));
   background: linear-gradient(180deg, #97663c 0%, #8b5a30 100%);
 }
 
 .kira-cube-face-left {
-  transform: rotateY(-90deg) translateZ(50%);
+  transform: rotateY(-90deg) translateZ(var(--cube-depth));
   background: linear-gradient(180deg, #c99766 0%, #b78354 100%);
 }
 
 .kira-cube-face-top {
-  transform: rotateX(90deg) translateZ(50%);
+  transform: rotateX(90deg) translateZ(var(--cube-depth));
   background: linear-gradient(180deg, #e1bb93 0%, #d4a978 100%);
 }
 
 .kira-cube-face-bottom {
-  transform: rotateX(-90deg) translateZ(50%);
+  transform: rotateX(-90deg) translateZ(var(--cube-depth));
   background: linear-gradient(180deg, #8f5d31 0%, #7e4f27 100%);
 }
 
