@@ -213,6 +213,60 @@ html[data-theme="dark"] .kira-tint-deep {
   @apply rounded-xl border border-kira-warmgray/20 bg-kira-offwhite/50 p-3 dark:border-white/10 dark:bg-white/5;
 }
 
+.kira-cube-dot {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 2px;
+  transform-style: preserve-3d;
+  background: linear-gradient(140deg, #c99766 0%, #a06f42 52%, #8f5d31 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(56, 31, 15, 0.24);
+}
+
+.kira-cube-dot::before,
+.kira-cube-dot::after {
+  content: "";
+  position: absolute;
+  border-radius: 2px;
+}
+
+.kira-cube-dot::before {
+  left: 100%;
+  top: 12%;
+  width: 36%;
+  height: 76%;
+  transform: skewY(-42deg);
+  transform-origin: left center;
+  background: linear-gradient(180deg, #8f5d31 0%, #7e4f27 100%);
+  opacity: 0.92;
+}
+
+.kira-cube-dot::after {
+  left: 9%;
+  top: -34%;
+  width: 82%;
+  height: 34%;
+  transform: skewX(-48deg);
+  transform-origin: left bottom;
+  background: linear-gradient(180deg, #e1bb93 0%, #cca175 100%);
+  opacity: 0.95;
+}
+
+html[data-theme="dark"] .kira-cube-dot {
+  background: linear-gradient(140deg, #e2b989 0%, #d1a46f 52%, #b98852 100%);
+}
+
+html[data-theme="dark"] .kira-cube-dot::before {
+  background: linear-gradient(180deg, #b98852 0%, #9f723f 100%);
+}
+
+html[data-theme="dark"] .kira-cube-dot::after {
+  background: linear-gradient(180deg, #f0d3ae 0%, #dfba8e 100%);
+}
+
 @keyframes modal-open {
   0% {
     opacity: 0;
