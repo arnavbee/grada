@@ -28,7 +28,7 @@ export const designTokens = {
     },
   ],
   typography: {
-    fontFamily: "Inter, Helvetica Neue, Helvetica, Arial, sans-serif",
+    fontFamily: "Geist, Inter, Helvetica Neue, Helvetica, Arial, sans-serif",
     h1: "Bold, 36-48px",
     h2: "Semi-bold, 20-28px",
     body: "Regular, 14-16px",

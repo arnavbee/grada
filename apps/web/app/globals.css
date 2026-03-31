@@ -455,9 +455,7 @@ html[data-theme="dark"] [class*="bg-kira-offwhite"] {
 
 @layer base {
   .theme {
-    --font-heading: var(--font-sans);
-    --font-sans: var(--font-sans);
-    --font-mono: var(--font-mono);
+    --font-heading: var(--font-geist-sans);
   }
   :root {
     --background: oklch(1 0 0);
@@ -535,6 +533,6 @@ html[data-theme="dark"] [class*="bg-kira-offwhite"] {
     color: var(--foreground);
   }
   html {
-    font-family: var(--font-sans), "Inter", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    font-family: var(--font-geist-sans), "Geist", "Inter", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
   }
 }

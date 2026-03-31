@@ -17,7 +17,27 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["Inter", "Helvetica Neue", "Helvetica", "Arial", "sans-serif"],
+        sans: [
+          "var(--font-geist-sans)",
+          "Geist",
+          "Inter",
+          "Helvetica Neue",
+          "Helvetica",
+          "Arial",
+          "sans-serif",
+        ],
+        mono: [
+          "var(--font-geist-mono)",
+          "Geist Mono",
+          "SF Mono",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "Liberation Mono",
+          "Courier New",
+          "monospace",
+        ],
       },
       boxShadow: {
         panel: "0 18px 50px rgba(27, 36, 31, 0.08)",
