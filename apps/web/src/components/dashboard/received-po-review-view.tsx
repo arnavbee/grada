@@ -37,6 +37,14 @@ interface ExceptionEditDraft {
 
 type ExceptionFilter = "all" | "needs_review" | "low_risk" | "no_suggestion";
 
+function getKnittedWovenValue(item: ReceivedPOExceptionsResponse["items"][number]): string {
+  const value = (item as { knitted_woven?: string | null; woven_knits?: string | null })
+    .knitted_woven;
+  const fallback = (item as { knitted_woven?: string | null; woven_knits?: string | null })
+    .woven_knits;
+  return value ?? fallback ?? "";
+}
+
 export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps): JSX.Element {
   const [record, setRecord] = useState<ReceivedPO | null>(null);
   const [headerDraft, setHeaderDraft] = useState<ReceivedPOHeaderInput>({});
@@ -147,7 +155,10 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
       !selectedExceptionId ||
       !filteredExceptionItems.some((item) => item.id === selectedExceptionId)
     ) {
-      setSelectedExceptionId(filteredExceptionItems[0].id);
+      const firstItem = filteredExceptionItems[0];
+      if (firstItem) {
+        setSelectedExceptionId(firstItem.id);
+      }
     }
   }, [filteredExceptionItems, selectedExceptionId]);
 
@@ -296,7 +307,7 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
       [item.id]: {
         size: String(suggestedFix.size ?? item.size ?? ""),
         color: String(suggestedFix.color ?? item.color ?? ""),
-        knitted_woven: String(suggestedFix.knitted_woven ?? item.knitted_woven ?? ""),
+        knitted_woven: String(suggestedFix.knitted_woven ?? getKnittedWovenValue(item)),
         quantity: String(suggestedFix.quantity ?? item.quantity ?? ""),
         po_price: String(suggestedFix.po_price ?? item.po_price ?? ""),
       },
@@ -331,14 +342,20 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
       (item) => item.id === selectedExceptionId,
     );
     if (currentIndex < 0) {
-      setSelectedExceptionId(filteredExceptionItems[0].id);
+      const firstItem = filteredExceptionItems[0];
+      if (firstItem) {
+        setSelectedExceptionId(firstItem.id);
+      }
       return;
     }
     const nextIndex =
       direction === "next"
         ? (currentIndex + 1) % filteredExceptionItems.length
         : (currentIndex - 1 + filteredExceptionItems.length) % filteredExceptionItems.length;
-    setSelectedExceptionId(filteredExceptionItems[nextIndex].id);
+    const nextItem = filteredExceptionItems[nextIndex];
+    if (nextItem) {
+      setSelectedExceptionId(nextItem.id);
+    }
   };
 
   useEffect(() => {
@@ -557,7 +574,7 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                         (exceptionsState?.summary.needs_review ?? 0) === 0
                       }
                       onClick={handleBulkResolveLowRisk}
-                      variant="outline"
+                      variant="secondary"
                     >
                       {bulkResolving ? "Approving..." : "Approve low-risk"}
                     </Button>
@@ -596,29 +613,29 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                 <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={() => setExceptionFilter("all")}
-                    size="xs"
-                    variant={exceptionFilter === "all" ? "default" : "outline"}
+                    className="px-3 py-1 text-xs"
+                    variant={exceptionFilter === "all" ? "primary" : "secondary"}
                   >
                     All ({exceptionItems.length})
                   </Button>
                   <Button
                     onClick={() => setExceptionFilter("needs_review")}
-                    size="xs"
-                    variant={exceptionFilter === "needs_review" ? "default" : "outline"}
+                    className="px-3 py-1 text-xs"
+                    variant={exceptionFilter === "needs_review" ? "primary" : "secondary"}
                   >
                     Needs Review
                   </Button>
                   <Button
                     onClick={() => setExceptionFilter("low_risk")}
-                    size="xs"
-                    variant={exceptionFilter === "low_risk" ? "default" : "outline"}
+                    className="px-3 py-1 text-xs"
+                    variant={exceptionFilter === "low_risk" ? "primary" : "secondary"}
                   >
                     Low-Risk
                   </Button>
                   <Button
                     onClick={() => setExceptionFilter("no_suggestion")}
-                    size="xs"
-                    variant={exceptionFilter === "no_suggestion" ? "default" : "outline"}
+                    className="px-3 py-1 text-xs"
+                    variant={exceptionFilter === "no_suggestion" ? "primary" : "secondary"}
                   >
                     No Suggestion
                   </Button>
@@ -705,7 +722,7 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                                     Color: {item.color || "-"}
                                   </p>
                                   <p className="text-xs text-kira-darkgray">
-                                    Knit/Woven: {item.knitted_woven || "-"}
+                                    Knit/Woven: {getKnittedWovenValue(item) || "-"}
                                   </p>
                                   <p className="text-xs text-kira-darkgray">Qty: {item.quantity}</p>
                                   <p className="text-xs text-kira-darkgray">
@@ -738,8 +755,8 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                                       current === item.id ? null : item.id,
                                     )
                                   }
-                                  size="xs"
-                                  variant="ghost"
+                                  className="px-2 py-1 text-xs"
+                                  variant="text"
                                 >
                                   {expandedReasonId === item.id ? "Hide why" : "Why this?"}
                                 </Button>
@@ -831,7 +848,7 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                                         isEditing ? draft : undefined,
                                       )
                                     }
-                                    size="sm"
+                                    className="px-3 py-1.5 text-sm"
                                   >
                                     {isEditing ? "Accept edited values" : "Accept suggestion"}
                                   </Button>
@@ -839,8 +856,8 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                                     <Button
                                       disabled={resolvingLineItemId === item.id}
                                       onClick={() => startEditingException(item)}
-                                      size="sm"
-                                      variant="outline"
+                                      className="px-3 py-1.5 text-sm"
+                                      variant="secondary"
                                     >
                                       Edit before accept
                                     </Button>
@@ -848,8 +865,8 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                                     <Button
                                       disabled={resolvingLineItemId === item.id}
                                       onClick={() => setEditingExceptionId(null)}
-                                      size="sm"
-                                      variant="outline"
+                                      className="px-3 py-1.5 text-sm"
+                                      variant="secondary"
                                     >
                                       Cancel edit
                                     </Button>
@@ -857,7 +874,7 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                                   <Button
                                     disabled={resolvingLineItemId === item.id}
                                     onClick={() => handleResolveException(item.id, "reject")}
-                                    size="sm"
+                                    className="px-3 py-1.5 text-sm"
                                     variant="secondary"
                                   >
                                     Reject

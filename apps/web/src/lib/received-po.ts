@@ -48,6 +48,7 @@ export interface ReceivedPOLineItem {
   option_id: string | null;
   sku_id: string;
   color: string | null;
+  knitted_woven?: string | null;
   size: string | null;
   quantity: number;
   po_price: number | null;
