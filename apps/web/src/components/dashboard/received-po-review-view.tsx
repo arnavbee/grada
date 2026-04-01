@@ -46,6 +46,8 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
   const [exceptionsState, setExceptionsState] = useState<ReceivedPOExceptionsResponse | null>(null);
   const [resolvingLineItemId, setResolvingLineItemId] = useState<string | null>(null);
   const [editingExceptionId, setEditingExceptionId] = useState<string | null>(null);
+  const [selectedExceptionId, setSelectedExceptionId] = useState<string | null>(null);
+  const [expandedReasonId, setExpandedReasonId] = useState<string | null>(null);
   const [exceptionEditDrafts, setExceptionEditDrafts] = useState<
     Record<string, ExceptionEditDraft>
   >({});
@@ -103,6 +105,17 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
 
   const totalQuantity = useMemo(() => getTotalQuantity(itemDrafts), [itemDrafts]);
   const editable = record?.status !== "confirmed";
+  const exceptionItems = exceptionsState?.items ?? [];
+
+  useEffect(() => {
+    if (exceptionItems.length === 0) {
+      setSelectedExceptionId(null);
+      return;
+    }
+    if (!selectedExceptionId || !exceptionItems.some((item) => item.id === selectedExceptionId)) {
+      setSelectedExceptionId(exceptionItems[0].id);
+    }
+  }, [exceptionItems, selectedExceptionId]);
 
   const handleSaveHeader = async (): Promise<void> => {
     try {
@@ -276,6 +289,116 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
     }));
   };
 
+  const handleNavigateSelectedException = (direction: "next" | "prev"): void => {
+    if (exceptionItems.length === 0 || !selectedExceptionId) {
+      return;
+    }
+    const currentIndex = exceptionItems.findIndex((item) => item.id === selectedExceptionId);
+    if (currentIndex < 0) {
+      setSelectedExceptionId(exceptionItems[0].id);
+      return;
+    }
+    const nextIndex =
+      direction === "next"
+        ? (currentIndex + 1) % exceptionItems.length
+        : (currentIndex - 1 + exceptionItems.length) % exceptionItems.length;
+    setSelectedExceptionId(exceptionItems[nextIndex].id);
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!editable || exceptionItems.length === 0 || !selectedExceptionId || resolvingLineItemId) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase() ?? "";
+      if (
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+
+      const selectedItem = exceptionItems.find((item) => item.id === selectedExceptionId);
+      if (!selectedItem) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key === "a") {
+        event.preventDefault();
+        const draft =
+          editingExceptionId === selectedItem.id ? exceptionEditDrafts[selectedItem.id] : undefined;
+        void handleResolveException(selectedItem.id, "accept", draft);
+      } else if (key === "r") {
+        event.preventDefault();
+        void handleResolveException(selectedItem.id, "reject");
+      } else if (key === "e") {
+        event.preventDefault();
+        if (editingExceptionId === selectedItem.id) {
+          setEditingExceptionId(null);
+        } else {
+          startEditingException(selectedItem);
+        }
+      } else if (key === "j") {
+        event.preventDefault();
+        handleNavigateSelectedException("next");
+      } else if (key === "k") {
+        event.preventDefault();
+        handleNavigateSelectedException("prev");
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    editable,
+    exceptionItems,
+    selectedExceptionId,
+    resolvingLineItemId,
+    editingExceptionId,
+    exceptionEditDrafts,
+  ]);
+
+  const explainExceptionReason = (reason: string | null | undefined): string => {
+    const normalized = String(reason ?? "")
+      .trim()
+      .toLowerCase();
+    if (!normalized) {
+      return "The system could not confidently normalize this row, so it requires manual review.";
+    }
+    if (normalized.includes("size_normalized")) {
+      return "Size appears to contain variant spelling or formatting and was normalized using known size dictionaries.";
+    }
+    if (normalized.includes("color_normalized")) {
+      return "Color formatting was standardized to keep downstream barcode and invoice outputs consistent.";
+    }
+    if (normalized.includes("construction_normalized")) {
+      return "Knitted/Woven value matched a known alias and was normalized.";
+    }
+    if (normalized.includes("po_price_missing_or_zero")) {
+      return "PO price is missing or zero, which can break invoice totals and must be confirmed manually.";
+    }
+    if (normalized.includes("quantity_missing_or_zero")) {
+      return "Quantity is missing or zero, which can break carton and dispatch calculations.";
+    }
+    if (normalized.includes("sku_missing")) {
+      return "SKU is required for traceability and barcode generation, so this row needs operator review.";
+    }
+    if (normalized.includes("bulk_accepted_suggested_fix")) {
+      return "This row was auto-approved in bulk because it was low-risk and had a concrete suggestion.";
+    }
+    if (normalized.includes("accepted_suggested_fix")) {
+      return "A human accepted the suggestion. The action is tracked for auditability.";
+    }
+    if (normalized.includes("rejected_suggested_fix")) {
+      return "A human rejected the suggestion. The action is tracked for auditability.";
+    }
+    return "This row has rule-based risk signals and requires human confirmation before final documents.";
+  };
+
   return (
     <DashboardShell
       subtitle="Review parsed PO fields, make corrections, and lock the PO before document generation."
@@ -423,6 +546,12 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                 </div>
               </div>
               <div className="mt-5 space-y-3">
+                {editable && exceptionItems.length > 0 ? (
+                  <p className="text-xs text-kira-midgray">
+                    Shortcuts: <kbd>A</kbd> accept, <kbd>E</kbd> edit, <kbd>R</kbd> reject,{" "}
+                    <kbd>J</kbd>/<kbd>K</kbd> navigate
+                  </p>
+                ) : null}
                 {exceptionsLoading ? (
                   <p className="text-sm text-kira-darkgray">Loading exceptions...</p>
                 ) : null}
@@ -431,10 +560,15 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                     No unresolved exceptions. This PO is ready for confirmation.
                   </p>
                 ) : null}
-                {(exceptionsState?.items ?? []).map((item) => (
+                {exceptionItems.map((item) => (
                   <div
-                    className="rounded-lg border border-kira-warmgray/25 bg-kira-offwhite/70 p-4"
+                    className={`rounded-lg border bg-kira-offwhite/70 p-4 ${
+                      selectedExceptionId === item.id
+                        ? "border-kira-brown/55 ring-1 ring-kira-brown/35"
+                        : "border-kira-warmgray/25"
+                    }`}
                     key={item.id}
+                    onClick={() => setSelectedExceptionId(item.id)}
                   >
                     {(() => {
                       const isEditing = editingExceptionId === item.id;
@@ -460,6 +594,24 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                             <pre className="mt-3 overflow-x-auto rounded-md bg-white/80 p-2 text-xs text-kira-darkgray">
                               {JSON.stringify(item.suggested_fix, null, 2)}
                             </pre>
+                          ) : null}
+                          <div className="mt-2">
+                            <Button
+                              onClick={() =>
+                                setExpandedReasonId((current) =>
+                                  current === item.id ? null : item.id,
+                                )
+                              }
+                              size="xs"
+                              variant="ghost"
+                            >
+                              {expandedReasonId === item.id ? "Hide why" : "Why this?"}
+                            </Button>
+                          </div>
+                          {expandedReasonId === item.id ? (
+                            <div className="mt-2 rounded-md border border-kira-warmgray/30 bg-white/70 p-3 text-xs text-kira-darkgray">
+                              {explainExceptionReason(item.exception_reason)}
+                            </div>
                           ) : null}
                           {isEditing ? (
                             <div className="mt-3 grid gap-3 md:grid-cols-5">
