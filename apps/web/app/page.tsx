@@ -51,10 +51,6 @@ const coverageBlocks = [
     detail: "The same SKU-level record drives catalog fields, PO lines, and dispatch documents.",
   },
   {
-    title: "No copy-paste handoffs",
-    detail: "Teams move from catalog to PO check to invoice/packing list in one connected path.",
-  },
-  {
     title: "Approve once, lock downstream docs",
     detail:
       "After PO approval, barcodes, invoices, and stickers pull from that exact approved data.",
