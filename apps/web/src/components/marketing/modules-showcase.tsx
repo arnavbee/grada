@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
 import { Card } from "@/src/components/ui/card";
 import { DispatchDocumentsModuleCard } from "@/src/components/marketing/dispatch-documents-module-card";
 import { MarketplaceExportsModuleCard } from "@/src/components/marketing/marketplace-exports-module-card";
@@ -33,85 +31,8 @@ export function ModulesShowcase({
   receivedPoProcessingAnimationSrc,
   smartCatalogAnimationSrc,
 }: ModulesShowcaseProps): JSX.Element {
-  const sectionRef = useRef<HTMLElement>(null);
-  const hasPlayedSequenceRef = useRef(false);
-  const sequenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [activePreviewIndex, setActivePreviewIndex] = useState<number | null>(null);
-  const [isSequenceRunning, setIsSequenceRunning] = useState(false);
-
-  useEffect(() => {
-    const target = sectionRef.current;
-    if (!target) {
-      return;
-    }
-
-    const previewDurationMs = 5200;
-    const transitionGapMs = 280;
-
-    const clearSequenceTimeout = (): void => {
-      if (sequenceTimeoutRef.current) {
-        clearTimeout(sequenceTimeoutRef.current);
-        sequenceTimeoutRef.current = null;
-      }
-    };
-
-    const runSequence = (): void => {
-      setIsSequenceRunning(true);
-      let currentIndex = 0;
-
-      const playNext = (): void => {
-        if (currentIndex >= modules.length) {
-          setActivePreviewIndex(null);
-          setIsSequenceRunning(false);
-          clearSequenceTimeout();
-          return;
-        }
-
-        const previewIndex = currentIndex;
-        setActivePreviewIndex(previewIndex);
-        currentIndex += 1;
-
-        sequenceTimeoutRef.current = setTimeout(() => {
-          setActivePreviewIndex((active) => (active === previewIndex ? null : active));
-
-          sequenceTimeoutRef.current = setTimeout(() => {
-            playNext();
-          }, transitionGapMs);
-        }, previewDurationMs);
-      };
-
-      playNext();
-    };
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-
-        if (!entry?.isIntersecting || hasPlayedSequenceRef.current) {
-          return;
-        }
-
-        hasPlayedSequenceRef.current = true;
-        runSequence();
-
-        observer.disconnect();
-      },
-      {
-        threshold: 0.35,
-      },
-    );
-
-    observer.observe(target);
-
-    return () => {
-      observer.disconnect();
-      clearSequenceTimeout();
-      setIsSequenceRunning(false);
-    };
-  }, [modules.length]);
-
   return (
-    <section className="animate-enter" ref={sectionRef} style={{ animationDelay: "180ms" }}>
+    <section className="animate-enter" style={{ animationDelay: "180ms" }}>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
         <div>
           <SectionEyebrow linePosition="before">Modules</SectionEyebrow>
@@ -129,8 +50,6 @@ export function ModulesShowcase({
               return (
                 <SmartCatalogModuleCard
                   animationSrc={smartCatalogAnimationSrc}
-                  autoPreviewActive={activePreviewIndex === index}
-                  disableInteraction={isSequenceRunning}
                   detail={module.detail}
                   index={index}
                   key={module.title}
@@ -143,8 +62,6 @@ export function ModulesShowcase({
               return (
                 <MarketplaceExportsModuleCard
                   animationSrc={marketplaceExportsAnimationSrc}
-                  autoPreviewActive={activePreviewIndex === index}
-                  disableInteraction={isSequenceRunning}
                   detail={module.detail}
                   index={index}
                   key={module.title}
@@ -157,8 +74,6 @@ export function ModulesShowcase({
               return (
                 <ReceivedPoProcessingModuleCard
                   animationSrc={receivedPoProcessingAnimationSrc}
-                  autoPreviewActive={activePreviewIndex === index}
-                  disableInteraction={isSequenceRunning}
                   index={index}
                   key={module.title}
                   title={module.title}
@@ -168,9 +83,7 @@ export function ModulesShowcase({
 
             return (
               <DispatchDocumentsModuleCard
-                autoPreviewActive={activePreviewIndex === index}
                 barcodeAnimationSrc={barcodeAnimationSrc}
-                disableInteraction={isSequenceRunning}
                 index={index}
                 invoiceAnimationSrc={commercialInvoicesAnimationSrc}
                 key={module.title}

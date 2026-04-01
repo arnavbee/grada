@@ -360,7 +360,9 @@ export default function LandingPage(): JSX.Element {
 
             <div className="mt-10 flex flex-wrap items-center gap-3 md:mt-auto md:pt-8">
               <Button asChild className="rounded-full px-6" size="lg">
-                <Link href="/dashboard">See It in Action</Link>
+                <Link href="/dashboard" prefetch={false}>
+                  See It in Action
+                </Link>
               </Button>
               <Button asChild className="rounded-full px-6" size="lg" variant="outline">
                 <Link href="/signup">Request Access</Link>
@@ -536,7 +538,9 @@ export default function LandingPage(): JSX.Element {
           </div>
           <div className="flex flex-wrap gap-3">
             <Button asChild className="rounded-full px-6" size="lg">
-              <Link href="/dashboard">See It in Action</Link>
+              <Link href="/dashboard" prefetch={false}>
+                See It in Action
+              </Link>
             </Button>
             <Button asChild className="rounded-full px-6" size="lg" variant="outline">
               <Link href="/signup">Request Access</Link>
