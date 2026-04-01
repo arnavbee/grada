@@ -1,11 +1,13 @@
 "use client";
 
 import type { FocusEvent } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Card } from "@/src/components/ui/card";
 
 interface DispatchDocumentsModuleCardProps {
+  autoPreviewActive?: boolean;
+  disableInteraction?: boolean;
   barcodeAnimationSrc: string;
   invoiceAnimationSrc: string;
   index: number;
@@ -13,6 +15,8 @@ interface DispatchDocumentsModuleCardProps {
 }
 
 export function DispatchDocumentsModuleCard({
+  autoPreviewActive = false,
+  disableInteraction = false,
   barcodeAnimationSrc,
   invoiceAnimationSrc,
   index,
@@ -21,7 +25,8 @@ export function DispatchDocumentsModuleCard({
   const containerRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewKind, setPreviewKind] = useState<"barcode" | "invoice">("barcode");
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isInteractionPreviewOpen, setIsInteractionPreviewOpen] = useState(false);
+  const [isAutoPreviewOpen, setIsAutoPreviewOpen] = useState(false);
   const [previewRun, setPreviewRun] = useState(0);
 
   const clearCloseTimeout = (): void => {
@@ -32,9 +37,13 @@ export function DispatchDocumentsModuleCard({
   };
 
   const openPreview = (kind: "barcode" | "invoice"): void => {
+    if (disableInteraction) {
+      return;
+    }
+
     clearCloseTimeout();
     setPreviewKind((current) => (current === kind ? current : kind));
-    setIsPreviewOpen((current) => {
+    setIsInteractionPreviewOpen((current) => {
       if (current && previewKind === kind) {
         return current;
       }
@@ -45,12 +54,37 @@ export function DispatchDocumentsModuleCard({
   };
 
   const closePreview = (): void => {
+    if (disableInteraction) {
+      return;
+    }
+
     clearCloseTimeout();
     closeTimeoutRef.current = setTimeout(() => {
-      setIsPreviewOpen(false);
+      setIsInteractionPreviewOpen(false);
       closeTimeoutRef.current = null;
     }, 140);
   };
+
+  useEffect(() => {
+    if (!disableInteraction) {
+      return;
+    }
+
+    clearCloseTimeout();
+    setIsInteractionPreviewOpen(false);
+  }, [disableInteraction]);
+
+  useEffect(() => {
+    if (autoPreviewActive) {
+      clearCloseTimeout();
+      setPreviewKind("barcode");
+      setPreviewRun((value) => value + 1);
+      setIsAutoPreviewOpen(true);
+      return;
+    }
+
+    setIsAutoPreviewOpen(false);
+  }, [autoPreviewActive]);
 
   const handleBlurCapture = (event: FocusEvent<HTMLDivElement>): void => {
     const nextFocusTarget = event.relatedTarget as Node | null;
@@ -61,6 +95,8 @@ export function DispatchDocumentsModuleCard({
 
     closePreview();
   };
+
+  const isPreviewOpen = isInteractionPreviewOpen || isAutoPreviewOpen;
 
   return (
     <div

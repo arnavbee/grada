@@ -5,11 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { FooterBrand } from "@/src/components/FooterBrand";
 import { GridBackground } from "@/src/components/GridBackground";
-import { DispatchDocumentsModuleCard } from "@/src/components/marketing/dispatch-documents-module-card";
-import { MarketplaceExportsModuleCard } from "@/src/components/marketing/marketplace-exports-module-card";
-import { ReceivedPoProcessingModuleCard } from "@/src/components/marketing/received-po-processing-module-card";
+import { ModulesShowcase } from "@/src/components/marketing/modules-showcase";
 import { SectionEyebrow } from "@/src/components/marketing/section-eyebrow";
-import { SmartCatalogModuleCard } from "@/src/components/marketing/smart-catalog-module-card";
 import { WorkflowTabs } from "@/src/components/marketing/workflow-tabs";
 import { Card } from "@/src/components/ui/card";
 
@@ -279,16 +276,14 @@ function MarketplaceCoverageLogo({
 
   if (marketplace.logo.kind === "amazon") {
     return (
-      <span className="relative inline-flex h-5 w-[6.2rem] items-start justify-center font-sans text-[0.95rem] font-medium lowercase tracking-[-0.05em] text-[#171717]">
-        <span className="relative inline-flex">
-          amazon
-          <span className="absolute -right-4 top-0 text-[0.5rem] font-semibold tracking-normal text-[#f59e0b]">
-            .in
-          </span>
+      <span className="relative inline-flex h-5 w-[4.9rem] items-start justify-start font-sans text-[0.95rem] font-medium lowercase tracking-[-0.05em] text-[#171717]">
+        <span>amazon</span>
+        <span className="absolute -right-0.5 top-0 text-[0.5rem] font-semibold tracking-normal text-[#f59e0b]">
+          .in
         </span>
         <svg
           aria-hidden="true"
-          className="absolute -bottom-0.5 left-1/2 h-2 w-[3.65rem] -translate-x-1/2"
+          className="absolute -bottom-0.5 left-0 h-2 w-[3.7rem]"
           viewBox="0 0 58 12"
         >
           <path
@@ -433,91 +428,15 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <section className="animate-enter" style={{ animationDelay: "180ms" }}>
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <SectionEyebrow linePosition="before">Modules</SectionEyebrow>
-            <h2 className="mt-3 text-3xl">
-              The product is already shaped around the real ops flow.
-            </h2>
-          </div>
-          <p className="max-w-2xl text-sm leading-6 text-kira-darkgray">
-            Four modules. One connected operating flow.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {modules.map((module, index) => {
-              if (module.title === "Smart Catalog") {
-                return (
-                  <SmartCatalogModuleCard
-                    animationSrc={smartCatalogAnimationSrc}
-                    detail={module.detail}
-                    index={index}
-                    key={module.title}
-                    title={module.title}
-                  />
-                );
-              }
-
-              if (module.title === "Marketplace Exports") {
-                return (
-                  <MarketplaceExportsModuleCard
-                    animationSrc={marketplaceExportsAnimationSrc}
-                    detail={module.detail}
-                    index={index}
-                    key={module.title}
-                    title={module.title}
-                  />
-                );
-              }
-
-              if (module.title === "Received PO Processing") {
-                return (
-                  <ReceivedPoProcessingModuleCard
-                    animationSrc={receivedPoProcessingAnimationSrc}
-                    index={index}
-                    key={module.title}
-                    title={module.title}
-                  />
-                );
-              }
-
-              return (
-                <DispatchDocumentsModuleCard
-                  barcodeAnimationSrc={barcodeAnimationSrc}
-                  index={index}
-                  invoiceAnimationSrc={commercialInvoicesAnimationSrc}
-                  key={module.title}
-                  title={module.title}
-                />
-              );
-            })}
-          </div>
-
-          <Card
-            className="animate-enter kira-tint-mixed rounded-[32px] border-kira-darkgray/15 p-6 md:p-7"
-            style={{ animationDelay: "240ms" }}
-          >
-            <SectionEyebrow linePosition="after">Why This Feels Different</SectionEyebrow>
-            <h3 className="mt-4 text-3xl leading-tight">Built like one operating system.</h3>
-            <div className="mt-6 space-y-3">
-              {modulePrinciples.map((principle, index) => (
-                <div
-                  className="rounded-2xl border border-kira-warmgray/35 bg-kira-offwhite/55 px-4 py-4 dark:border-white/10 dark:bg-white/5"
-                  key={principle}
-                >
-                  <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                    Principle {index + 1}
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-kira-darkgray">{principle}</p>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </section>
+      <ModulesShowcase
+        barcodeAnimationSrc={barcodeAnimationSrc}
+        commercialInvoicesAnimationSrc={commercialInvoicesAnimationSrc}
+        marketplaceExportsAnimationSrc={marketplaceExportsAnimationSrc}
+        modulePrinciples={modulePrinciples}
+        modules={modules}
+        receivedPoProcessingAnimationSrc={receivedPoProcessingAnimationSrc}
+        smartCatalogAnimationSrc={smartCatalogAnimationSrc}
+      />
 
       <section
         className="surface-card kira-tint-sage animate-enter overflow-hidden p-5 md:p-7"

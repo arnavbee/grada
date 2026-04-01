@@ -1,12 +1,14 @@
 "use client";
 
 import type { FocusEvent } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Card } from "@/src/components/ui/card";
 
 interface MarketplaceExportsModuleCardProps {
   animationSrc: string;
+  autoPreviewActive?: boolean;
+  disableInteraction?: boolean;
   detail: string;
   index: number;
   title: string;
@@ -14,13 +16,16 @@ interface MarketplaceExportsModuleCardProps {
 
 export function MarketplaceExportsModuleCard({
   animationSrc,
+  autoPreviewActive = false,
+  disableInteraction = false,
   detail,
   index,
   title,
 }: MarketplaceExportsModuleCardProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isInteractionPreviewOpen, setIsInteractionPreviewOpen] = useState(false);
+  const [isAutoPreviewOpen, setIsAutoPreviewOpen] = useState(false);
   const [previewRun, setPreviewRun] = useState(0);
 
   const clearCloseTimeout = (): void => {
@@ -31,8 +36,12 @@ export function MarketplaceExportsModuleCard({
   };
 
   const openPreview = (): void => {
+    if (disableInteraction) {
+      return;
+    }
+
     clearCloseTimeout();
-    setIsPreviewOpen((current) => {
+    setIsInteractionPreviewOpen((current) => {
       if (current) {
         return current;
       }
@@ -43,12 +52,36 @@ export function MarketplaceExportsModuleCard({
   };
 
   const closePreview = (): void => {
+    if (disableInteraction) {
+      return;
+    }
+
     clearCloseTimeout();
     closeTimeoutRef.current = setTimeout(() => {
-      setIsPreviewOpen(false);
+      setIsInteractionPreviewOpen(false);
       closeTimeoutRef.current = null;
     }, 140);
   };
+
+  useEffect(() => {
+    if (!disableInteraction) {
+      return;
+    }
+
+    clearCloseTimeout();
+    setIsInteractionPreviewOpen(false);
+  }, [disableInteraction]);
+
+  useEffect(() => {
+    if (autoPreviewActive) {
+      clearCloseTimeout();
+      setPreviewRun((value) => value + 1);
+      setIsAutoPreviewOpen(true);
+      return;
+    }
+
+    setIsAutoPreviewOpen(false);
+  }, [autoPreviewActive]);
 
   const handleBlurCapture = (event: FocusEvent<HTMLDivElement>): void => {
     const nextFocusTarget = event.relatedTarget as Node | null;
@@ -59,6 +92,8 @@ export function MarketplaceExportsModuleCard({
 
     closePreview();
   };
+
+  const isPreviewOpen = isInteractionPreviewOpen || isAutoPreviewOpen;
 
   return (
     <div

@@ -1,24 +1,29 @@
 "use client";
 
 import type { FocusEvent } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Card } from "@/src/components/ui/card";
 
 interface ReceivedPoProcessingModuleCardProps {
   animationSrc: string;
+  autoPreviewActive?: boolean;
+  disableInteraction?: boolean;
   index: number;
   title: string;
 }
 
 export function ReceivedPoProcessingModuleCard({
   animationSrc,
+  autoPreviewActive = false,
+  disableInteraction = false,
   index,
   title,
 }: ReceivedPoProcessingModuleCardProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isInteractionPreviewOpen, setIsInteractionPreviewOpen] = useState(false);
+  const [isAutoPreviewOpen, setIsAutoPreviewOpen] = useState(false);
   const [previewRun, setPreviewRun] = useState(0);
 
   const clearCloseTimeout = (): void => {
@@ -29,8 +34,12 @@ export function ReceivedPoProcessingModuleCard({
   };
 
   const openPreview = (): void => {
+    if (disableInteraction) {
+      return;
+    }
+
     clearCloseTimeout();
-    setIsPreviewOpen((current) => {
+    setIsInteractionPreviewOpen((current) => {
       if (current) {
         return current;
       }
@@ -41,12 +50,36 @@ export function ReceivedPoProcessingModuleCard({
   };
 
   const closePreview = (): void => {
+    if (disableInteraction) {
+      return;
+    }
+
     clearCloseTimeout();
     closeTimeoutRef.current = setTimeout(() => {
-      setIsPreviewOpen(false);
+      setIsInteractionPreviewOpen(false);
       closeTimeoutRef.current = null;
     }, 140);
   };
+
+  useEffect(() => {
+    if (!disableInteraction) {
+      return;
+    }
+
+    clearCloseTimeout();
+    setIsInteractionPreviewOpen(false);
+  }, [disableInteraction]);
+
+  useEffect(() => {
+    if (autoPreviewActive) {
+      clearCloseTimeout();
+      setPreviewRun((value) => value + 1);
+      setIsAutoPreviewOpen(true);
+      return;
+    }
+
+    setIsAutoPreviewOpen(false);
+  }, [autoPreviewActive]);
 
   const handleBlurCapture = (event: FocusEvent<HTMLDivElement>): void => {
     const nextFocusTarget = event.relatedTarget as Node | null;
@@ -57,6 +90,8 @@ export function ReceivedPoProcessingModuleCard({
 
     closePreview();
   };
+
+  const isPreviewOpen = isInteractionPreviewOpen || isAutoPreviewOpen;
 
   return (
     <div
