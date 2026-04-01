@@ -35,6 +35,8 @@ interface ExceptionEditDraft {
   po_price: string;
 }
 
+type ExceptionFilter = "all" | "needs_review" | "low_risk" | "no_suggestion";
+
 export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps): JSX.Element {
   const [record, setRecord] = useState<ReceivedPO | null>(null);
   const [headerDraft, setHeaderDraft] = useState<ReceivedPOHeaderInput>({});
@@ -48,6 +50,7 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
   const [editingExceptionId, setEditingExceptionId] = useState<string | null>(null);
   const [selectedExceptionId, setSelectedExceptionId] = useState<string | null>(null);
   const [expandedReasonId, setExpandedReasonId] = useState<string | null>(null);
+  const [exceptionFilter, setExceptionFilter] = useState<ExceptionFilter>("all");
   const [exceptionEditDrafts, setExceptionEditDrafts] = useState<
     Record<string, ExceptionEditDraft>
   >({});
@@ -106,16 +109,47 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
   const totalQuantity = useMemo(() => getTotalQuantity(itemDrafts), [itemDrafts]);
   const editable = record?.status !== "confirmed";
   const exceptionItems = exceptionsState?.items ?? [];
+  const confidenceBand = (confidence: number | null | undefined): "high" | "medium" | "low" => {
+    const value = Number(confidence ?? 0);
+    if (value >= 0.9) {
+      return "high";
+    }
+    if (value >= 0.7) {
+      return "medium";
+    }
+    return "low";
+  };
+  const filteredExceptionItems = useMemo(() => {
+    if (exceptionFilter === "all") {
+      return exceptionItems;
+    }
+    if (exceptionFilter === "needs_review") {
+      return exceptionItems.filter((item) => item.resolution_status === "needs_review");
+    }
+    if (exceptionFilter === "low_risk") {
+      return exceptionItems.filter((item) => confidenceBand(item.confidence_score) === "high");
+    }
+    return exceptionItems.filter(
+      (item) => !item.suggested_fix || Object.keys(item.suggested_fix).length === 0,
+    );
+  }, [exceptionFilter, exceptionItems]);
+  const selectedException =
+    filteredExceptionItems.find((item) => item.id === selectedExceptionId) ??
+    filteredExceptionItems[0] ??
+    null;
 
   useEffect(() => {
-    if (exceptionItems.length === 0) {
+    if (filteredExceptionItems.length === 0) {
       setSelectedExceptionId(null);
       return;
     }
-    if (!selectedExceptionId || !exceptionItems.some((item) => item.id === selectedExceptionId)) {
-      setSelectedExceptionId(exceptionItems[0].id);
+    if (
+      !selectedExceptionId ||
+      !filteredExceptionItems.some((item) => item.id === selectedExceptionId)
+    ) {
+      setSelectedExceptionId(filteredExceptionItems[0].id);
     }
-  }, [exceptionItems, selectedExceptionId]);
+  }, [filteredExceptionItems, selectedExceptionId]);
 
   const handleSaveHeader = async (): Promise<void> => {
     try {
@@ -290,24 +324,31 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
   };
 
   const handleNavigateSelectedException = (direction: "next" | "prev"): void => {
-    if (exceptionItems.length === 0 || !selectedExceptionId) {
+    if (filteredExceptionItems.length === 0 || !selectedExceptionId) {
       return;
     }
-    const currentIndex = exceptionItems.findIndex((item) => item.id === selectedExceptionId);
+    const currentIndex = filteredExceptionItems.findIndex(
+      (item) => item.id === selectedExceptionId,
+    );
     if (currentIndex < 0) {
-      setSelectedExceptionId(exceptionItems[0].id);
+      setSelectedExceptionId(filteredExceptionItems[0].id);
       return;
     }
     const nextIndex =
       direction === "next"
-        ? (currentIndex + 1) % exceptionItems.length
-        : (currentIndex - 1 + exceptionItems.length) % exceptionItems.length;
-    setSelectedExceptionId(exceptionItems[nextIndex].id);
+        ? (currentIndex + 1) % filteredExceptionItems.length
+        : (currentIndex - 1 + filteredExceptionItems.length) % filteredExceptionItems.length;
+    setSelectedExceptionId(filteredExceptionItems[nextIndex].id);
   };
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (!editable || exceptionItems.length === 0 || !selectedExceptionId || resolvingLineItemId) {
+      if (
+        !editable ||
+        filteredExceptionItems.length === 0 ||
+        !selectedExceptionId ||
+        resolvingLineItemId
+      ) {
         return;
       }
       const target = event.target as HTMLElement | null;
@@ -321,7 +362,7 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
         return;
       }
 
-      const selectedItem = exceptionItems.find((item) => item.id === selectedExceptionId);
+      const selectedItem = filteredExceptionItems.find((item) => item.id === selectedExceptionId);
       if (!selectedItem) {
         return;
       }
@@ -355,7 +396,7 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     editable,
-    exceptionItems,
+    filteredExceptionItems,
     selectedExceptionId,
     resolvingLineItemId,
     editingExceptionId,
@@ -546,185 +587,290 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                 </div>
               </div>
               <div className="mt-5 space-y-3">
-                {editable && exceptionItems.length > 0 ? (
+                {editable && filteredExceptionItems.length > 0 ? (
                   <p className="text-xs text-kira-midgray">
                     Shortcuts: <kbd>A</kbd> accept, <kbd>E</kbd> edit, <kbd>R</kbd> reject,{" "}
                     <kbd>J</kbd>/<kbd>K</kbd> navigate
                   </p>
                 ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => setExceptionFilter("all")}
+                    size="xs"
+                    variant={exceptionFilter === "all" ? "default" : "outline"}
+                  >
+                    All ({exceptionItems.length})
+                  </Button>
+                  <Button
+                    onClick={() => setExceptionFilter("needs_review")}
+                    size="xs"
+                    variant={exceptionFilter === "needs_review" ? "default" : "outline"}
+                  >
+                    Needs Review
+                  </Button>
+                  <Button
+                    onClick={() => setExceptionFilter("low_risk")}
+                    size="xs"
+                    variant={exceptionFilter === "low_risk" ? "default" : "outline"}
+                  >
+                    Low-Risk
+                  </Button>
+                  <Button
+                    onClick={() => setExceptionFilter("no_suggestion")}
+                    size="xs"
+                    variant={exceptionFilter === "no_suggestion" ? "default" : "outline"}
+                  >
+                    No Suggestion
+                  </Button>
+                </div>
                 {exceptionsLoading ? (
                   <p className="text-sm text-kira-darkgray">Loading exceptions...</p>
                 ) : null}
-                {!exceptionsLoading && (exceptionsState?.items.length ?? 0) === 0 ? (
+                {!exceptionsLoading && filteredExceptionItems.length === 0 ? (
                   <p className="text-sm text-kira-darkgray">
-                    No unresolved exceptions. This PO is ready for confirmation.
+                    No exceptions match this filter. Try another filter or rerun scan.
                   </p>
                 ) : null}
-                {exceptionItems.map((item) => (
-                  <div
-                    className={`rounded-lg border bg-kira-offwhite/70 p-4 ${
-                      selectedExceptionId === item.id
-                        ? "border-kira-brown/55 ring-1 ring-kira-brown/35"
-                        : "border-kira-warmgray/25"
-                    }`}
-                    key={item.id}
-                    onClick={() => setSelectedExceptionId(item.id)}
-                  >
-                    {(() => {
-                      const isEditing = editingExceptionId === item.id;
-                      const draft = exceptionEditDrafts[item.id];
-                      return (
-                        <>
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-kira-black">
-                                {item.brand_style_code} · {item.sku_id}
-                              </p>
-                              <p className="mt-1 text-xs text-kira-midgray">
-                                Reason: {item.exception_reason ?? "Requires review"}
-                              </p>
-                            </div>
-                            <span className="rounded-full bg-kira-warmgray/25 px-3 py-1 text-xs uppercase tracking-wide text-kira-darkgray">
+                {filteredExceptionItems.length > 0 ? (
+                  <div className="grid gap-4 md:grid-cols-[320px_1fr]">
+                    <div className="max-h-[540px] space-y-2 overflow-auto rounded-lg border border-kira-warmgray/25 p-2">
+                      {filteredExceptionItems.map((item, index) => (
+                        <button
+                          className={`w-full rounded-md border p-3 text-left ${
+                            selectedException?.id === item.id
+                              ? "border-kira-brown/60 bg-kira-brown/10"
+                              : "border-kira-warmgray/25 bg-white/70"
+                          }`}
+                          key={item.id}
+                          onClick={() => setSelectedExceptionId(item.id)}
+                          type="button"
+                        >
+                          <p className="text-xs text-kira-midgray">#{index + 1}</p>
+                          <p className="mt-1 text-sm font-semibold text-kira-black">
+                            {item.brand_style_code}
+                          </p>
+                          <p className="truncate text-xs text-kira-midgray">{item.sku_id}</p>
+                          <div className="mt-2 flex items-center justify-between text-xs">
+                            <span className="rounded-full bg-kira-warmgray/30 px-2 py-1 text-kira-darkgray">
                               {item.confidence_score
                                 ? `${Math.round(item.confidence_score * 100)}%`
                                 : "N/A"}
                             </span>
-                          </div>
-                          {item.suggested_fix && Object.keys(item.suggested_fix).length > 0 ? (
-                            <pre className="mt-3 overflow-x-auto rounded-md bg-white/80 p-2 text-xs text-kira-darkgray">
-                              {JSON.stringify(item.suggested_fix, null, 2)}
-                            </pre>
-                          ) : null}
-                          <div className="mt-2">
-                            <Button
-                              onClick={() =>
-                                setExpandedReasonId((current) =>
-                                  current === item.id ? null : item.id,
-                                )
-                              }
-                              size="xs"
-                              variant="ghost"
+                            <span
+                              className={`rounded-full px-2 py-1 ${
+                                confidenceBand(item.confidence_score) === "high"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : confidenceBand(item.confidence_score) === "medium"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-rose-100 text-rose-700"
+                              }`}
                             >
-                              {expandedReasonId === item.id ? "Hide why" : "Why this?"}
-                            </Button>
+                              {confidenceBand(item.confidence_score)}
+                            </span>
                           </div>
-                          {expandedReasonId === item.id ? (
-                            <div className="mt-2 rounded-md border border-kira-warmgray/30 bg-white/70 p-3 text-xs text-kira-darkgray">
-                              {explainExceptionReason(item.exception_reason)}
-                            </div>
-                          ) : null}
-                          {isEditing ? (
-                            <div className="mt-3 grid gap-3 md:grid-cols-5">
-                              <label className="text-xs text-kira-darkgray">
-                                Size
-                                <input
-                                  className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-transparent px-2 py-1 text-sm"
-                                  onChange={(event) =>
-                                    updateExceptionDraft(item.id, "size", event.target.value)
-                                  }
-                                  value={draft?.size ?? ""}
-                                />
-                              </label>
-                              <label className="text-xs text-kira-darkgray">
-                                Color
-                                <input
-                                  className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-transparent px-2 py-1 text-sm"
-                                  onChange={(event) =>
-                                    updateExceptionDraft(item.id, "color", event.target.value)
-                                  }
-                                  value={draft?.color ?? ""}
-                                />
-                              </label>
-                              <label className="text-xs text-kira-darkgray">
-                                Knit/Woven
-                                <input
-                                  className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-transparent px-2 py-1 text-sm"
-                                  onChange={(event) =>
-                                    updateExceptionDraft(
-                                      item.id,
-                                      "knitted_woven",
-                                      event.target.value,
+                        </button>
+                      ))}
+                    </div>
+                    {selectedException ? (
+                      <div className="rounded-lg border border-kira-warmgray/25 bg-kira-offwhite/70 p-4">
+                        {(() => {
+                          const item = selectedException;
+                          const isEditing = editingExceptionId === item.id;
+                          const draft = exceptionEditDrafts[item.id];
+                          const suggestedFix = item.suggested_fix ?? {};
+                          return (
+                            <>
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-semibold text-kira-black">
+                                    {item.brand_style_code} · {item.sku_id}
+                                  </p>
+                                  <p className="mt-1 text-xs text-kira-midgray">
+                                    Reason: {item.exception_reason ?? "Requires review"}
+                                  </p>
+                                </div>
+                                <span className="rounded-full bg-kira-warmgray/25 px-3 py-1 text-xs uppercase tracking-wide text-kira-darkgray">
+                                  {item.confidence_score
+                                    ? `${Math.round(item.confidence_score * 100)}%`
+                                    : "N/A"}
+                                </span>
+                              </div>
+                              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                <div className="rounded-md border border-kira-warmgray/25 bg-white/80 p-3">
+                                  <p className="text-xs uppercase text-kira-midgray">Current</p>
+                                  <p className="mt-1 text-xs text-kira-darkgray">
+                                    Size: {item.size || "-"}
+                                  </p>
+                                  <p className="text-xs text-kira-darkgray">
+                                    Color: {item.color || "-"}
+                                  </p>
+                                  <p className="text-xs text-kira-darkgray">
+                                    Knit/Woven: {item.knitted_woven || "-"}
+                                  </p>
+                                  <p className="text-xs text-kira-darkgray">Qty: {item.quantity}</p>
+                                  <p className="text-xs text-kira-darkgray">
+                                    PO Price: {item.po_price ?? "-"}
+                                  </p>
+                                </div>
+                                <div className="rounded-md border border-kira-warmgray/25 bg-white/80 p-3">
+                                  <p className="text-xs uppercase text-kira-midgray">Suggested</p>
+                                  <p className="mt-1 text-xs text-kira-darkgray">
+                                    Size: {String(suggestedFix.size ?? "-")}
+                                  </p>
+                                  <p className="text-xs text-kira-darkgray">
+                                    Color: {String(suggestedFix.color ?? "-")}
+                                  </p>
+                                  <p className="text-xs text-kira-darkgray">
+                                    Knit/Woven: {String(suggestedFix.knitted_woven ?? "-")}
+                                  </p>
+                                  <p className="text-xs text-kira-darkgray">
+                                    Qty: {String(suggestedFix.quantity ?? "-")}
+                                  </p>
+                                  <p className="text-xs text-kira-darkgray">
+                                    PO Price: {String(suggestedFix.po_price ?? "-")}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="mt-2">
+                                <Button
+                                  onClick={() =>
+                                    setExpandedReasonId((current) =>
+                                      current === item.id ? null : item.id,
                                     )
                                   }
-                                  value={draft?.knitted_woven ?? ""}
-                                />
-                              </label>
-                              <label className="text-xs text-kira-darkgray">
-                                Quantity
-                                <input
-                                  className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-transparent px-2 py-1 text-sm"
-                                  min={0}
-                                  onChange={(event) =>
-                                    updateExceptionDraft(item.id, "quantity", event.target.value)
-                                  }
-                                  type="number"
-                                  value={draft?.quantity ?? ""}
-                                />
-                              </label>
-                              <label className="text-xs text-kira-darkgray">
-                                PO Price
-                                <input
-                                  className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-transparent px-2 py-1 text-sm"
-                                  min={0}
-                                  onChange={(event) =>
-                                    updateExceptionDraft(item.id, "po_price", event.target.value)
-                                  }
-                                  step="0.01"
-                                  type="number"
-                                  value={draft?.po_price ?? ""}
-                                />
-                              </label>
-                            </div>
-                          ) : null}
-                          {editable ? (
-                            <div className="mt-3 flex items-center gap-2">
-                              <Button
-                                disabled={resolvingLineItemId === item.id}
-                                onClick={() =>
-                                  handleResolveException(
-                                    item.id,
-                                    "accept",
-                                    isEditing ? draft : undefined,
-                                  )
-                                }
-                                size="sm"
-                              >
-                                {isEditing ? "Accept edited values" : "Accept suggestion"}
-                              </Button>
-                              {!isEditing ? (
-                                <Button
-                                  disabled={resolvingLineItemId === item.id}
-                                  onClick={() => startEditingException(item)}
-                                  size="sm"
-                                  variant="outline"
+                                  size="xs"
+                                  variant="ghost"
                                 >
-                                  Edit before accept
+                                  {expandedReasonId === item.id ? "Hide why" : "Why this?"}
                                 </Button>
-                              ) : (
-                                <Button
-                                  disabled={resolvingLineItemId === item.id}
-                                  onClick={() => setEditingExceptionId(null)}
-                                  size="sm"
-                                  variant="outline"
-                                >
-                                  Cancel edit
-                                </Button>
-                              )}
-                              <Button
-                                disabled={resolvingLineItemId === item.id}
-                                onClick={() => handleResolveException(item.id, "reject")}
-                                size="sm"
-                                variant="secondary"
-                              >
-                                Reject
-                              </Button>
-                            </div>
-                          ) : null}
-                        </>
-                      );
-                    })()}
+                              </div>
+                              {expandedReasonId === item.id ? (
+                                <div className="mt-2 rounded-md border border-kira-warmgray/30 bg-white/70 p-3 text-xs text-kira-darkgray">
+                                  {explainExceptionReason(item.exception_reason)}
+                                </div>
+                              ) : null}
+                              {isEditing ? (
+                                <div className="mt-3 grid gap-3 md:grid-cols-5">
+                                  <label className="text-xs text-kira-darkgray">
+                                    Size
+                                    <input
+                                      className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-transparent px-2 py-1 text-sm"
+                                      onChange={(event) =>
+                                        updateExceptionDraft(item.id, "size", event.target.value)
+                                      }
+                                      value={draft?.size ?? ""}
+                                    />
+                                  </label>
+                                  <label className="text-xs text-kira-darkgray">
+                                    Color
+                                    <input
+                                      className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-transparent px-2 py-1 text-sm"
+                                      onChange={(event) =>
+                                        updateExceptionDraft(item.id, "color", event.target.value)
+                                      }
+                                      value={draft?.color ?? ""}
+                                    />
+                                  </label>
+                                  <label className="text-xs text-kira-darkgray">
+                                    Knit/Woven
+                                    <input
+                                      className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-transparent px-2 py-1 text-sm"
+                                      onChange={(event) =>
+                                        updateExceptionDraft(
+                                          item.id,
+                                          "knitted_woven",
+                                          event.target.value,
+                                        )
+                                      }
+                                      value={draft?.knitted_woven ?? ""}
+                                    />
+                                  </label>
+                                  <label className="text-xs text-kira-darkgray">
+                                    Quantity
+                                    <input
+                                      className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-transparent px-2 py-1 text-sm"
+                                      min={0}
+                                      onChange={(event) =>
+                                        updateExceptionDraft(
+                                          item.id,
+                                          "quantity",
+                                          event.target.value,
+                                        )
+                                      }
+                                      type="number"
+                                      value={draft?.quantity ?? ""}
+                                    />
+                                  </label>
+                                  <label className="text-xs text-kira-darkgray">
+                                    PO Price
+                                    <input
+                                      className="kira-focus-ring mt-1 w-full rounded-md border border-kira-warmgray/35 bg-transparent px-2 py-1 text-sm"
+                                      min={0}
+                                      onChange={(event) =>
+                                        updateExceptionDraft(
+                                          item.id,
+                                          "po_price",
+                                          event.target.value,
+                                        )
+                                      }
+                                      step="0.01"
+                                      type="number"
+                                      value={draft?.po_price ?? ""}
+                                    />
+                                  </label>
+                                </div>
+                              ) : null}
+                              {editable ? (
+                                <div className="mt-3 flex items-center gap-2">
+                                  <Button
+                                    disabled={resolvingLineItemId === item.id}
+                                    onClick={() =>
+                                      handleResolveException(
+                                        item.id,
+                                        "accept",
+                                        isEditing ? draft : undefined,
+                                      )
+                                    }
+                                    size="sm"
+                                  >
+                                    {isEditing ? "Accept edited values" : "Accept suggestion"}
+                                  </Button>
+                                  {!isEditing ? (
+                                    <Button
+                                      disabled={resolvingLineItemId === item.id}
+                                      onClick={() => startEditingException(item)}
+                                      size="sm"
+                                      variant="outline"
+                                    >
+                                      Edit before accept
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      disabled={resolvingLineItemId === item.id}
+                                      onClick={() => setEditingExceptionId(null)}
+                                      size="sm"
+                                      variant="outline"
+                                    >
+                                      Cancel edit
+                                    </Button>
+                                  )}
+                                  <Button
+                                    disabled={resolvingLineItemId === item.id}
+                                    onClick={() => handleResolveException(item.id, "reject")}
+                                    size="sm"
+                                    variant="secondary"
+                                  >
+                                    Reject
+                                  </Button>
+                                </div>
+                              ) : null}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    ) : null}
                   </div>
-                ))}
+                ) : null}
               </div>
             </Card>
           </>
