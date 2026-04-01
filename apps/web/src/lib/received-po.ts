@@ -4,6 +4,7 @@ import { getResolvedApiOriginUrl } from "@/src/lib/api-url";
 import type { StickerTemplateKind } from "@/src/lib/sticker-templates";
 
 export type ReceivedPOStatus = "uploaded" | "parsing" | "parsed" | "confirmed" | "failed";
+export type ReceivedPOExceptionStatus = "auto_resolved" | "needs_review" | "human_corrected";
 export type BarcodeJobStatus = "pending" | "generating" | "done" | "failed";
 export type InvoiceStatus = "draft" | "final" | "failed";
 export type PackingListStatus = "draft" | "final" | "failed";
@@ -50,6 +51,10 @@ export interface ReceivedPOLineItem {
   size: string | null;
   quantity: number;
   po_price: number | null;
+  confidence_score?: number | null;
+  resolution_status?: ReceivedPOExceptionStatus;
+  exception_reason?: string | null;
+  suggested_fix?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -62,9 +67,34 @@ export interface ReceivedPO {
   po_date: string | null;
   distributor: string;
   status: ReceivedPOStatus;
+  auto_resolve_rate?: number | null;
+  exception_count?: number;
+  review_required_count?: number;
   raw_extracted: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  items: ReceivedPOLineItem[];
+}
+
+export interface ReceivedPOExceptionsSummary {
+  total: number;
+  auto_resolved: number;
+  needs_review: number;
+  human_corrected: number;
+  auto_resolve_rate: number;
+}
+
+export interface ReceivedPOExceptionsResponse {
+  received_po_id: string;
+  status: ReceivedPOStatus;
+  summary: ReceivedPOExceptionsSummary;
+  items: ReceivedPOLineItem[];
+}
+
+export interface ReceivedPOBulkResolveResponse {
+  received_po_id: string;
+  processed_count: number;
+  summary: ReceivedPOExceptionsSummary;
   items: ReceivedPOLineItem[];
 }
 
@@ -236,6 +266,15 @@ export interface PackingListCartonInput {
   dimensions?: string | null;
 }
 
+export interface ResolveReceivedPOExceptionInput {
+  action: "accept" | "reject";
+  size?: string | null;
+  color?: string | null;
+  knitted_woven?: string | null;
+  quantity?: number | null;
+  po_price?: number | null;
+}
+
 export async function listReceivedPOs(limit = 50, offset = 0): Promise<ReceivedPOListResponse> {
   return apiRequest<ReceivedPOListResponse>(`/received-pos?limit=${limit}&offset=${offset}`);
 }
@@ -281,6 +320,53 @@ export async function confirmReceivedPO(receivedPoId: string): Promise<ReceivedP
   return apiRequest<ReceivedPOConfirmResponse>(`/received-pos/${receivedPoId}/confirm`, {
     method: "POST",
   });
+}
+
+export async function runReceivedPOExceptions(
+  receivedPoId: string,
+): Promise<ReceivedPOExceptionsResponse> {
+  return apiRequest<ReceivedPOExceptionsResponse>(`/received-pos/${receivedPoId}/exceptions/run`, {
+    method: "POST",
+  });
+}
+
+export async function listReceivedPOExceptions(
+  receivedPoId: string,
+  includeResolved = false,
+): Promise<ReceivedPOExceptionsResponse> {
+  return apiRequest<ReceivedPOExceptionsResponse>(
+    `/received-pos/${receivedPoId}/exceptions?include_resolved=${String(includeResolved)}`,
+  );
+}
+
+export async function resolveReceivedPOException(
+  receivedPoId: string,
+  lineItemId: string,
+  payload: ResolveReceivedPOExceptionInput,
+): Promise<ReceivedPOExceptionsResponse> {
+  return apiRequest<ReceivedPOExceptionsResponse>(
+    `/received-pos/${receivedPoId}/exceptions/${lineItemId}/resolve`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function resolveReceivedPOExceptionsBulk(
+  receivedPoId: string,
+  payload: {
+    min_confidence?: number;
+    only_with_suggestions?: boolean;
+  } = {},
+): Promise<ReceivedPOBulkResolveResponse> {
+  return apiRequest<ReceivedPOBulkResolveResponse>(
+    `/received-pos/${receivedPoId}/exceptions/resolve-bulk`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 export async function createBarcodeJob(

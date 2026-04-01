@@ -357,3 +357,71 @@ def test_received_po_is_company_scoped() -> None:
 
     detail_other_tenant = client.get(f'/api/v1/received-pos/{received_po_id}', headers=headers_b)
     assert detail_other_tenant.status_code == 404
+
+
+def test_received_po_exception_inbox_run_list_and_resolve() -> None:
+    headers = _auth_headers('Exception Inbox Co')
+
+    upload = client.post(
+        '/api/v1/received-pos/upload',
+        headers=headers,
+        files={'file': ('styli-po.pdf', b'%PDF-1.4 fake po', 'application/pdf')},
+    )
+    assert upload.status_code == 201
+    received_po_id = upload.json()['received_po_id']
+
+    db = SessionLocal()
+    try:
+        record = db.query(ReceivedPO).filter(ReceivedPO.id == received_po_id).first()
+        assert record is not None
+        line_item = ReceivedPOLineItem(
+            received_po_id=record.id,
+            brand_style_code='HRDS25001',
+            styli_style_id='STYLI-101',
+            model_number='MOD-1',
+            option_id='OPT-BLK',
+            sku_id='HRDS25001-A-BLACK-S',
+            color=' black ',
+            size='XLl',
+            knitted_woven='knitted / woven',
+            quantity=10,
+            po_price=499.0,
+        )
+        db.add(line_item)
+        db.commit()
+        line_item_id = line_item.id
+    finally:
+        db.close()
+
+    run_response = client.post(f'/api/v1/received-pos/{received_po_id}/exceptions/run', headers=headers)
+    assert run_response.status_code == 200
+    body = run_response.json()
+    assert body['summary']['total'] == 1
+    assert body['summary']['auto_resolved'] == 1
+
+    bulk_response = client.post(
+        f'/api/v1/received-pos/{received_po_id}/exceptions/resolve-bulk',
+        headers=headers,
+        json={'min_confidence': 0.9, 'only_with_suggestions': True},
+    )
+    assert bulk_response.status_code == 200
+    assert bulk_response.json()['processed_count'] == 0
+
+    list_response = client.get(f'/api/v1/received-pos/{received_po_id}/exceptions', headers=headers)
+    assert list_response.status_code == 200
+    assert list_response.json()['summary']['total'] == 1
+    assert list_response.json()['items'] == []
+
+    resolve_response = client.post(
+        f'/api/v1/received-pos/{received_po_id}/exceptions/{line_item_id}/resolve',
+        headers=headers,
+        json={'action': 'reject', 'size': 'L'},
+    )
+    assert resolve_response.status_code == 200
+    assert resolve_response.json()['summary']['human_corrected'] >= 1
+
+    detail = client.get(f'/api/v1/received-pos/{received_po_id}', headers=headers)
+    assert detail.status_code == 200
+    item = detail.json()['items'][0]
+    assert item['size'] == 'L'
+    assert item['resolution_status'] == 'human_corrected'

@@ -17,6 +17,9 @@ class ReceivedPO(Base):
     distributor: Mapped[str] = mapped_column(String(128), default='Styli', nullable=False)
     status: Mapped[str] = mapped_column(String(32), default='uploaded', index=True, nullable=False)
     raw_extracted_json: Mapped[str] = mapped_column(Text, default='{}', nullable=False)
+    auto_resolve_rate: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    exception_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    review_required_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
@@ -48,6 +51,10 @@ class ReceivedPOLineItem(Base):
     size: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     po_price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    confidence_score: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    resolution_status: Mapped[str] = mapped_column(String(32), default='needs_review', index=True, nullable=False)
+    exception_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    suggested_fix_json: Mapped[str] = mapped_column(Text, default='{}', nullable=False)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False

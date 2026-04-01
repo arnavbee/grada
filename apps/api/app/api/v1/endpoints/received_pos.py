@@ -39,12 +39,18 @@ from app.schemas.packing_list import (
 )
 from app.schemas.received_po import (
     BarcodeJobCreateResponse,
+    ReceivedPOBulkResolveRequest,
+    ReceivedPOBulkResolveResponse,
     BarcodeJobResponse,
     ReceivedPOConfirmResponse,
+    ReceivedPOExceptionResolveRequest,
+    ReceivedPOExceptionsListResponse,
+    ReceivedPOExceptionsSummary,
     ReceivedPOHeaderUpdate,
     ReceivedPOListItemResponse,
     ReceivedPOListResponse,
     ReceivedPOLineItemBatchUpdate,
+    ReceivedPOLineItemResponse,
     ReceivedPOResponse,
     ReceivedPOStatus,
     ReceivedPOUploadResponse,
@@ -65,6 +71,13 @@ from app.services.job_queue import (
     JOB_TYPE_RECEIVED_PO_PACKING_LIST_PDF,
     JOB_TYPE_RECEIVED_PO_PARSE,
     enqueue_processing_job,
+    is_job_worker_running,
+)
+from app.services.exception_resolver import (
+    RESOLUTION_STATUS_AUTO_RESOLVED,
+    RESOLUTION_STATUS_HUMAN_CORRECTED,
+    RESOLUTION_STATUS_NEEDS_REVIEW,
+    run_exception_resolution_for_received_po,
 )
 from app.services.marketplace_document_templates import (
     DOCUMENT_TYPE_BARCODE,
@@ -74,6 +87,7 @@ from app.services.marketplace_document_templates import (
     normalize_marketplace_key,
 )
 from app.services.packing_list_service import assign_cartons_for_received_po
+from app.services.received_po_parser import process_received_po_parse_job
 from app.utils.amount_words import convert_to_words
 
 router = APIRouter(prefix='/received-pos', tags=['received_pos'])
@@ -775,6 +789,7 @@ def _get_received_po_or_404(db: Session, company_id: str, received_po_id: str) -
 
 
 def _to_received_po_response(record: ReceivedPO) -> ReceivedPOResponse:
+    serialized_items = [_to_received_po_line_item_response(item) for item in record.items]
     return ReceivedPOResponse(
         id=record.id,
         company_id=record.company_id,
@@ -786,8 +801,103 @@ def _to_received_po_response(record: ReceivedPO) -> ReceivedPOResponse:
         raw_extracted_json=_json_loads(record.raw_extracted_json),
         created_at=record.created_at,
         updated_at=record.updated_at,
-        items=record.items,
+        items=serialized_items,
     )
+
+
+def _to_received_po_line_item_response(item: ReceivedPOLineItem) -> ReceivedPOLineItemResponse:
+    return ReceivedPOLineItemResponse(
+        id=item.id,
+        received_po_id=item.received_po_id,
+        brand_style_code=item.brand_style_code,
+        styli_style_id=item.styli_style_id,
+        model_number=item.model_number,
+        option_id=item.option_id,
+        sku_id=item.sku_id,
+        color=item.color,
+        knitted_woven=item.knitted_woven,
+        size=item.size,
+        quantity=item.quantity,
+        po_price=float(item.po_price) if item.po_price is not None else None,
+        confidence_score=float(item.confidence_score) if item.confidence_score is not None else None,
+        resolution_status=item.resolution_status,  # type: ignore[arg-type]
+        exception_reason=item.exception_reason,
+        suggested_fix_json=_json_loads(item.suggested_fix_json),
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+    )
+
+
+def _exception_summary(record: ReceivedPO) -> ReceivedPOExceptionsSummary:
+    total = len(record.items)
+    auto_resolved = 0
+    needs_review = 0
+    human_corrected = 0
+    for item in record.items:
+        status = str(item.resolution_status or '')
+        if status == RESOLUTION_STATUS_AUTO_RESOLVED:
+            auto_resolved += 1
+        elif status == RESOLUTION_STATUS_HUMAN_CORRECTED:
+            human_corrected += 1
+        else:
+            needs_review += 1
+
+    auto_resolve_rate = round((auto_resolved / total) * 100, 2) if total > 0 else 0.0
+    return ReceivedPOExceptionsSummary(
+        total=total,
+        auto_resolved=auto_resolved,
+        needs_review=needs_review,
+        human_corrected=human_corrected,
+        auto_resolve_rate=auto_resolve_rate,
+    )
+
+
+def _to_received_po_exceptions_response(
+    record: ReceivedPO,
+    *,
+    include_resolved: bool = False,
+) -> ReceivedPOExceptionsListResponse:
+    summary = _exception_summary(record)
+    if include_resolved:
+        items = list(record.items)
+    else:
+        items = [item for item in record.items if item.resolution_status != RESOLUTION_STATUS_AUTO_RESOLVED]
+    serialized_items = [_to_received_po_line_item_response(item) for item in items]
+    return ReceivedPOExceptionsListResponse(
+        received_po_id=record.id,
+        status=record.status,  # type: ignore[arg-type]
+        summary=summary,
+        items=serialized_items,
+    )
+
+
+def _load_suggested_fix(item: ReceivedPOLineItem) -> dict[str, object]:
+    payload = _json_loads(item.suggested_fix_json)
+    return payload if isinstance(payload, dict) else {}
+
+
+def _apply_exception_resolution_payload(
+    item: ReceivedPOLineItem,
+    payload: ReceivedPOExceptionResolveRequest,
+) -> None:
+    suggestion = _load_suggested_fix(item) if payload.action == 'accept' else {}
+    item.size = payload.size if payload.size is not None else str(suggestion.get('size') or item.size or '').strip() or None
+    item.color = (
+        payload.color if payload.color is not None else str(suggestion.get('color') or item.color or '').strip() or None
+    )
+    item.knitted_woven = (
+        payload.knitted_woven
+        if payload.knitted_woven is not None
+        else str(suggestion.get('knitted_woven') or item.knitted_woven or '').strip() or None
+    )
+    if payload.quantity is not None:
+        item.quantity = payload.quantity
+    elif payload.action == 'accept' and isinstance(suggestion.get('quantity'), int):
+        item.quantity = int(suggestion.get('quantity') or item.quantity)
+    if payload.po_price is not None:
+        item.po_price = payload.po_price
+    elif payload.action == 'accept' and isinstance(suggestion.get('po_price'), (int, float)):
+        item.po_price = float(suggestion.get('po_price'))
 
 
 @router.post('/upload', response_model=ReceivedPOUploadResponse, status_code=status.HTTP_201_CREATED)
@@ -831,15 +941,19 @@ async def upload_received_po(
         metadata={'received_po_id': record.id},
     )
     db.commit()
-    enqueue_processing_job(
-        db,
-        company_id=current_user.company_id,
-        job_type=JOB_TYPE_RECEIVED_PO_PARSE,
-        payload={'received_po_id': record.id},
-        created_by_user_id=current_user.id,
-        input_ref=record.file_url,
-    )
-    db.commit()
+    if is_job_worker_running():
+        enqueue_processing_job(
+            db,
+            company_id=current_user.company_id,
+            job_type=JOB_TYPE_RECEIVED_PO_PARSE,
+            payload={'received_po_id': record.id},
+            created_by_user_id=current_user.id,
+            input_ref=record.file_url,
+        )
+        db.commit()
+    else:
+        process_received_po_parse_job(record.id)
+        db.refresh(record)
     return ReceivedPOUploadResponse(received_po_id=record.id, status=record.status)
 
 
@@ -964,6 +1078,144 @@ def update_received_po_items(
     db.commit()
     db.refresh(record)
     return _to_received_po_response(record)
+
+
+@router.post('/{received_po_id}/exceptions/run', response_model=ReceivedPOExceptionsListResponse)
+def run_received_po_exceptions(
+    received_po_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles('admin', 'manager', 'operator')),
+) -> ReceivedPOExceptionsListResponse:
+    record = _get_received_po_or_404(db, current_user.company_id, received_po_id)
+    if record.status == 'confirmed':
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Confirmed received POs cannot be edited.')
+    run_exception_resolution_for_received_po(db, record)
+    log_audit(
+        db,
+        action='received_po.exceptions.run',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={'received_po_id': record.id},
+    )
+    db.commit()
+    db.refresh(record)
+    return _to_received_po_exceptions_response(record)
+
+
+@router.get('/{received_po_id}/exceptions', response_model=ReceivedPOExceptionsListResponse)
+def list_received_po_exceptions(
+    received_po_id: str,
+    include_resolved: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ReceivedPOExceptionsListResponse:
+    record = _get_received_po_or_404(db, current_user.company_id, received_po_id)
+    return _to_received_po_exceptions_response(record, include_resolved=include_resolved)
+
+
+@router.post('/{received_po_id}/exceptions/{line_item_id}/resolve', response_model=ReceivedPOExceptionsListResponse)
+def resolve_received_po_exception(
+    received_po_id: str,
+    line_item_id: str,
+    payload: ReceivedPOExceptionResolveRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles('admin', 'manager', 'operator')),
+) -> ReceivedPOExceptionsListResponse:
+    record = _get_received_po_or_404(db, current_user.company_id, received_po_id)
+    if record.status == 'confirmed':
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Confirmed received POs cannot be edited.')
+
+    line_item = (
+        db.query(ReceivedPOLineItem)
+        .filter(
+            ReceivedPOLineItem.received_po_id == record.id,
+            ReceivedPOLineItem.id == line_item_id,
+        )
+        .first()
+    )
+    if line_item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Received PO line item not found.')
+
+    _apply_exception_resolution_payload(line_item, payload)
+    line_item.resolution_status = RESOLUTION_STATUS_HUMAN_CORRECTED
+    line_item.exception_reason = (
+        'accepted_suggested_fix' if payload.action == 'accept' else 'rejected_suggested_fix'
+    )
+    line_item.suggested_fix_json = json.dumps({}, separators=(',', ':'))
+    if line_item.confidence_score is None:
+        line_item.confidence_score = 0.5
+
+    run_exception_resolution_for_received_po(db, record)
+    log_audit(
+        db,
+        action='received_po.exceptions.resolve',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={
+            'received_po_id': record.id,
+            'line_item_id': line_item.id,
+            'resolution_action': payload.action,
+        },
+    )
+    db.commit()
+    db.refresh(record)
+    return _to_received_po_exceptions_response(record)
+
+
+@router.post('/{received_po_id}/exceptions/resolve-bulk', response_model=ReceivedPOBulkResolveResponse)
+def resolve_received_po_exceptions_bulk(
+    received_po_id: str,
+    payload: ReceivedPOBulkResolveRequest = Body(default=ReceivedPOBulkResolveRequest()),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles('admin', 'manager', 'operator')),
+) -> ReceivedPOBulkResolveResponse:
+    record = _get_received_po_or_404(db, current_user.company_id, received_po_id)
+    if record.status == 'confirmed':
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Confirmed received POs cannot be edited.')
+
+    processed_count = 0
+    for item in record.items:
+        if item.resolution_status != RESOLUTION_STATUS_NEEDS_REVIEW:
+            continue
+        confidence = float(item.confidence_score or 0)
+        if confidence < payload.min_confidence:
+            continue
+        suggestion = _load_suggested_fix(item)
+        if payload.only_with_suggestions and len(suggestion) == 0:
+            continue
+        _apply_exception_resolution_payload(
+            item,
+            ReceivedPOExceptionResolveRequest(action='accept'),
+        )
+        item.resolution_status = RESOLUTION_STATUS_HUMAN_CORRECTED
+        item.exception_reason = 'bulk_accepted_suggested_fix'
+        item.suggested_fix_json = json.dumps({}, separators=(',', ':'))
+        if item.confidence_score is None:
+            item.confidence_score = confidence
+        processed_count += 1
+
+    run_exception_resolution_for_received_po(db, record)
+    log_audit(
+        db,
+        action='received_po.exceptions.resolve_bulk',
+        user_id=current_user.id,
+        company_id=current_user.company_id,
+        metadata={
+            'received_po_id': record.id,
+            'processed_count': str(processed_count),
+            'min_confidence': str(payload.min_confidence),
+            'only_with_suggestions': str(payload.only_with_suggestions),
+        },
+    )
+    db.commit()
+    db.refresh(record)
+    response = _to_received_po_exceptions_response(record)
+    return ReceivedPOBulkResolveResponse(
+        received_po_id=record.id,
+        processed_count=processed_count,
+        summary=response.summary,
+        items=response.items,
+    )
 
 
 @router.post('/{received_po_id}/confirm', response_model=ReceivedPOConfirmResponse)

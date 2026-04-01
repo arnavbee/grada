@@ -227,3 +227,8 @@ def stop_job_worker() -> None:
         _worker_stop_event.set()
         _worker_thread.join(timeout=2)
         _worker_thread = None
+
+
+def is_job_worker_running() -> bool:
+    with _worker_lock:
+        return _worker_thread is not None and _worker_thread.is_alive()

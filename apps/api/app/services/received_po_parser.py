@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.db.base import utcnow
 from app.db.session import SessionLocal
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
+from app.services.exception_resolver import run_exception_resolution_for_received_po
 from app.services.object_storage import get_object_storage_service
 
 SIZE_ORDER = {'XS': 0, 'S': 1, 'M': 2, 'L': 3, 'XL': 4, 'XXL': 5, 'XXXL': 6}
@@ -380,6 +381,10 @@ def process_received_po_parse_job(received_po_id: str) -> None:
                     po_price=float(item['po_price']) if item.get('po_price') is not None else None,
                 )
             )
+
+        db.flush()
+        db.refresh(record)
+        run_exception_resolution_for_received_po(db, record)
 
         po_date_value = parsed_payload.get('po_date')
         parsed_po_date = None

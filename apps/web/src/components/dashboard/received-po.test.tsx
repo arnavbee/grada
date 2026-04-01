@@ -23,6 +23,10 @@ const {
   uploadReceivedPOMock,
   getReceivedPOMock,
   confirmReceivedPOMock,
+  listReceivedPOExceptionsMock,
+  runReceivedPOExceptionsMock,
+  resolveReceivedPOExceptionsBulkMock,
+  resolveReceivedPOExceptionMock,
   updateReceivedPOHeaderMock,
   updateReceivedPOItemsMock,
   getOptionalBarcodeJobMock,
@@ -57,6 +61,10 @@ const {
   uploadReceivedPOMock: vi.fn(),
   getReceivedPOMock: vi.fn(),
   confirmReceivedPOMock: vi.fn(),
+  listReceivedPOExceptionsMock: vi.fn(),
+  runReceivedPOExceptionsMock: vi.fn(),
+  resolveReceivedPOExceptionsBulkMock: vi.fn(),
+  resolveReceivedPOExceptionMock: vi.fn(),
   updateReceivedPOHeaderMock: vi.fn(),
   updateReceivedPOItemsMock: vi.fn(),
   getOptionalBarcodeJobMock: vi.fn(),
@@ -129,6 +137,10 @@ vi.mock("@/src/lib/received-po", async () => {
     uploadReceivedPO: uploadReceivedPOMock,
     getReceivedPO: getReceivedPOMock,
     confirmReceivedPO: confirmReceivedPOMock,
+    listReceivedPOExceptions: listReceivedPOExceptionsMock,
+    runReceivedPOExceptions: runReceivedPOExceptionsMock,
+    resolveReceivedPOExceptionsBulk: resolveReceivedPOExceptionsBulkMock,
+    resolveReceivedPOException: resolveReceivedPOExceptionMock,
     updateReceivedPOHeader: updateReceivedPOHeaderMock,
     updateReceivedPOItems: updateReceivedPOItemsMock,
     getOptionalBarcodeJob: getOptionalBarcodeJobMock,
@@ -321,6 +333,41 @@ function buildReceivedPOWithOverrides(
   };
 }
 
+function buildReceivedPOExceptions() {
+  return {
+    received_po_id: "po_1",
+    status: "parsed" as const,
+    summary: {
+      total: 1,
+      auto_resolved: 0,
+      needs_review: 1,
+      human_corrected: 0,
+      auto_resolve_rate: 0,
+    },
+    items: [
+      {
+        id: "item_1",
+        received_po_id: "po_1",
+        brand_style_code: "HRDS25001",
+        styli_style_id: "STY-1",
+        model_number: "MOD-1",
+        option_id: "OPT-BLK",
+        sku_id: "HRDS25001-BLK-S",
+        color: "Black",
+        size: "S",
+        quantity: 10,
+        po_price: 499,
+        confidence_score: 0.64,
+        resolution_status: "needs_review",
+        exception_reason: "po_price_missing_or_zero",
+        suggested_fix: {},
+        created_at: "2026-03-24T00:00:00+00:00",
+        updated_at: "2026-03-24T00:00:00+00:00",
+      },
+    ],
+  };
+}
+
 function buildInvoice(status: Invoice["status"], fileUrl: string | null = null): Invoice {
   return {
     id: "inv_1",
@@ -422,6 +469,19 @@ describe("received PO dashboard flows", () => {
     uploadReceivedPOMock.mockReset();
     getReceivedPOMock.mockReset();
     confirmReceivedPOMock.mockReset();
+    listReceivedPOExceptionsMock.mockReset();
+    listReceivedPOExceptionsMock.mockResolvedValue(buildReceivedPOExceptions());
+    runReceivedPOExceptionsMock.mockReset();
+    runReceivedPOExceptionsMock.mockResolvedValue(buildReceivedPOExceptions());
+    resolveReceivedPOExceptionsBulkMock.mockReset();
+    resolveReceivedPOExceptionsBulkMock.mockResolvedValue({
+      received_po_id: "po_1",
+      processed_count: 0,
+      summary: buildReceivedPOExceptions().summary,
+      items: buildReceivedPOExceptions().items,
+    });
+    resolveReceivedPOExceptionMock.mockReset();
+    resolveReceivedPOExceptionMock.mockResolvedValue(buildReceivedPOExceptions());
     updateReceivedPOHeaderMock.mockReset();
     updateReceivedPOItemsMock.mockReset();
     getOptionalBarcodeJobMock.mockReset();

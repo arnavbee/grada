@@ -7,6 +7,7 @@ from app.schemas.sticker_template import StickerTemplateKind
 
 ReceivedPOStatus = Literal['uploaded', 'parsing', 'parsed', 'confirmed', 'failed']
 BarcodeJobStatus = Literal['pending', 'generating', 'done', 'failed']
+ReceivedPOExceptionStatus = Literal['auto_resolved', 'needs_review', 'human_corrected']
 
 
 class ReceivedPOLineItemBase(BaseModel):
@@ -45,6 +46,10 @@ class ReceivedPOLineItemResponse(BaseModel):
     size: str | None
     quantity: int
     po_price: float | None
+    confidence_score: float | None = None
+    resolution_status: ReceivedPOExceptionStatus
+    exception_reason: str | None = None
+    suggested_fix: dict[str, Any] = Field(default_factory=dict, validation_alias='suggested_fix_json')
     created_at: datetime
     updated_at: datetime
 
@@ -133,7 +138,46 @@ class ReceivedPOResponse(BaseModel):
     po_date: datetime | None
     distributor: str
     status: ReceivedPOStatus
+    auto_resolve_rate: float | None = None
+    exception_count: int = 0
+    review_required_count: int = 0
     raw_extracted: dict[str, Any] = Field(validation_alias='raw_extracted_json')
     created_at: datetime
     updated_at: datetime
+    items: list[ReceivedPOLineItemResponse] = Field(default_factory=list)
+
+
+class ReceivedPOExceptionsSummary(BaseModel):
+    total: int = 0
+    auto_resolved: int = 0
+    needs_review: int = 0
+    human_corrected: int = 0
+    auto_resolve_rate: float = 0
+
+
+class ReceivedPOExceptionsListResponse(BaseModel):
+    received_po_id: str
+    status: ReceivedPOStatus
+    summary: ReceivedPOExceptionsSummary
+    items: list[ReceivedPOLineItemResponse] = Field(default_factory=list)
+
+
+class ReceivedPOExceptionResolveRequest(BaseModel):
+    action: Literal['accept', 'reject']
+    size: str | None = Field(default=None, max_length=32)
+    color: str | None = Field(default=None, max_length=128)
+    knitted_woven: str | None = Field(default=None, max_length=64)
+    quantity: int | None = Field(default=None, ge=0)
+    po_price: float | None = Field(default=None, ge=0)
+
+
+class ReceivedPOBulkResolveRequest(BaseModel):
+    min_confidence: float = Field(default=0.9, ge=0, le=1)
+    only_with_suggestions: bool = True
+
+
+class ReceivedPOBulkResolveResponse(BaseModel):
+    received_po_id: str
+    processed_count: int
+    summary: ReceivedPOExceptionsSummary
     items: list[ReceivedPOLineItemResponse] = Field(default_factory=list)
