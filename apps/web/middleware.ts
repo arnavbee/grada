@@ -3,7 +3,6 @@ import type { NextRequest } from "next/server";
 
 const protectedRoutes = ["/dashboard"];
 const authRoutes = ["/login", "/signup", "/forgot-password", "/reset-password"];
-const authCookieNames = ["kira_access_token", "kira_refresh_token"] as const;
 
 function normalizeToken(raw: string | undefined): string {
   if (!raw) return "";
@@ -23,6 +22,46 @@ function looksLikeJwt(raw: string | undefined): boolean {
   return parts.length === 3 && parts.every((part) => part.length > 0);
 }
 
+function decodeBase64Url(value: string): string {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padLength = (4 - (normalized.length % 4)) % 4;
+  const padded = `${normalized}${"=".repeat(padLength)}`;
+  return atob(padded);
+}
+
+function getJwtExpMs(raw: string | undefined): number | null {
+  const token = normalizeToken(raw);
+  if (!looksLikeJwt(token)) {
+    return null;
+  }
+  const payloadSegment = token.split(".")[1];
+  if (!payloadSegment) {
+    return null;
+  }
+  try {
+    const payload = JSON.parse(decodeBase64Url(payloadSegment)) as { exp?: number };
+    if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp)) {
+      return null;
+    }
+    return payload.exp * 1000;
+  } catch {
+    return null;
+  }
+}
+
+function hasActiveJwt(raw: string | undefined): boolean {
+  if (!looksLikeJwt(raw)) {
+    return false;
+  }
+  const expMs = getJwtExpMs(raw);
+  if (!expMs) {
+    return true;
+  }
+  const nowMs = Date.now();
+  const graceWindowMs = 30_000;
+  return expMs > nowMs + graceWindowMs;
+}
+
 function isProtectedPath(pathname: string): boolean {
   return protectedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
@@ -31,46 +70,16 @@ function isAuthPath(pathname: string): boolean {
   return authRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 
-async function hasActiveSession(request: NextRequest, accessToken: string): Promise<boolean> {
-  try {
-    const response = await fetch(new URL("/api/v1/auth/me", request.url), {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "X-Access-Token": accessToken,
-      },
-      cache: "no-store",
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
-function clearAuthCookies(response: NextResponse): NextResponse {
-  for (const cookieName of authCookieNames) {
-    response.cookies.set(cookieName, "", { path: "/", maxAge: 0 });
-  }
-  return response;
-}
-
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get("kira_access_token")?.value;
-  const normalizedAccessToken = normalizeToken(accessToken);
-  const hasTokenCandidate = looksLikeJwt(accessToken);
-  const hasValidSession =
-    hasTokenCandidate && normalizedAccessToken
-      ? await hasActiveSession(request, normalizedAccessToken)
-      : false;
+  const refreshToken = request.cookies.get("kira_refresh_token")?.value;
+  const hasValidSession = hasActiveJwt(accessToken) || hasActiveJwt(refreshToken);
 
   if (isProtectedPath(pathname) && !hasValidSession) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
-    return clearAuthCookies(NextResponse.redirect(loginUrl));
-  }
-
-  if (isAuthPath(pathname) && hasTokenCandidate && !hasValidSession) {
-    return clearAuthCookies(NextResponse.next());
+    return NextResponse.redirect(loginUrl);
   }
 
   if (isAuthPath(pathname) && hasValidSession) {

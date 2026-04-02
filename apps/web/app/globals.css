@@ -111,7 +111,7 @@ small {
 }
 
 .surface-card {
-  @apply rounded-2xl border shadow-panel backdrop-blur-sm;
+  @apply rounded-2xl border shadow-panel;
   border-color: var(--kira-border);
   background: linear-gradient(180deg, var(--kira-surface-top) 0%, var(--kira-surface-bottom) 100%);
   box-shadow: var(--kira-shadow-lg);
@@ -399,7 +399,7 @@ html[data-theme="dark"] .kira-tint-deep {
   background: var(--kira-toggle-bg);
   color: var(--kira-toggle-text);
   border: 1px solid var(--kira-toggle-border);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(8px);
   transition:
     background 220ms ease,
     color 220ms ease,

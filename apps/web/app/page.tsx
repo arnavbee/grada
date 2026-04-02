@@ -1,14 +1,36 @@
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { FooterBrand } from "@/src/components/FooterBrand";
 import { GridBackground } from "@/src/components/GridBackground";
-import { ModulesShowcase } from "@/src/components/marketing/modules-showcase";
 import { SectionEyebrow } from "@/src/components/marketing/section-eyebrow";
-import { WorkflowTabs } from "@/src/components/marketing/workflow-tabs";
 import { Card } from "@/src/components/ui/card";
+
+const ModulesShowcase = dynamic(
+  () =>
+    import("@/src/components/marketing/modules-showcase").then((module) => ({
+      default: module.ModulesShowcase,
+    })),
+  { loading: () => <div className="surface-card h-32 animate-pulse" /> },
+);
+
+const WorkflowTabs = dynamic(
+  () =>
+    import("@/src/components/marketing/workflow-tabs").then((module) => ({
+      default: module.WorkflowTabs,
+    })),
+  { loading: () => <div className="h-44 rounded-2xl border border-kira-warmgray/35" /> },
+);
+
+const FooterBrand = dynamic(
+  () =>
+    import("@/src/components/FooterBrand").then((module) => ({
+      default: module.FooterBrand,
+    })),
+  { loading: () => <div className="h-32" /> },
+);
 
 const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
 const marketplaceExportsAnimationSrc = "/marketing/grada-marketplace-exports-animated.html";
@@ -315,9 +337,9 @@ export default function LandingPage(): JSX.Element {
       <GridBackground />
 
       <section className="surface-card kira-tint-mixed animate-enter relative overflow-hidden p-6 md:p-10">
-        <div className="kira-float-slow absolute -right-24 top-0 h-72 w-72 rounded-full bg-kira-brown/16 blur-3xl" />
-        <div className="kira-float-fast absolute -left-16 bottom-0 h-48 w-48 rounded-full bg-kira-brown/14 blur-3xl dark:bg-[#A6B09B]/24" />
-        <div className="absolute right-24 top-28 h-36 w-36 rounded-full bg-[#D7B08B]/14 blur-3xl" />
+        <div className="absolute -right-24 top-0 h-64 w-64 rounded-full bg-kira-brown/10 blur-xl" />
+        <div className="absolute -left-16 bottom-0 h-40 w-40 rounded-full bg-kira-brown/8 blur-xl dark:bg-[#A6B09B]/14" />
+        <div className="absolute right-24 top-28 h-28 w-28 rounded-full bg-[#D7B08B]/10 blur-lg" />
         <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
           <div className="relative z-10 flex h-full flex-col md:col-span-7">
             <div className="flex flex-wrap gap-y-2">
@@ -334,7 +356,7 @@ export default function LandingPage(): JSX.Element {
                 className="kira-cube-shell mb-1 ml-0 inline-block h-3 w-3 [--cube-depth:6px] md:mb-3 md:ml-1 md:h-6 md:w-6 md:[--cube-depth:12px]"
                 style={{ animationDelay: "400ms" }}
               >
-                <span className="kira-cube-dot animate-cube-dot">
+                <span className="kira-cube-dot">
                   <span className="kira-cube-face kira-cube-face-front" />
                   <span className="kira-cube-face kira-cube-face-back" />
                   <span className="kira-cube-face kira-cube-face-top" />

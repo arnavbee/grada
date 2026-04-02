@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { Card } from "@/src/components/ui/card";
 import { DispatchDocumentsModuleCard } from "@/src/components/marketing/dispatch-documents-module-card";
 import { MarketplaceExportsModuleCard } from "@/src/components/marketing/marketplace-exports-module-card";
@@ -31,6 +33,20 @@ export function ModulesShowcase({
   receivedPoProcessingAnimationSrc,
   smartCatalogAnimationSrc,
 }: ModulesShowcaseProps): JSX.Element {
+  const [interactionReady, setInteractionReady] = useState(false);
+
+  useEffect(() => {
+    const onIdle = (): void => setInteractionReady(true);
+
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(onIdle, { timeout: 1800 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timeoutId = window.setTimeout(onIdle, 1200);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
   return (
     <section className="animate-enter" style={{ animationDelay: "180ms" }}>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
@@ -51,6 +67,7 @@ export function ModulesShowcase({
                 <SmartCatalogModuleCard
                   animationSrc={smartCatalogAnimationSrc}
                   detail={module.detail}
+                  disableInteraction={!interactionReady}
                   index={index}
                   key={module.title}
                   title={module.title}
@@ -63,6 +80,7 @@ export function ModulesShowcase({
                 <MarketplaceExportsModuleCard
                   animationSrc={marketplaceExportsAnimationSrc}
                   detail={module.detail}
+                  disableInteraction={!interactionReady}
                   index={index}
                   key={module.title}
                   title={module.title}
@@ -74,6 +92,7 @@ export function ModulesShowcase({
               return (
                 <ReceivedPoProcessingModuleCard
                   animationSrc={receivedPoProcessingAnimationSrc}
+                  disableInteraction={!interactionReady}
                   index={index}
                   key={module.title}
                   title={module.title}
@@ -84,6 +103,7 @@ export function ModulesShowcase({
             return (
               <DispatchDocumentsModuleCard
                 barcodeAnimationSrc={barcodeAnimationSrc}
+                disableInteraction={!interactionReady}
                 index={index}
                 invoiceAnimationSrc={commercialInvoicesAnimationSrc}
                 key={module.title}

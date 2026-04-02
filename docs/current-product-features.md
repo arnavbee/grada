@@ -1,6 +1,6 @@
 # Current Product Features
 
-Current as of March 28, 2026.
+Current as of April 2, 2026.
 
 This document summarizes the major product capabilities that are implemented in the app today across catalog, PO operations, received marketplace PO processing, document generation, settings, and platform infrastructure.
 
@@ -8,6 +8,9 @@ This document summarizes the major product capabilities that are implemented in 
 
 - User registration, sign-in, refresh-token, logout, forgot-password, and reset-password flows
 - Role-aware access control for admin, manager, and operator actions
+- Middleware route protection for `/dashboard` and auth pages with session-aware redirects
+- JWT-aware session checks in middleware, including token normalization and expiry validation for access and refresh cookies
+- `next` redirect preservation when unauthenticated users are sent to login from protected routes
 - Company-scoped data isolation across products, templates, received POs, jobs, exports, invoices, and packing lists
 - Audit logging for key business actions across auth, catalog, PO, and document workflows
 
@@ -112,6 +115,8 @@ This document summarizes the major product capabilities that are implemented in 
 ## 12. Admin and reporting
 
 - Super-admin route group for operational analytics and tenancy-aware reporting
+- Super-admin-only dashboard navigation visibility for Admin screens
+- Cached auth-profile lookups in the dashboard shell for faster company/role-aware navigation rendering
 - Invoice, barcode, and packing-list list views for downstream operations visibility
 
 ## Highlights worth showing externally
