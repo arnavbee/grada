@@ -6,6 +6,9 @@
   --green: #a06f42;
   --green-deep: #7f5934;
   --dark: #16211d;
+  --surface: rgba(255, 252, 246, 0.96);
+  --border: rgba(87, 72, 51, 0.14);
+  --shadow-soft: 0 14px 36px rgba(23, 33, 29, 0.08);
   --font: var(--font-grada-alt), "Avenir Next", "Segoe UI", sans-serif;
   background:
     radial-gradient(circle at top left, rgba(160, 111, 66, 0.12), transparent 28%),
@@ -22,7 +25,8 @@
   top: 0;
   z-index: 80;
   padding: 10px 28px 0;
-  background: var(--bg);
+  background: linear-gradient(180deg, rgba(248, 245, 238, 0.96) 0%, rgba(248, 245, 238, 0) 100%);
+  backdrop-filter: blur(2px);
 }
 
 .nav {
@@ -34,9 +38,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid rgba(87, 72, 51, 0.12);
-  background: rgba(255, 252, 246, 0.94);
-  box-shadow: 0 10px 30px rgba(23, 33, 29, 0.06);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
 }
 
 .logo {
@@ -58,6 +62,11 @@
   text-decoration: none;
   font-size: 15px;
   font-weight: 600;
+  transition: color 150ms ease;
+}
+
+.links a:hover {
+  color: #16211d;
 }
 
 .actions {
@@ -83,16 +92,23 @@
   padding: 13px 20px;
   background: rgba(22, 33, 29, 0.06);
   color: #1f2d27;
+  border: 1px solid transparent;
+}
+
+.loginBtn:hover {
+  border-color: var(--border);
+  background: rgba(22, 33, 29, 0.08);
 }
 
 .primaryBtn {
   padding: 13px 20px;
   background: var(--green);
   color: #f5fbf8;
+  box-shadow: 0 8px 18px rgba(127, 89, 52, 0.22);
 }
 
 .primaryBtn:hover {
-  background: #1f7159;
+  background: #b37b47;
 }
 
 .heroSection,
@@ -110,7 +126,9 @@
 }
 
 .heroInner {
-  border-radius: 30px 30px 0 0;
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.7) 0%, rgba(255, 252, 246, 0.32) 100%);
   text-align: center;
   padding: 96px 20px 50px;
 }
@@ -158,6 +176,7 @@
   border-radius: 22px;
   overflow: hidden;
   background: #d9ccb8;
+  box-shadow: var(--shadow-soft);
 }
 
 .visualFrame {
@@ -185,6 +204,7 @@
   color: #fffaf3;
   background: rgba(127, 89, 52, 0.36);
   backdrop-filter: blur(7px);
+  border: 1px solid rgba(255, 248, 239, 0.25);
 }
 
 .glassCard h3 {
@@ -225,6 +245,7 @@
   font-weight: 600;
   line-height: 1.08;
   letter-spacing: -0.02em;
+  max-width: 900px;
 }
 
 .sectionHeadingLeft p {
@@ -246,6 +267,7 @@
   background: var(--card);
   padding: 22px 20px;
   border: 1px solid rgba(87, 72, 51, 0.1);
+  box-shadow: 0 8px 20px rgba(23, 33, 29, 0.04);
 }
 
 .statCard h3 {
@@ -296,11 +318,13 @@
   font-weight: 600;
   color: #7f868e;
   background: transparent;
+  transition: all 160ms ease;
 }
 
 .tabActive {
   color: #2f2216;
   background: rgba(160, 111, 66, 0.16);
+  border: 1px solid rgba(160, 111, 66, 0.26);
 }
 
 .solutionSplit {
@@ -357,6 +381,7 @@
   border-radius: 20px;
   overflow: hidden;
   background: #d9ccb8;
+  box-shadow: var(--shadow-soft);
 }
 
 .solutionOverlay {
@@ -407,6 +432,11 @@
   font-size: clamp(11px, 0.85vw, 14px);
   font-weight: 700;
   letter-spacing: 0.04em;
+  transition: transform 140ms ease;
+}
+
+.logoChip:hover {
+  transform: translateY(-2px);
 }
 
 .storySection {
@@ -441,6 +471,7 @@
   grid-template-columns: 360px 1fr;
   gap: 34px;
   align-items: center;
+  box-shadow: var(--shadow-soft);
 }
 
 .storyImage {
@@ -508,6 +539,8 @@
     linear-gradient(165deg, #24312c, #18241f);
   padding: 92px 22px;
   text-align: center;
+  border: 1px solid rgba(247, 239, 226, 0.1);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.24);
 }
 
 .ctaPanel h2 {
@@ -530,6 +563,7 @@
   background: #f7efe2;
   color: #6d4b2b;
   padding: 12px 18px;
+  font-weight: 700;
 }
 
 .ctaVisual {
@@ -563,6 +597,11 @@
   text-decoration: none;
   font-size: clamp(14px, 1vw, 16px);
   margin: 0 0 10px;
+  transition: color 150ms ease;
+}
+
+.footer a:hover {
+  color: #ffffff;
 }
 
 .footerBottom {
@@ -620,6 +659,18 @@
     padding: 30px 16px 0;
   }
 
+  .heroInner {
+    padding: 62px 14px 30px;
+  }
+
+  .heroVisual {
+    margin-top: 36px;
+  }
+
+  .solutionsCenter {
+    margin-top: 86px;
+  }
+
   .heroOverlayRow {
     grid-template-columns: 1fr;
   }
@@ -636,6 +687,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .trustedSection,
+  .storySection {
+    padding-top: 80px;
+  }
+
   .storyCard {
     grid-template-columns: 1fr;
     padding: 20px;
@@ -644,6 +700,11 @@
   .storyImage {
     aspect-ratio: 16 / 10;
     min-height: 220px;
+  }
+
+  .footerZone {
+    margin-top: 88px;
+    padding: 26px 16px 30px;
   }
 
   .footer {
