@@ -31,3 +31,4 @@ apps/api/static/generated/
 apps/web/.next-dev/
 apps/api/kira.db
 apps/api/static/uploads/
+tools/bin/
