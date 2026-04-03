@@ -1,42 +1,46 @@
-# Kira Web Monorepo
+# Kira Web
 
-Wholesale operations monorepo for catalog management, PO building, received marketplace PO processing, and downstream document generation.
+Monorepo for wholesale operations:
 
-## Current product areas
+- Smart Catalog management
+- PO builder workflows
+- Received marketplace PO processing
+- Barcode, invoice, and packing-list document generation
 
-- Smart Catalog: product CRUD, AI-assisted image analysis, templates, bulk workflows, marketplace exports, and export history.
-- PO Format Builder: create PO requests from catalog products, extract attributes, review rows, and export exact XLSX workbooks.
-- Received POs: upload marketplace POs, parse and review line items, confirm records, then generate barcode, invoice, and packing-list PDFs.
-- Settings: brand profile, PO-builder defaults, invoice defaults, and carton-capacity rules.
-- Admin: super-admin analytics and tenancy-aware operational insights.
+## What You Get
 
-See [Current Product Features](/Users/arnavbsingh/Downloads/kira-web/docs/current-product-features.md) for a fuller shareable feature overview.
-
-## Workspace layout
-
-- `apps/web`: Next.js 14 App Router frontend
-- `apps/api`: FastAPI backend with SQLAlchemy models and a built-in durable job worker
-- `apps/jobs`: future worker/process scaffold and env template
+- `apps/web`: Next.js 14 frontend (`@kira/web`)
+- `apps/api`: FastAPI backend with SQLAlchemy + built-in background worker
+- `apps/jobs`: worker scaffold (env template only, future split-out)
 - `packages/shared`: shared TypeScript package
 - `docs/adr`: architecture decision records
+
+Product feature overview: [docs/current-product-features.md](/Users/arnavbsingh/Downloads/kira-web/docs/current-product-features.md)
+
+## Tech Stack
+
+- Frontend: Next.js 14, React 18, Tailwind
+- Backend: FastAPI, SQLAlchemy, Alembic
+- Data: PostgreSQL (recommended), SQLite (simple local option)
+- Queue/infra: Redis (compose), in-process API worker currently handles jobs
+- Package manager: pnpm (workspace)
 
 ## Prerequisites
 
 - Node.js 20+
 - pnpm 9+
 - Python 3.11+
+- Docker (optional, for full local stack)
 
-## Local development
+## Quick Start (Recommended)
 
-### 1. Install root dependencies
+### 1. Install workspace deps
 
 ```bash
 pnpm install
 ```
 
-### 2. Configure environment files
-
-Create local env files from the examples:
+### 2. Create env files
 
 ```bash
 cp apps/web/.env.example apps/web/.env
@@ -44,16 +48,27 @@ cp apps/api/.env.example apps/api/.env
 cp apps/jobs/.env.example apps/jobs/.env
 ```
 
-Minimum values to review before starting:
+### 3. Update minimum env values
 
-- `apps/web/.env`
-  - `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000`
-- `apps/api/.env`
-  - `OPENAI_API_KEY=...`
-  - `DATABASE_URL=sqlite:///./kira.db` for a simple local setup, or Postgres if you want parity with Docker
-  - `FRONTEND_ORIGINS=http://localhost:3000,http://127.0.0.1:3000`
+`apps/web/.env`
 
-### 3. Start the API
+```bash
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+```
+
+`apps/api/.env`
+
+```bash
+OPENAI_API_KEY=your_key_here
+FRONTEND_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+```
+
+Choose one database mode:
+
+- Quick local: `DATABASE_URL=sqlite:///./kira.db`
+- Parity mode: `DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/kira`
+
+### 4. Start API (Terminal A)
 
 ```bash
 cd apps/api
@@ -63,35 +78,51 @@ pip install -e .[dev]
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Notes:
-
-- The API starts a background worker thread on boot for received-PO parse and document-generation jobs.
-- Local uploads and generated PDFs are stored under `apps/api/static/` unless object storage is configured.
-- Health endpoints are available at `/health` and `/api/v1/health`.
-
-### 4. Start the web app
-
-In a second terminal from the repo root:
+### 5. Start web app (Terminal B, repo root)
 
 ```bash
 pnpm --filter @kira/web dev --hostname 0.0.0.0 --port 3000
 ```
 
-The default app URL is [http://localhost:3000](http://localhost:3000).
+Open: [http://localhost:3000](http://localhost:3000)
 
-## Common commands
+Health checks:
 
-From the repo root:
+- [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+- [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health)
+
+## Docker Compose (All Services)
+
+```bash
+docker compose up --build
+```
+
+Services:
+
+- Postgres: `localhost:5432`
+- Redis: `localhost:6379`
+- API: `localhost:8000`
+- Web: `localhost:3000`
+
+Compose reads:
+
+- `apps/api/.env.example`
+- `apps/web/.env.example`
+
+## Commands
+
+From repo root:
 
 ```bash
 pnpm dev
 pnpm build
 pnpm lint
 pnpm test
+pnpm format
 pnpm format:check
 ```
 
-API-specific checks:
+API checks:
 
 ```bash
 cd apps/api
@@ -99,7 +130,7 @@ cd apps/api
 .venv/bin/pytest
 ```
 
-Web-specific checks:
+Web checks:
 
 ```bash
 cd apps/web
@@ -107,32 +138,9 @@ pnpm lint
 pnpm test
 ```
 
-## Docker Compose
+## API Routes (At a Glance)
 
-```bash
-docker compose up --build
-```
-
-This starts:
-
-- Postgres on `5432`
-- Redis on `6379`
-- API on `8000`
-- Web on `3000`
-
-The compose stack uses `apps/api/.env.example` and `apps/web/.env.example` as its env sources.
-
-## Storage and jobs
-
-- Default local development database: SQLite when `DATABASE_URL` is not overridden in the API app.
-- Compose/database parity option: Postgres via `docker compose`.
-- Durable jobs today: in-process worker started by the API for received-PO parsing and PDF generation.
-- Future worker shape: `apps/jobs` remains a scaffold for a separate worker process if the queue architecture is split out later.
-- Optional object storage: S3-compatible storage such as Cloudflare R2 can replace local file storage for uploads and generated files.
-
-## API surface at a glance
-
-Main route groups live under `/api/v1`:
+All business endpoints are mounted under `/api/v1`:
 
 - `/auth`
 - `/catalog`
@@ -143,8 +151,31 @@ Main route groups live under `/api/v1`:
 - `/received-pos`
 - `/admin`
 
-## Architecture notes
+## Storage and Background Jobs
 
-- ADRs live in [docs/adr](/Users/arnavbsingh/Downloads/kira-web/docs/adr).
-- The frontend talks to FastAPI for business operations; Next.js route handlers are not the main business-logic boundary.
-- Tenancy is enforced with `company_id` scoping in the API layer.
+- The API starts an in-process worker on boot.
+- Current durable job types:
+  - received PO parsing
+  - barcode PDF generation
+  - invoice PDF generation
+  - packing-list PDF generation
+- Local fallback file storage: `apps/api/static/`
+- Optional object storage: S3-compatible (for example Cloudflare R2)
+
+R2 envs (optional):
+
+```bash
+R2_ENDPOINT=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=
+R2_PUBLIC_BASE_URL=
+R2_REGION=auto
+```
+
+## Repository Notes
+
+- ADRs: [docs/adr](/Users/arnavbsingh/Downloads/kira-web/docs/adr)
+- API details: [apps/api/README.md](/Users/arnavbsingh/Downloads/kira-web/apps/api/README.md)
+- Tenancy is enforced in API layer using `company_id` scoping.
+- `apps/jobs` exists as future worker scaffold.

@@ -1,6 +1,6 @@
 # Current Product Features
 
-Current as of April 2, 2026.
+Current as of April 3, 2026.
 
 This document summarizes the major product capabilities that are implemented in the app today across catalog, PO operations, received marketplace PO processing, document generation, settings, and platform infrastructure.
 
@@ -42,6 +42,9 @@ This document summarizes the major product capabilities that are implemented in 
 - Parsing workflow with durable background processing
 - Vendor-format parsing support, including quantity aliases such as `Total`
 - Review and edit flow for received PO headers and line items before confirmation
+- Exception inbox workflow for parsed line items with confidence scoring and suggested fixes
+- Exception actions for accept, reject, and manual correction per line item
+- Bulk low-risk exception approvals with minimum-confidence thresholds
 - Confirmation gate before downstream document generation
 - Received PO list and detail views with status tracking
 
@@ -96,6 +99,11 @@ This document summarizes the major product capabilities that are implemented in 
 - Social-handle and website fields for brand identity
 - PO-builder default management
 - Carton-capacity rule management, including create, update, delete, and default rules
+- Buyer document template management for invoice defaults (list, create, update, delete, default, active/inactive)
+- Buyer invoice sample parsing from PDF to auto-detect header defaults
+- Company-scoped buyer template defaults applied in downstream invoice drafting
+- Marketplace document template management by marketplace and document type
+- Marketplace sample parsing to infer columns, layout metadata, and normalized template schema
 
 ## 10. File storage and document durability
 
@@ -116,6 +124,8 @@ This document summarizes the major product capabilities that are implemented in 
 
 - Super-admin route group for operational analytics and tenancy-aware reporting
 - Super-admin-only dashboard navigation visibility for Admin screens
+- Super-admin user-verification review workflow with per-user verification status and notes
+- Operational insights for account quality signals (likely test vs likely real), activity, and company-level metrics
 - Cached auth-profile lookups in the dashboard shell for faster company/role-aware navigation rendering
 - Invoice, barcode, and packing-list list views for downstream operations visibility
 

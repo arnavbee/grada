@@ -37,10 +37,12 @@ export function ModulesShowcase({
 
   useEffect(() => {
     const onIdle = (): void => setInteractionReady(true);
+    const requestIdle = window.requestIdleCallback;
+    const cancelIdle = window.cancelIdleCallback;
 
-    if ("requestIdleCallback" in window) {
-      const idleId = window.requestIdleCallback(onIdle, { timeout: 1800 });
-      return () => window.cancelIdleCallback(idleId);
+    if (requestIdle) {
+      const idleId = requestIdle(onIdle, { timeout: 1800 });
+      return () => cancelIdle?.(idleId);
     }
 
     const timeoutId = window.setTimeout(onIdle, 1200);
