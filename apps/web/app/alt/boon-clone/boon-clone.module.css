@@ -21,13 +21,13 @@
   position: sticky;
   top: 0;
   z-index: 80;
-  padding: 8px 24px 0;
+  padding: 10px 28px 0;
   background: var(--bg);
 }
 
 .nav {
   height: 74px;
-  max-width: 1360px;
+  max-width: 1480px;
   margin: 0 auto;
   border-radius: 999px;
   padding: 0 20px;
@@ -100,9 +100,9 @@
 .solutionSplit,
 .trustedSection,
 .storySection {
-  max-width: 1360px;
+  max-width: 1480px;
   margin: 0 auto;
-  padding: 28px 24px 0;
+  padding: 44px 28px 0;
 }
 
 .heroSection {
@@ -112,12 +112,12 @@
 .heroInner {
   border-radius: 30px 30px 0 0;
   text-align: center;
-  padding: 84px 20px 36px;
+  padding: 96px 20px 50px;
 }
 
 .heroInner h1 {
   margin: 0;
-  font-size: clamp(46px, 5.2vw, 82px);
+  font-size: clamp(42px, 4.6vw, 72px);
   line-height: 1.04;
   letter-spacing: -0.03em;
   font-weight: 600;
@@ -131,8 +131,8 @@
   margin: 22px auto 0;
   max-width: 760px;
   color: var(--muted);
-  font-size: clamp(17px, 1.3vw, 24px);
-  line-height: 1.45;
+  font-size: clamp(16px, 1.05vw, 19px);
+  line-height: 1.5;
 }
 
 .heroActions {
@@ -150,7 +150,7 @@
 
 .heroVisual {
   position: relative;
-  margin: 46px auto 0;
+  margin: 56px auto 0;
   width: min(1120px, 100%);
   min-height: 420px;
   aspect-ratio: 16 / 8.9;
@@ -221,7 +221,7 @@
 
 .sectionHeadingLeft h2 {
   margin: 0;
-  font-size: clamp(36px, 4.1vw, 62px);
+  font-size: clamp(34px, 3.2vw, 52px);
   font-weight: 600;
   line-height: 1.08;
   letter-spacing: -0.02em;
@@ -230,12 +230,12 @@
 .sectionHeadingLeft p {
   margin: 20px 0 0;
   color: #66756d;
-  font-size: clamp(17px, 1.25vw, 22px);
+  font-size: clamp(16px, 1vw, 18px);
   line-height: 1.4;
 }
 
 .statsGrid {
-  margin-top: 34px;
+  margin-top: 42px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
@@ -251,25 +251,25 @@
 .statCard h3 {
   margin: 0;
   color: #8f6034;
-  font-size: clamp(34px, 2.6vw, 54px);
+  font-size: clamp(30px, 2.2vw, 42px);
   font-weight: 600;
 }
 
 .statCard p {
   margin: 14px 0 0;
   color: #636b71;
-  font-size: clamp(14px, 1.05vw, 18px);
+  font-size: clamp(13px, 0.88vw, 16px);
   line-height: 1.35;
 }
 
 .solutionsCenter {
-  margin-top: 88px;
+  margin-top: 120px;
   text-align: center;
 }
 
 .solutionsCenter h2 {
   margin: 0;
-  font-size: clamp(42px, 4.2vw, 66px);
+  font-size: clamp(36px, 3.2vw, 52px);
   line-height: 1.08;
   font-weight: 600;
 }
@@ -278,7 +278,7 @@
   margin: 18px auto 0;
   max-width: 920px;
   color: var(--muted);
-  font-size: clamp(17px, 1.25vw, 22px);
+  font-size: clamp(16px, 1vw, 18px);
   line-height: 1.35;
 }
 
@@ -308,23 +308,24 @@
   grid-template-columns: 1fr 1fr;
   gap: 42px;
   align-items: center;
-  padding-top: 48px;
+  padding-top: 76px;
 }
 
 .solutionLeft h2 {
   margin: 0;
-  font-size: clamp(40px, 3.4vw, 58px);
+  font-size: clamp(34px, 2.9vw, 48px);
   font-weight: 600;
 }
 
 .solutionLeft > p {
   margin: 18px 0 0;
   color: var(--muted);
-  font-size: clamp(17px, 1.2vw, 22px);
+  font-size: clamp(16px, 0.95vw, 18px);
+  line-height: 1.45;
 }
 
 .solutionLeft ul {
-  margin: 30px 0 0;
+  margin: 34px 0 0;
   padding: 0;
   list-style: none;
   display: grid;
@@ -333,19 +334,19 @@
 
 .solutionLeft li h3 {
   margin: 0;
-  font-size: clamp(31px, 2vw, 40px);
+  font-size: clamp(24px, 1.7vw, 32px);
   font-weight: 600;
 }
 
 .solutionLeft li p {
   margin: 8px 0 0;
   color: #636d74;
-  font-size: clamp(17px, 1.15vw, 21px);
-  line-height: 1.35;
+  font-size: clamp(15px, 0.95vw, 17px);
+  line-height: 1.5;
 }
 
 .solutionLeft .primaryBtn {
-  margin-top: 26px;
+  margin-top: 34px;
 }
 
 .solutionImageWrap {
@@ -384,7 +385,7 @@
 }
 
 .trustedSection {
-  padding-top: 84px;
+  padding-top: 110px;
 }
 
 .logoRail {
@@ -409,7 +410,7 @@
 }
 
 .storySection {
-  padding-top: 84px;
+  padding-top: 110px;
 }
 
 .storyHeader {
@@ -420,7 +421,7 @@
 
 .storyHeader h2 {
   margin: 0;
-  font-size: clamp(38px, 3.1vw, 56px);
+  font-size: clamp(34px, 2.8vw, 46px);
   font-weight: 600;
 }
 
@@ -435,7 +436,7 @@
   border-radius: 18px;
   background: rgba(255, 251, 246, 0.98);
   border: 1px solid rgba(87, 72, 51, 0.12);
-  padding: 32px;
+  padding: 40px;
   display: grid;
   grid-template-columns: 360px 1fr;
   gap: 34px;
@@ -475,43 +476,43 @@
 .storyText blockquote {
   margin: 0;
   max-width: 860px;
-  font-size: clamp(30px, 1.95vw, 40px);
-  line-height: 1.28;
+  font-size: clamp(24px, 1.55vw, 32px);
+  line-height: 1.35;
   color: #3a3f48;
 }
 
 .storyText h3 {
   margin: 22px 0 0;
-  font-size: clamp(24px, 1.4vw, 30px);
+  font-size: clamp(20px, 1.1vw, 24px);
 }
 
 .storyText > p:last-child {
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: clamp(17px, 1.1vw, 22px);
+  font-size: clamp(15px, 0.95vw, 18px);
 }
 
 .footerZone {
-  margin-top: 88px;
+  margin-top: 118px;
   background: var(--dark);
   color: #e8dac8;
-  padding: 30px 24px 36px;
+  padding: 42px 28px 40px;
 }
 
 .ctaPanel {
-  max-width: 1360px;
+  max-width: 1480px;
   margin: 0 auto;
   border-radius: 24px;
   background:
     radial-gradient(circle at top left, rgba(160, 111, 66, 0.18), transparent 42%),
     linear-gradient(165deg, #24312c, #18241f);
-  padding: 80px 20px;
+  padding: 92px 22px;
   text-align: center;
 }
 
 .ctaPanel h2 {
   margin: 0;
-  font-size: clamp(42px, 3.7vw, 64px);
+  font-size: clamp(38px, 3vw, 52px);
   line-height: 1.05;
   font-weight: 600;
 }
@@ -519,7 +520,7 @@
 .ctaPanel p {
   margin: 20px auto 0;
   max-width: 980px;
-  font-size: clamp(17px, 1.2vw, 22px);
+  font-size: clamp(16px, 0.98vw, 18px);
   line-height: 1.35;
   color: #d7c8b6;
 }
@@ -543,8 +544,8 @@
 }
 
 .footer {
-  max-width: 1360px;
-  margin: 58px auto 0;
+  max-width: 1480px;
+  margin: 72px auto 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 30px;
@@ -565,8 +566,8 @@
 }
 
 .footerBottom {
-  max-width: 1360px;
-  margin: 56px auto 0;
+  max-width: 1480px;
+  margin: 70px auto 0;
   display: flex;
   justify-content: space-between;
   align-items: end;
@@ -609,6 +610,14 @@
   .whiteBtn {
     font-size: 14px;
     padding: 10px 14px;
+  }
+
+  .heroSection,
+  .costSection,
+  .solutionSplit,
+  .trustedSection,
+  .storySection {
+    padding: 30px 16px 0;
   }
 
   .heroOverlayRow {
