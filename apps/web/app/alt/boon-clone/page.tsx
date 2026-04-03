@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Sora } from "next/font/google";
+import { Manrope } from "next/font/google";
 
 import styles from "./boon-clone.module.css";
 
-const sora = Sora({
+const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-grada-alt",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -45,7 +45,7 @@ const logoItems = ["RAELI", "MYNTRA EXPORT TEAM", "AJIO OPS", "NYKAA SUPPLY", "F
 
 export default function GradaBoonStructuredPage() {
   return (
-    <main className={`${styles.page} ${sora.variable}`}>
+    <main className={`${styles.page} ${manrope.variable}`}>
       <header className={styles.navWrap}>
         <div className={styles.nav}>
           <div className={styles.logo}>grada</div>

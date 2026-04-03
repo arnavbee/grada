@@ -1,6 +1,6 @@
 .page {
-  --bg: #eeeeee;
-  --card: #f5f5f5;
+  --bg: #ececec;
+  --card: #f6f6f6;
   --text: #0f1114;
   --muted: #6d7278;
   --green: #1a5f4b;
@@ -10,22 +10,24 @@
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
 }
 
 .navWrap {
   position: sticky;
   top: 0;
   z-index: 80;
-  padding: 6px 22px 0;
+  padding: 8px 24px 0;
   background: var(--bg);
 }
 
 .nav {
-  height: 78px;
-  max-width: 1420px;
+  height: 74px;
+  max-width: 1360px;
   margin: 0 auto;
   border-radius: 999px;
-  padding: 0 24px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -33,11 +35,12 @@
 }
 
 .logo {
-  font-size: 46px;
+  font-size: 45px;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.04em;
   color: #1d3f35;
+  text-transform: lowercase;
 }
 
 .links {
@@ -48,8 +51,8 @@
 .links a {
   color: #2d3734;
   text-decoration: none;
-  font-size: 30px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .actions {
@@ -61,8 +64,8 @@
 .primaryBtn,
 .whiteBtn {
   border-radius: 10px;
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   line-height: 1;
   text-decoration: none;
   display: inline-flex;
@@ -72,13 +75,13 @@
 }
 
 .loginBtn {
-  padding: 14px 20px;
+  padding: 13px 20px;
   background: #ececec;
   color: #2f3737;
 }
 
 .primaryBtn {
-  padding: 14px 22px;
+  padding: 13px 20px;
   background: var(--green);
   color: #f5fbf8;
 }
@@ -92,9 +95,9 @@
 .solutionSplit,
 .trustedSection,
 .storySection {
-  max-width: 1420px;
+  max-width: 1360px;
   margin: 0 auto;
-  padding: 28px 22px 0;
+  padding: 28px 24px 0;
 }
 
 .heroSection {
@@ -104,15 +107,15 @@
 .heroInner {
   border-radius: 30px 30px 0 0;
   text-align: center;
-  padding: 94px 20px 40px;
+  padding: 84px 20px 36px;
 }
 
 .heroInner h1 {
   margin: 0;
-  font-size: clamp(50px, 4.8vw, 112px);
-  line-height: 1.05;
+  font-size: clamp(46px, 5.2vw, 82px);
+  line-height: 1.04;
   letter-spacing: -0.03em;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .heroInner h1 span {
@@ -120,15 +123,15 @@
 }
 
 .heroInner p {
-  margin: 24px auto 0;
-  max-width: 920px;
+  margin: 22px auto 0;
+  max-width: 760px;
   color: var(--muted);
-  font-size: clamp(21px, 1.5vw, 32px);
-  line-height: 1.4;
+  font-size: clamp(17px, 1.3vw, 24px);
+  line-height: 1.45;
 }
 
 .heroActions {
-  margin-top: 24px;
+  margin-top: 22px;
   display: flex;
   justify-content: center;
   gap: 12px;
@@ -136,15 +139,15 @@
 }
 
 .heroInner > .primaryBtn {
-  margin: 12px auto 0;
+  margin: 10px auto 0;
   width: fit-content;
 }
 
 .heroVisual {
   position: relative;
-  margin: 42px auto 0;
+  margin: 46px auto 0;
   width: min(1120px, 100%);
-  min-height: 360px;
+  min-height: 420px;
   aspect-ratio: 16 / 8.9;
   border-radius: 26px;
   overflow: hidden;
@@ -157,17 +160,17 @@
 .heroOverlayRow {
   position: absolute;
   left: 50%;
-  bottom: 30px;
+  bottom: 26px;
   transform: translateX(-50%);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  width: min(700px, 90%);
+  gap: 12px;
+  width: min(620px, 90%);
 }
 
 .glassCard {
-  border-radius: 18px;
-  padding: 14px 16px;
+  border-radius: 16px;
+  padding: 13px 14px;
   color: #f6faf8;
   background: rgba(198, 212, 225, 0.45);
   backdrop-filter: blur(7px);
@@ -175,20 +178,20 @@
 
 .glassCard h3 {
   margin: 0;
-  font-size: clamp(14px, 1.2vw, 22px);
+  font-size: clamp(13px, 0.95vw, 16px);
   font-weight: 600;
 }
 
 .glassCard p {
-  margin: 8px 0 0;
-  font-size: clamp(14px, 1.2vw, 20px);
+  margin: 6px 0 0;
+  font-size: clamp(13px, 0.95vw, 15px);
 }
 
 .glassCard small {
   display: block;
   margin-top: 4px;
   opacity: 0.95;
-  font-size: clamp(11px, 0.95vw, 15px);
+  font-size: clamp(11px, 0.8vw, 13px);
 }
 
 .glassCard button {
@@ -197,7 +200,7 @@
   border-radius: 999px;
   background: transparent;
   color: #f8f9fb;
-  font-size: clamp(11px, 0.95vw, 14px);
+  font-size: clamp(10px, 0.75vw, 12px);
   padding: 6px 10px;
 }
 
@@ -207,63 +210,63 @@
 
 .sectionHeadingLeft h2 {
   margin: 0;
-  font-size: clamp(44px, 4vw, 78px);
-  font-weight: 500;
-  line-height: 1.1;
+  font-size: clamp(36px, 4.1vw, 62px);
+  font-weight: 600;
+  line-height: 1.08;
   letter-spacing: -0.02em;
 }
 
 .sectionHeadingLeft p {
   margin: 20px 0 0;
   color: var(--muted);
-  font-size: clamp(22px, 1.45vw, 33px);
+  font-size: clamp(17px, 1.25vw, 22px);
   line-height: 1.4;
 }
 
 .statsGrid {
-  margin-top: 38px;
+  margin-top: 34px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
 .statCard {
-  border-radius: 20px;
+  border-radius: 16px;
   background: var(--card);
-  padding: 26px 22px;
+  padding: 22px 20px;
 }
 
 .statCard h3 {
   margin: 0;
   color: var(--green);
-  font-size: clamp(38px, 3vw, 62px);
-  font-weight: 500;
+  font-size: clamp(34px, 2.6vw, 54px);
+  font-weight: 600;
 }
 
 .statCard p {
   margin: 14px 0 0;
   color: #636b71;
-  font-size: clamp(15px, 1.25vw, 28px);
+  font-size: clamp(14px, 1.05vw, 18px);
   line-height: 1.35;
 }
 
 .solutionsCenter {
-  margin-top: 92px;
+  margin-top: 88px;
   text-align: center;
 }
 
 .solutionsCenter h2 {
   margin: 0;
-  font-size: clamp(48px, 4.2vw, 82px);
+  font-size: clamp(42px, 4.2vw, 66px);
   line-height: 1.08;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .solutionsCenter p {
   margin: 18px auto 0;
   max-width: 920px;
   color: var(--muted);
-  font-size: clamp(21px, 1.5vw, 33px);
+  font-size: clamp(17px, 1.25vw, 22px);
   line-height: 1.35;
 }
 
@@ -277,8 +280,8 @@
   border: 0;
   border-radius: 12px;
   padding: 14px 18px;
-  font-size: clamp(15px, 1.1vw, 24px);
-  font-weight: 500;
+  font-size: clamp(14px, 1vw, 18px);
+  font-weight: 600;
   color: #7f868e;
   background: transparent;
 }
@@ -291,21 +294,21 @@
 .solutionSplit {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 44px;
+  gap: 42px;
   align-items: center;
   padding-top: 48px;
 }
 
 .solutionLeft h2 {
   margin: 0;
-  font-size: clamp(46px, 3.6vw, 74px);
-  font-weight: 500;
+  font-size: clamp(40px, 3.4vw, 58px);
+  font-weight: 600;
 }
 
 .solutionLeft > p {
   margin: 18px 0 0;
   color: var(--muted);
-  font-size: clamp(22px, 1.45vw, 32px);
+  font-size: clamp(17px, 1.2vw, 22px);
 }
 
 .solutionLeft ul {
@@ -318,14 +321,14 @@
 
 .solutionLeft li h3 {
   margin: 0;
-  font-size: clamp(30px, 2.1vw, 44px);
-  font-weight: 500;
+  font-size: clamp(31px, 2vw, 40px);
+  font-weight: 600;
 }
 
 .solutionLeft li p {
   margin: 8px 0 0;
   color: #636d74;
-  font-size: clamp(20px, 1.35vw, 29px);
+  font-size: clamp(17px, 1.15vw, 21px);
   line-height: 1.35;
 }
 
@@ -335,7 +338,7 @@
 
 .solutionImageWrap {
   position: relative;
-  min-height: 320px;
+  min-height: 360px;
   aspect-ratio: 16 / 10;
   border-radius: 22px;
   overflow: hidden;
@@ -360,18 +363,18 @@
 
 .solutionOverlay p {
   margin: 0;
-  font-size: clamp(14px, 1.1vw, 20px);
+  font-size: clamp(14px, 1vw, 18px);
 }
 
 .solutionOverlay div {
   margin-top: 10px;
   display: flex;
   justify-content: space-between;
-  font-size: clamp(13px, 1vw, 17px);
+  font-size: clamp(12px, 0.85vw, 15px);
 }
 
 .trustedSection {
-  padding-top: 70px;
+  padding-top: 84px;
 }
 
 .logoRail {
@@ -384,18 +387,18 @@
 .logoChip {
   border-radius: 16px;
   background: #f8f8f8;
-  min-height: 90px;
+  min-height: 86px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #35566b;
-  font-size: clamp(12px, 0.9vw, 16px);
+  font-size: clamp(11px, 0.85vw, 14px);
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
 .storySection {
-  padding-top: 78px;
+  padding-top: 84px;
 }
 
 .storyHeader {
@@ -406,23 +409,23 @@
 
 .storyHeader h2 {
   margin: 0;
-  font-size: clamp(44px, 3.3vw, 66px);
-  font-weight: 500;
+  font-size: clamp(38px, 3.1vw, 56px);
+  font-weight: 600;
 }
 
 .storyHeader a {
   color: #24463d;
   text-decoration: none;
-  font-size: clamp(15px, 1.05vw, 22px);
+  font-size: clamp(14px, 0.95vw, 16px);
 }
 
 .storyCard {
   margin-top: 24px;
-  border-radius: 20px;
+  border-radius: 18px;
   background: #f8f8f8;
-  padding: 34px;
+  padding: 32px;
   display: grid;
-  grid-template-columns: 390px 1fr;
+  grid-template-columns: 360px 1fr;
   gap: 34px;
   align-items: center;
 }
@@ -459,49 +462,49 @@
 .storyText blockquote {
   margin: 0;
   max-width: 860px;
-  font-size: clamp(30px, 2.1vw, 44px);
-  line-height: 1.25;
+  font-size: clamp(30px, 1.95vw, 40px);
+  line-height: 1.28;
   color: #3a3f48;
 }
 
 .storyText h3 {
   margin: 22px 0 0;
-  font-size: clamp(25px, 1.8vw, 34px);
+  font-size: clamp(24px, 1.4vw, 30px);
 }
 
 .storyText > p:last-child {
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: clamp(20px, 1.4vw, 28px);
+  font-size: clamp(17px, 1.1vw, 22px);
 }
 
 .footerZone {
   margin-top: 88px;
   background: var(--dark);
   color: #d9eee6;
-  padding: 28px 22px 34px;
+  padding: 30px 24px 36px;
 }
 
 .ctaPanel {
-  max-width: 1420px;
+  max-width: 1360px;
   margin: 0 auto;
-  border-radius: 26px;
+  border-radius: 24px;
   background: #1b6f58;
-  padding: 84px 20px;
+  padding: 80px 20px;
   text-align: center;
 }
 
 .ctaPanel h2 {
   margin: 0;
-  font-size: clamp(48px, 4vw, 78px);
+  font-size: clamp(42px, 3.7vw, 64px);
   line-height: 1.05;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .ctaPanel p {
   margin: 20px auto 0;
   max-width: 980px;
-  font-size: clamp(21px, 1.5vw, 31px);
+  font-size: clamp(17px, 1.2vw, 22px);
   line-height: 1.35;
   color: #d2ebe2;
 }
@@ -510,11 +513,11 @@
   margin-top: 24px;
   background: #f4f4f4;
   color: #1f5345;
-  padding: 16px 24px;
+  padding: 12px 18px;
 }
 
 .footer {
-  max-width: 1420px;
+  max-width: 1360px;
   margin: 58px auto 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -523,7 +526,7 @@
 
 .footer h4 {
   margin: 0 0 12px;
-  font-size: clamp(15px, 1.1vw, 21px);
+  font-size: clamp(14px, 1vw, 16px);
   color: #a7c6bb;
 }
 
@@ -531,12 +534,12 @@
   display: block;
   color: #e3f2ec;
   text-decoration: none;
-  font-size: clamp(15px, 1.1vw, 21px);
+  font-size: clamp(14px, 1vw, 16px);
   margin: 0 0 10px;
 }
 
 .footerBottom {
-  max-width: 1420px;
+  max-width: 1360px;
   margin: 56px auto 0;
   display: flex;
   justify-content: space-between;
@@ -546,7 +549,7 @@
 
 .footerBrand {
   margin: 0;
-  font-size: clamp(50px, 4vw, 72px);
+  font-size: clamp(44px, 3.6vw, 60px);
   line-height: 1;
   font-weight: 700;
   color: #f3fbf7;
@@ -555,11 +558,11 @@
 .footerBottom p {
   margin: 10px 0 0;
   color: #bfd9cf;
-  font-size: clamp(14px, 1vw, 18px);
+  font-size: clamp(13px, 0.9vw, 15px);
 }
 
 .footerSocial {
-  font-size: clamp(18px, 1.3vw, 24px);
+  font-size: clamp(16px, 1.1vw, 20px);
   letter-spacing: 0.2em;
   color: #ecfaf3;
 }
@@ -572,7 +575,7 @@
 
 @media (max-width: 1099px) {
   .logo {
-    font-size: 34px;
+    font-size: 32px;
   }
 
   .loginBtn,
