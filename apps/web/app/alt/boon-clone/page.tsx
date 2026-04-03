@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Sora } from "next/font/google";
 
@@ -12,145 +13,135 @@ const sora = Sora({
 
 export const metadata: Metadata = {
   title: "grada | Alternate Landing (Boon-style)",
-  description: "Standalone Boon-inspired landing page concept for grada.",
+  description: "Standalone Boon-inspired page concept for grada.",
 };
 
-const stats = [
-  { value: "32%", label: "fewer estimating errors from structured reviews" },
-  { value: "20+ hrs", label: "saved weekly by automating repetitive workflows" },
-  { value: "52%", label: "faster dispatch readiness from a single data source" },
-];
-
-const solutions = [
+const features = [
   {
-    title: "Brands & Manufacturers",
-    text: "Automate catalog ingestion, PO checks, and dispatch paperwork from one shared record.",
-    points: ["Smart Catalog", "PO Validation", "Invoice + Barcode Sync"],
+    icon: "◔",
+    title: "Takeoff",
+    description: "Reduce takeoff time by 90% with instant volume calculations from blueprints.",
   },
   {
-    title: "3PL & Distribution Teams",
-    text: "Run receiving, reconciliation, and document generation without spreadsheet drift.",
-    points: ["Order Intake", "Exception Detection", "Dispatch Documents"],
+    icon: "△",
+    title: "Clash Detection",
+    description: "Streamline workflows with flags that surface conflicts in specs early.",
+  },
+  {
+    icon: "◫",
+    title: "Bid Tracker",
+    description: "Compare and analyze subcontractor proposals in seconds, not days.",
+  },
+  {
+    icon: "▣",
+    title: "Bid Leveling",
+    description: "Choose the best bids with side-by-side vendor comparison.",
+  },
+];
+
+const stats = [
+  {
+    value: "32%",
+    text: "of construction cost overruns are due to estimating errors",
+  },
+  {
+    value: "20+ hours",
+    text: "a week are spent on repetitive tasks easily automated by A.I",
+  },
+  {
+    value: "52%",
+    text: "of project delays are caused by inaccurate takeoffs",
   },
 ];
 
 export default function BoonCloneLandingPage() {
   return (
     <main className={`${styles.page} ${sora.variable}`}>
-      <div className={styles.gridBackdrop} aria-hidden />
       <header className={styles.navWrap}>
         <div className={styles.nav}>
-          <div className={styles.logo}>grada</div>
+          <div className={styles.logo}>boon</div>
           <nav className={styles.links}>
-            <a href="#platform">Platform</a>
-            <a href="#solutions">Solutions</a>
-            <a href="#customers">Customers</a>
+            <a href="#">Platform ▾</a>
+            <a href="#">Products ▾</a>
+            <a href="#">Company ▾</a>
           </nav>
           <div className={styles.actions}>
-            <Link href="/login" className={styles.ghostBtn}>
+            <Link href="/login" className={styles.loginBtn}>
               Login
             </Link>
-            <a href="#cta" className={styles.primaryBtn}>
-              See grada
+            <a href="#" className={styles.primaryBtn}>
+              See Boon
             </a>
           </div>
         </div>
       </header>
 
-      <section className={styles.hero} id="platform">
-        <p className={styles.kicker}>Warehouse & wholesale operations</p>
-        <h1>
-          The Intelligence Layer for <span>grada operations</span>
-        </h1>
-        <p className={styles.lede}>
-          AI agents that run catalog, PO, and dispatch workflows from product intake to final
-          shipment docs, so teams can focus on scale.
-        </p>
-        <div className={styles.heroCtas}>
-          <a href="#cta" className={styles.primaryBtn}>
-            Get a demo
-          </a>
-          <a href="#solutions" className={styles.secondaryBtn}>
-            Explore workflows
-          </a>
-        </div>
-
-        <div className={styles.heroPanel}>
-          <div className={styles.panelHeader}>
-            <div className={styles.pill}>Live Agent Run</div>
-            <p>PO #GRA-14098 synced from inbound file</p>
-          </div>
-          <div className={styles.panelGrid}>
-            <article>
-              <h3>Smart Catalog</h3>
-              <p>Images parsed and structured into one reusable product record.</p>
-            </article>
-            <article>
-              <h3>PO Review</h3>
-              <p>Line-level exceptions surfaced before invoice and barcode generation.</p>
-            </article>
-            <article>
-              <h3>Dispatch Docs</h3>
-              <p>Invoices, packing lists, and labels generated from approved source data.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
       <section className={styles.stats}>
-        {stats.map((item) => (
-          <article key={item.value}>
-            <h2>{item.value}</h2>
-            <p>{item.label}</p>
+        {stats.map((stat) => (
+          <article key={stat.value} className={styles.statCard}>
+            <h2>{stat.value}</h2>
+            <p>{stat.text}</p>
           </article>
         ))}
       </section>
 
-      <section className={styles.solutions} id="solutions">
-        <div className={styles.sectionHead}>
-          <p className={styles.kicker}>Solutions built for teams like yours</p>
-          <h2>AI workflows purpose-built for high-volume ops</h2>
-        </div>
-        <div className={styles.solutionGrid}>
-          {solutions.map((solution) => (
-            <article key={solution.title} className={styles.solutionCard}>
-              <h3>{solution.title}</h3>
-              <p>{solution.text}</p>
-              <ul>
-                {solution.points.map((point) => (
-                  <li key={point}>{point}</li>
-                ))}
-              </ul>
-              <a href="#cta">Try this flow</a>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className={styles.customers} id="customers">
-        <p className={styles.kicker}>Trusted by modern operations teams</p>
-        <div className={styles.logoRow}>
-          <span>RAELI</span>
-          <span>NOVA SUPPLY</span>
-          <span>ARROW DISTRIBUTION</span>
-          <span>ORBIT RETAIL</span>
-          <span>BAYLINE LOGISTICS</span>
-        </div>
-        <blockquote>
-          “grada feels like adding an operations co-pilot. We ship faster with fewer manual fixes
-          every week.”
-        </blockquote>
-      </section>
-
-      <section className={styles.finalCta} id="cta">
-        <h2>Ready to transform wholesale operations?</h2>
+      <section className={styles.intro}>
+        <h1>Solutions built for you</h1>
         <p>
-          The platform where your team, AI agents, and structured data work together from intake to
-          dispatch.
+          AI agents purpose-built for preconstruction
+          <br />
+          from takeoff to bid management.
         </p>
-        <a href="#" className={styles.primaryBtn}>
-          Book my demo
-        </a>
+        <div className={styles.tabs}>
+          <button type="button" className={`${styles.tab} ${styles.tabActive}`}>
+            General Contractors
+          </button>
+          <button type="button" className={styles.tab}>
+            Subcontractors
+          </button>
+        </div>
+      </section>
+
+      <section className={styles.content}>
+        <article className={styles.leftCol}>
+          <h2>General Contractors</h2>
+          <p className={styles.subhead}>
+            Streamline your workflow, bid faster and drive more revenue.
+          </p>
+          <ul className={styles.featureList}>
+            {features.map((item) => (
+              <li key={item.title}>
+                <h3>
+                  <span className={styles.featureIcon}>{item.icon}</span>
+                  {item.title}
+                </h3>
+                <p>{item.description}</p>
+              </li>
+            ))}
+          </ul>
+          <a href="#" className={styles.cta}>
+            Try Boon on your drawings
+          </a>
+        </article>
+
+        <article className={styles.rightCol}>
+          <div className={styles.imageFrame}>
+            <Image
+              src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1400&q=80"
+              alt="Construction site framing"
+              fill
+              className={styles.heroImage}
+              sizes="(max-width: 1100px) 100vw, 50vw"
+            />
+            <div className={styles.overlay}>
+              <p className={styles.overlayTitle}>Automatic Clash Detection</p>
+              <div className={styles.overlayRow}>
+                <span>Conflict Flagged</span>
+                <span>15 incidents</span>
+              </div>
+            </div>
+          </div>
+        </article>
       </section>
     </main>
   );

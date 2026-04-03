@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
+
+from alembic import op
 
 revision = '20260402_0006'
 down_revision = '20260331_0005'
