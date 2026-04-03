@@ -118,7 +118,7 @@
 .storySection {
   max-width: 1480px;
   margin: 0 auto;
-  padding: 44px 28px 0;
+  padding: 72px 28px 0;
 }
 
 .heroSection {
@@ -130,7 +130,7 @@
   border-radius: 26px;
   background: linear-gradient(180deg, rgba(255, 252, 246, 0.7) 0%, rgba(255, 252, 246, 0.32) 100%);
   text-align: center;
-  padding: 96px 20px 50px;
+  padding: 128px 20px 78px;
 }
 
 .heroInner h1 {
@@ -168,9 +168,9 @@
 
 .heroVisual {
   position: relative;
-  margin: 56px auto 0;
+  margin: 86px auto 0;
   width: min(1120px, 100%);
-  min-height: 420px;
+  min-height: 520px;
   aspect-ratio: 16 / 8.9;
   border: 1px solid rgba(87, 72, 51, 0.18);
   border-radius: 22px;
@@ -256,7 +256,7 @@
 }
 
 .statsGrid {
-  margin-top: 42px;
+  margin-top: 62px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
@@ -285,7 +285,7 @@
 }
 
 .solutionsCenter {
-  margin-top: 120px;
+  margin-top: 190px;
   text-align: center;
 }
 
@@ -332,7 +332,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 42px;
   align-items: center;
-  padding-top: 76px;
+  padding-top: 124px;
 }
 
 .solutionLeft h2 {
@@ -349,7 +349,7 @@
 }
 
 .solutionLeft ul {
-  margin: 34px 0 0;
+  margin: 46px 0 0;
   padding: 0;
   list-style: none;
   display: grid;
@@ -370,12 +370,12 @@
 }
 
 .solutionLeft .primaryBtn {
-  margin-top: 34px;
+  margin-top: 52px;
 }
 
 .solutionImageWrap {
   position: relative;
-  min-height: 360px;
+  min-height: 460px;
   aspect-ratio: 16 / 10;
   border: 1px solid rgba(87, 72, 51, 0.18);
   border-radius: 20px;
@@ -410,11 +410,11 @@
 }
 
 .trustedSection {
-  padding-top: 110px;
+  padding-top: 180px;
 }
 
 .logoRail {
-  margin-top: 36px;
+  margin-top: 56px;
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 14px;
@@ -440,7 +440,7 @@
 }
 
 .storySection {
-  padding-top: 110px;
+  padding-top: 190px;
 }
 
 .storyHeader {
@@ -462,11 +462,11 @@
 }
 
 .storyCard {
-  margin-top: 24px;
+  margin-top: 40px;
   border-radius: 18px;
   background: rgba(255, 251, 246, 0.98);
   border: 1px solid rgba(87, 72, 51, 0.12);
-  padding: 40px;
+  padding: 54px;
   display: grid;
   grid-template-columns: 360px 1fr;
   gap: 34px;
@@ -524,10 +524,10 @@
 }
 
 .footerZone {
-  margin-top: 118px;
+  margin-top: 210px;
   background: var(--dark);
   color: #e8dac8;
-  padding: 42px 28px 40px;
+  padding: 64px 28px 56px;
 }
 
 .ctaPanel {
@@ -537,7 +537,7 @@
   background:
     radial-gradient(circle at top left, rgba(160, 111, 66, 0.18), transparent 42%),
     linear-gradient(165deg, #24312c, #18241f);
-  padding: 92px 22px;
+  padding: 126px 22px;
   text-align: center;
   border: 1px solid rgba(247, 239, 226, 0.1);
   box-shadow: 0 26px 60px rgba(0, 0, 0, 0.24);
@@ -567,19 +567,19 @@
 }
 
 .ctaVisual {
-  margin: 26px auto 0;
+  margin: 42px auto 0;
   width: min(760px, 100%);
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(247, 239, 226, 0.2);
-  min-height: 200px;
+  min-height: 260px;
   aspect-ratio: 16 / 5;
   background: rgba(255, 255, 255, 0.04);
 }
 
 .footer {
   max-width: 1480px;
-  margin: 72px auto 0;
+  margin: 112px auto 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 30px;
@@ -606,7 +606,7 @@
 
 .footerBottom {
   max-width: 1480px;
-  margin: 70px auto 0;
+  margin: 108px auto 0;
   display: flex;
   justify-content: space-between;
   align-items: end;
@@ -656,19 +656,20 @@
   .solutionSplit,
   .trustedSection,
   .storySection {
-    padding: 30px 16px 0;
+    padding: 48px 16px 0;
   }
 
   .heroInner {
-    padding: 62px 14px 30px;
+    padding: 84px 14px 44px;
   }
 
   .heroVisual {
-    margin-top: 36px;
+    margin-top: 54px;
+    min-height: 360px;
   }
 
   .solutionsCenter {
-    margin-top: 86px;
+    margin-top: 132px;
   }
 
   .heroOverlayRow {
@@ -689,12 +690,12 @@
 
   .trustedSection,
   .storySection {
-    padding-top: 80px;
+    padding-top: 120px;
   }
 
   .storyCard {
     grid-template-columns: 1fr;
-    padding: 20px;
+    padding: 28px;
   }
 
   .storyImage {
@@ -703,8 +704,8 @@
   }
 
   .footerZone {
-    margin-top: 88px;
-    padding: 26px 16px 30px;
+    margin-top: 130px;
+    padding: 38px 16px 42px;
   }
 
   .footer {
