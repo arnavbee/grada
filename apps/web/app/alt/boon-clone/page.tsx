@@ -16,6 +16,11 @@ export const metadata: Metadata = {
   description: "Boon-style structure tailored to grada content.",
 };
 
+const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
+const receivedPoProcessingAnimationSrc = "/marketing/grada-received-po-processing-animated.html";
+const commercialInvoicesAnimationSrc = "/marketing/grada-commercial-invoices-autoplay.html";
+const smartCatalogInfographicSrc = "/marketing/grada-smart-catalog-infographic.svg";
+
 const stats = [
   { value: "32%", text: "fewer data errors after a single PO review checkpoint" },
   { value: "20+ hours", text: "saved weekly by automating repetitive dispatch workflows" },
@@ -41,7 +46,32 @@ const operationsFeatures = [
   },
 ];
 
-const logoItems = ["RAELI", "MYNTRA EXPORT TEAM", "AJIO OPS", "NYKAA SUPPLY", "FLIPKART OPS"];
+const marketplaceLogos = [
+  {
+    alt: "Myntra",
+    src: "https://upload.wikimedia.org/wikipedia/commons/b/bc/Myntra_Logo.png",
+    w: 90,
+    h: 28,
+  },
+  {
+    alt: "Ajio",
+    src: "https://images.seeklogo.com/logo-png/34/1/ajio-logo-png_seeklogo-348946.png",
+    w: 100,
+    h: 26,
+  },
+  {
+    alt: "Flipkart",
+    src: "https://upload.wikimedia.org/wikipedia/commons/e/e5/Flipkart_logo_%282026%29.svg",
+    w: 90,
+    h: 26,
+  },
+  {
+    alt: "Nykaa",
+    src: "https://upload.wikimedia.org/wikipedia/commons/0/00/Nykaa_New_Logo.svg",
+    w: 85,
+    h: 26,
+  },
+];
 
 export default function GradaBoonStructuredPage() {
   return (
@@ -92,12 +122,11 @@ export default function GradaBoonStructuredPage() {
           </a>
         </div>
         <div className={styles.heroVisual}>
-          <Image
-            src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1600&q=80"
-            alt="Warehouse operations"
-            fill
-            className={styles.heroImage}
-            sizes="(max-width: 1200px) 100vw, 900px"
+          <iframe
+            title="Grada smart catalog animation"
+            src={smartCatalogAnimationSrc}
+            className={styles.visualFrame}
+            loading="lazy"
           />
           <div className={styles.heroOverlayRow}>
             <div className={styles.glassCard}>
@@ -167,12 +196,11 @@ export default function GradaBoonStructuredPage() {
         </article>
         <article className={styles.solutionRight}>
           <div className={styles.solutionImageWrap}>
-            <Image
-              src="https://images.unsplash.com/photo-1592838064575-70ed626d3a0e?auto=format&fit=crop&w=1400&q=80"
-              alt="Operations team in warehouse"
-              fill
-              className={styles.solutionImage}
-              sizes="(max-width: 1200px) 100vw, 50vw"
+            <iframe
+              title="Grada received PO processing animation"
+              src={receivedPoProcessingAnimationSrc}
+              className={styles.visualFrame}
+              loading="lazy"
             />
             <div className={styles.solutionOverlay}>
               <p>Automatic PO Validation</p>
@@ -196,9 +224,9 @@ export default function GradaBoonStructuredPage() {
           </p>
         </div>
         <div className={styles.logoRail}>
-          {[...logoItems, ...logoItems].map((logo, idx) => (
-            <div key={`${logo}-${idx}`} className={styles.logoChip}>
-              {logo}
+          {[...marketplaceLogos, ...marketplaceLogos].map((logo, idx) => (
+            <div key={`${logo.alt}-${idx}`} className={styles.logoChip}>
+              <Image alt={logo.alt} src={logo.src} width={logo.w} height={logo.h} unoptimized />
             </div>
           ))}
         </div>
@@ -213,8 +241,8 @@ export default function GradaBoonStructuredPage() {
         <div className={styles.storyCard}>
           <div className={styles.storyImage}>
             <Image
-              src="https://images.unsplash.com/photo-1586528116493-a029325540fa?auto=format&fit=crop&w=900&q=80"
-              alt="Warehouse story"
+              src={smartCatalogInfographicSrc}
+              alt="Grada smart catalog infographic"
               fill
               className={styles.storyImg}
               sizes="(max-width: 1200px) 100vw, 360px"
@@ -224,8 +252,8 @@ export default function GradaBoonStructuredPage() {
           <div className={styles.storyText}>
             <p className={styles.quoteMark}>“</p>
             <blockquote>
-              grada acts as an operational co-pilot and helped us move from scattered spreadsheets
-              to one reliable dispatch workflow.
+              Grada helped us standardize catalog and PO validation so downstream invoices and
+              barcode outputs stay consistent every single cycle.
             </blockquote>
             <h3>Operations Lead</h3>
             <p>House Of Raeli</p>
@@ -248,6 +276,14 @@ export default function GradaBoonStructuredPage() {
           <a href="#" className={styles.whiteBtn}>
             Get my Demo
           </a>
+          <div className={styles.ctaVisual}>
+            <iframe
+              title="Grada commercial invoices animation"
+              src={commercialInvoicesAnimationSrc}
+              className={styles.visualFrame}
+              loading="lazy"
+            />
+          </div>
         </div>
 
         <footer className={styles.footer}>

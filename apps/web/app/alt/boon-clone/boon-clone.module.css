@@ -1,13 +1,16 @@
 .page {
-  --bg: #ececec;
-  --card: #f6f6f6;
-  --text: #0f1114;
-  --muted: #6d7278;
-  --green: #1a5f4b;
-  --green-deep: #173f36;
-  --dark: #183a33;
+  --bg: #efe7da;
+  --card: #f8f5ee;
+  --text: #16211d;
+  --muted: #5a685f;
+  --green: #a06f42;
+  --green-deep: #7f5934;
+  --dark: #16211d;
   --font: var(--font-grada-alt), "Avenir Next", "Segoe UI", sans-serif;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at top left, rgba(160, 111, 66, 0.12), transparent 28%),
+    radial-gradient(circle at top right, rgba(183, 140, 99, 0.1), transparent 22%),
+    linear-gradient(180deg, #f8f5ee 0%, var(--bg) 55%, #e4d8c5 100%);
   color: var(--text);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -31,7 +34,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f7f7f7;
+  border: 1px solid rgba(87, 72, 51, 0.12);
+  background: rgba(255, 252, 246, 0.94);
+  box-shadow: 0 10px 30px rgba(23, 33, 29, 0.06);
 }
 
 .logo {
@@ -39,7 +44,7 @@
   line-height: 1;
   font-weight: 800;
   letter-spacing: -0.04em;
-  color: #1d3f35;
+  color: #16211d;
   text-transform: lowercase;
 }
 
@@ -49,7 +54,7 @@
 }
 
 .links a {
-  color: #2d3734;
+  color: #36443d;
   text-decoration: none;
   font-size: 15px;
   font-weight: 600;
@@ -76,8 +81,8 @@
 
 .loginBtn {
   padding: 13px 20px;
-  background: #ececec;
-  color: #2f3737;
+  background: rgba(22, 33, 29, 0.06);
+  color: #1f2d27;
 }
 
 .primaryBtn {
@@ -119,7 +124,7 @@
 }
 
 .heroInner h1 span {
-  color: var(--green);
+  color: #8f6034;
 }
 
 .heroInner p {
@@ -149,12 +154,18 @@
   width: min(1120px, 100%);
   min-height: 420px;
   aspect-ratio: 16 / 8.9;
-  border-radius: 26px;
+  border: 1px solid rgba(87, 72, 51, 0.18);
+  border-radius: 22px;
   overflow: hidden;
+  background: #d9ccb8;
 }
 
-.heroImage {
-  object-fit: cover;
+.visualFrame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: transparent;
 }
 
 .heroOverlayRow {
@@ -171,8 +182,8 @@
 .glassCard {
   border-radius: 16px;
   padding: 13px 14px;
-  color: #f6faf8;
-  background: rgba(198, 212, 225, 0.45);
+  color: #fffaf3;
+  background: rgba(127, 89, 52, 0.36);
   backdrop-filter: blur(7px);
 }
 
@@ -218,7 +229,7 @@
 
 .sectionHeadingLeft p {
   margin: 20px 0 0;
-  color: var(--muted);
+  color: #66756d;
   font-size: clamp(17px, 1.25vw, 22px);
   line-height: 1.4;
 }
@@ -234,11 +245,12 @@
   border-radius: 16px;
   background: var(--card);
   padding: 22px 20px;
+  border: 1px solid rgba(87, 72, 51, 0.1);
 }
 
 .statCard h3 {
   margin: 0;
-  color: var(--green);
+  color: #8f6034;
   font-size: clamp(34px, 2.6vw, 54px);
   font-weight: 600;
 }
@@ -287,8 +299,8 @@
 }
 
 .tabActive {
-  color: #20473d;
-  background: #e5f2ec;
+  color: #2f2216;
+  background: rgba(160, 111, 66, 0.16);
 }
 
 .solutionSplit {
@@ -340,12 +352,10 @@
   position: relative;
   min-height: 360px;
   aspect-ratio: 16 / 10;
-  border-radius: 22px;
+  border: 1px solid rgba(87, 72, 51, 0.18);
+  border-radius: 20px;
   overflow: hidden;
-}
-
-.solutionImage {
-  object-fit: cover;
+  background: #d9ccb8;
 }
 
 .solutionOverlay {
@@ -356,7 +366,7 @@
   width: min(420px, 86%);
   border-radius: 14px;
   padding: 15px 16px;
-  background: rgba(197, 165, 139, 0.82);
+  background: rgba(160, 111, 66, 0.78);
   backdrop-filter: blur(7px);
   color: #fff6ec;
 }
@@ -386,7 +396,8 @@
 
 .logoChip {
   border-radius: 16px;
-  background: #f8f8f8;
+  background: rgba(255, 251, 246, 0.95);
+  border: 1px solid rgba(87, 72, 51, 0.1);
   min-height: 86px;
   display: flex;
   align-items: center;
@@ -422,7 +433,8 @@
 .storyCard {
   margin-top: 24px;
   border-radius: 18px;
-  background: #f8f8f8;
+  background: rgba(255, 251, 246, 0.98);
+  border: 1px solid rgba(87, 72, 51, 0.12);
   padding: 32px;
   display: grid;
   grid-template-columns: 360px 1fr;
@@ -436,6 +448,7 @@
   overflow: hidden;
   min-height: 260px;
   aspect-ratio: 1 / 1;
+  border: 1px solid rgba(87, 72, 51, 0.1);
 }
 
 .storyImg {
@@ -446,7 +459,7 @@
   position: absolute;
   left: 16px;
   bottom: 16px;
-  color: white;
+  color: #fff8ef;
   font-size: clamp(13px, 1vw, 20px);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -454,7 +467,7 @@
 
 .storyText .quoteMark {
   margin: 0;
-  color: var(--green);
+  color: #8f6034;
   font-size: clamp(52px, 4vw, 80px);
   line-height: 1;
 }
@@ -481,7 +494,7 @@
 .footerZone {
   margin-top: 88px;
   background: var(--dark);
-  color: #d9eee6;
+  color: #e8dac8;
   padding: 30px 24px 36px;
 }
 
@@ -489,7 +502,9 @@
   max-width: 1360px;
   margin: 0 auto;
   border-radius: 24px;
-  background: #1b6f58;
+  background:
+    radial-gradient(circle at top left, rgba(160, 111, 66, 0.18), transparent 42%),
+    linear-gradient(165deg, #24312c, #18241f);
   padding: 80px 20px;
   text-align: center;
 }
@@ -506,14 +521,25 @@
   max-width: 980px;
   font-size: clamp(17px, 1.2vw, 22px);
   line-height: 1.35;
-  color: #d2ebe2;
+  color: #d7c8b6;
 }
 
 .whiteBtn {
   margin-top: 24px;
-  background: #f4f4f4;
-  color: #1f5345;
+  background: #f7efe2;
+  color: #6d4b2b;
   padding: 12px 18px;
+}
+
+.ctaVisual {
+  margin: 26px auto 0;
+  width: min(760px, 100%);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(247, 239, 226, 0.2);
+  min-height: 200px;
+  aspect-ratio: 16 / 5;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .footer {
