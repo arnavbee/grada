@@ -13,7 +13,7 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: "grada | Alternate Landing",
-  description: "Boon-style structure tailored to grada content.",
+  description: "Grada predictive ops system landing page.",
 };
 
 const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
@@ -22,27 +22,29 @@ const commercialInvoicesAnimationSrc = "/marketing/grada-commercial-invoices-aut
 const smartCatalogInfographicSrc = "/marketing/grada-smart-catalog-infographic.svg";
 
 const stats = [
-  { value: "32%", text: "fewer data errors after a single PO review checkpoint" },
-  { value: "20+ hours", text: "saved weekly by automating repetitive dispatch workflows" },
-  { value: "52%", text: "faster dispatch readiness from one approved source of truth" },
+  { value: "You know what sold last month.", text: "You don't know what's coming back." },
+  {
+    value: "You don't know which SKU Myntra penalizes next.",
+    text: "You don't know if your packing spec is already outdated.",
+  },
+  {
+    value: "ERPs tell you what happened.",
+    text: "None of them tell you what's next.",
+  },
 ];
 
 const operationsFeatures = [
   {
-    title: "Smart Catalog",
-    text: "Extract and standardize product attributes from images and spreadsheets in one pass.",
+    title: "Return Risk, Before It Hits",
+    text: "Grada flags SKUs with high return probability before dispatch, using size curve, fabric type, listing quality, and historical return patterns.",
   },
   {
-    title: "Received PO Processing",
-    text: "Detect mismatches early and lock one approved PO before downstream generation starts.",
+    title: "Demand Signals",
+    text: "See reorder signals before stockouts happen. Grada reads PO history and sell-through data to surface what to move on next.",
   },
   {
-    title: "Marketplace Exports",
-    text: "Generate channel-ready export files from the same approved product record.",
-  },
-  {
-    title: "Dispatch Documents",
-    text: "Generate barcodes, invoices, packing lists, and stickers from approved data.",
+    title: "Compliance Drift Detection",
+    text: "Marketplace specs change without warning. Grada monitors drift and alerts you before non-compliant shipments trigger penalties or takedowns.",
   },
 ];
 
@@ -99,27 +101,22 @@ export default function GradaBoonStructuredPage() {
       <section className={styles.heroSection} id="platform">
         <div className={styles.heroInner}>
           <h1>
-            The Intelligence
+            The ops layer
             <br />
-            layer for
+            that
             <br />
-            <span>Wholesale Operations</span>
+            <span>thinks.</span>
           </h1>
           <p>
-            AI agents that run catalog, PO, and dispatch workflows from intake to outbound docs, so
-            your team can focus on growth.
+            Indian fashion brands run on five marketplaces, three ERPs, and one overworked ops
+            person. Grada replaces the chaos with one pipeline and tells you what is going to happen
+            before it does.
           </p>
           <div className={styles.heroActions}>
             <a href="#demo" className={styles.primaryBtn}>
-              Get a demo
-            </a>
-            <a href="#products" className={styles.primaryBtn}>
-              Try grada workflows
+              Request early access
             </a>
           </div>
-          <a href="#story" className={styles.primaryBtn}>
-            See grada AI in action
-          </a>
         </div>
         <div className={styles.heroVisual}>
           <iframe
@@ -148,8 +145,14 @@ export default function GradaBoonStructuredPage() {
       {/* 2. Hidden costs + stats + section heading */}
       <section className={styles.costSection}>
         <div className={styles.sectionHeadingLeft}>
-          <h2>The Hidden Costs of Manual Processes</h2>
-          <p>Disconnected spreadsheets are costing operations teams speed and margin.</p>
+          <h2>
+            Every ERP in the market tells you what happened. None of them tell you what is next.
+          </h2>
+          <p>
+            You know what sold last month. You do not know what is coming back. You do not know
+            which SKU will get penalized next week. You do not know if your packing spec is already
+            outdated.
+          </p>
         </div>
         <div className={styles.statsGrid}>
           {stats.map((stat) => (
@@ -160,49 +163,45 @@ export default function GradaBoonStructuredPage() {
           ))}
         </div>
         <div className={styles.solutionsCenter} id="products">
-          <h2>Solutions built for you</h2>
+          <h2>One pipeline. Every marketplace.</h2>
           <p>
-            AI agents purpose-built for wholesale operations
+            Catalog uploads, PO review, barcodes, GST invoices, packing lists across Myntra, Ajio,
+            Amazon IN, Flipkart, Nykaa. One place. No reformatting. No WhatsApp threads.
             <br />
-            from catalog to dispatch.
+            That is the foundation. Here is what it unlocks.
           </p>
-          <div className={styles.tabs}>
-            <button type="button" className={`${styles.tab} ${styles.tabActive}`}>
-              Brands & Manufacturers
-            </button>
-            <button type="button" className={styles.tab}>
-              Operations Teams
-            </button>
-          </div>
         </div>
       </section>
 
       <section className={styles.valueGridSection}>
+        <div className={styles.sectionHeadingLeft}>
+          <h2>The Intelligence Layer</h2>
+        </div>
         <div className={styles.valueGrid}>
           <article className={styles.valueCardLight}>
-            <h3>Flat workflow pricing</h3>
+            <h3>Return Risk, Before It Hits</h3>
             <p>
-              Predictable pricing for catalog, PO review, and dispatch docs so ops teams can plan
-              confidently.
+              Flag return-prone SKUs before dispatch using size curve, fabric type, listing quality,
+              and historical return behavior.
             </p>
             <div className={styles.valueIconCoin} aria-hidden />
           </article>
 
           <article className={styles.valueCardDark}>
-            <h3>Predictable processing windows</h3>
+            <h3>Demand Signals</h3>
             <p>
-              Know when uploads, validations, and generated outputs will be ready to keep
-              commitments reliable.
+              Surface reorder signals before stockouts by reading PO history and sell-through
+              patterns across your catalogue.
             </p>
             <div className={styles.valueLines} aria-hidden />
           </article>
 
           <article className={styles.valueCardBeige}>
             <div className={styles.valueCardContent}>
-              <h3>Compliant document trail</h3>
+              <h3>Compliance Drift Detection</h3>
               <p>
-                Every barcode, invoice, and packing list stays tied to approved source data with
-                full history.
+                Detect marketplace spec drift before non-compliant shipments cost penalties or
+                listing takedowns.
               </p>
             </div>
             <div className={styles.valueVisualWrap}>
@@ -217,10 +216,10 @@ export default function GradaBoonStructuredPage() {
           </article>
 
           <article className={styles.valueCardLight}>
-            <h3>Connected marketplace outputs</h3>
+            <h3>Why this works</h3>
             <p>
-              Use one product record to publish exports and dispatch files across your channel and
-              ops stack.
+              We built the plumbing first: every PO, dispatch, and return event passes through one
+              schema, so intelligence can run reliably on top.
             </p>
             <div className={styles.valueIconGrid} aria-hidden />
           </article>
@@ -230,8 +229,11 @@ export default function GradaBoonStructuredPage() {
       {/* 3. Solutions split section */}
       <section className={styles.solutionSplit}>
         <article className={styles.solutionLeft}>
-          <h2>Brands & Manufacturers</h2>
-          <p>Streamline catalog-to-dispatch workflows and reduce downstream rework.</p>
+          <h2>Why It Is Different</h2>
+          <p>
+            Every ERP sees your data after the fact. Marketplace dashboards tell you what sold.
+            Grada tells you what is going to happen.
+          </p>
           <ul>
             {operationsFeatures.map((feature) => (
               <li key={feature.title}>
@@ -241,7 +243,7 @@ export default function GradaBoonStructuredPage() {
             ))}
           </ul>
           <a href="#demo" className={styles.primaryBtn}>
-            Try grada on your workflow
+            Request early access
           </a>
         </article>
         <article className={styles.solutionRight}>
@@ -266,11 +268,13 @@ export default function GradaBoonStructuredPage() {
       {/* 4. Trusted logos */}
       <section className={styles.trustedSection} id="company">
         <div className={styles.sectionHeadingLeft}>
-          <h2>Built by operations experts and trusted by scaling teams</h2>
+          <h2>Who It Is For</h2>
           <p>
-            Purpose-built for catalog-heavy and dispatch-heavy businesses.
+            D2C and wholesale fashion brands selling on two or more Indian marketplaces. 50 to 5,000
+            SKUs. One ops person trying to hold it together, or a small team doing the same work
+            five times over.
             <br />
-            Trusted by teams who ship fast and stay accurate.
+            If you are still reformatting catalog sheets for each platform, Grada is built for you.
           </p>
         </div>
         <div className={styles.logoRail}>
@@ -285,8 +289,8 @@ export default function GradaBoonStructuredPage() {
       {/* 5. Testimonial */}
       <section className={styles.storySection} id="story">
         <div className={styles.storyHeader}>
-          <h2>Hear from our customers</h2>
-          <a href="#">See more ↗</a>
+          <h2>No other tool has this schema.</h2>
+          <a href="#demo">Why it matters ↗</a>
         </div>
         <div className={styles.storyCard}>
           <div className={styles.storyImage}>
@@ -302,11 +306,11 @@ export default function GradaBoonStructuredPage() {
           <div className={styles.storyText}>
             <p className={styles.quoteMark}>“</p>
             <blockquote>
-              Grada helped us standardize catalog and PO validation so downstream invoices and
-              barcode outputs stay consistent every single cycle.
+              This is not a pivot away from your workflow engine. This is a positioning pivot on top
+              of existing capabilities: the ops pipeline first, intelligence layer as premium.
             </blockquote>
-            <h3>Operations Lead</h3>
-            <p>House Of Raeli</p>
+            <h3>Core Wedge</h3>
+            <p>One pipeline, then predictive decisions.</p>
           </div>
         </div>
       </section>
@@ -315,16 +319,13 @@ export default function GradaBoonStructuredPage() {
       <section className={styles.footerZone} id="demo">
         <div className={styles.ctaPanel}>
           <h2>
-            Ready to Transform
+            Your ops team should not be reformatting spreadsheets.
             <br />
-            Wholesale Operations?
+            They should be making decisions.
           </h2>
-          <p>
-            The platform where operators, agents, and structured data work together so your team
-            ships faster, with fewer corrections.
-          </p>
+          <p>Get early access.</p>
           <a href="#" className={styles.whiteBtn}>
-            Get my Demo
+            Get early access
           </a>
           <div className={styles.ctaVisual}>
             <iframe
