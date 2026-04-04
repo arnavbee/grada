@@ -176,33 +176,43 @@ export function DashboardView(): JSX.Element {
   const quickActions = useMemo<ActionCard[]>(() => {
     return [
       {
+        title: "Start Catalog Setup",
+        detail:
+          stats.catalogReady > 0 || stats.catalogNeedsReview > 0
+            ? `${stats.catalogReady} ready style${stats.catalogReady === 1 ? "" : "s"} in catalog. Add or review items before PO building.`
+            : "Add items in catalog first so PO Builder has approved styles to work from.",
+        href: "/dashboard/catalog",
+        badge: "Start here",
+        variant: "primary",
+      },
+      {
         title: "Continue PO Builder",
         detail:
           stats.poDrafts > 0
             ? `${stats.poDrafts} builder draft${stats.poDrafts === 1 ? "" : "s"} waiting for style setup or review.`
-            : "Start a new workbook from your approved catalog styles.",
+            : "Step 2: build PO workbooks after catalog items are ready.",
         href: stats.poDrafts > 0 ? "/dashboard/po-builder" : "/dashboard/po-builder/new",
         badge:
           stats.poDrafts > 0
             ? `${stats.poDrafts} draft${stats.poDrafts === 1 ? "" : "s"}`
-            : "Start here",
-        variant: "primary",
+            : "Step 2",
       },
       {
         title: "Review Received POs",
         detail:
           stats.receivedParsed > 0
             ? `${stats.receivedParsed} received PO${stats.receivedParsed === 1 ? "" : "s"} parsed and ready for confirmation.`
-            : "Upload or review official marketplace POs before document generation.",
+            : "Separate function: upload and confirm official marketplace POs independently of PO Builder.",
         href: "/dashboard/received-pos",
-        badge: stats.receivedParsed > 0 ? `${stats.receivedParsed} awaiting confirm` : "Ops queue",
+        badge:
+          stats.receivedParsed > 0 ? `${stats.receivedParsed} awaiting confirm` : "Separate lane",
       },
       {
         title: "Finish Documents",
         detail:
           stats.receivedConfirmed > 0
             ? `${stats.receivedConfirmed} confirmed PO${stats.receivedConfirmed === 1 ? "" : "s"} can move into barcode, invoice, and packing.`
-            : "Generate barcode sheets, invoices, and packing lists from confirmed POs.",
+            : "Barcode, invoice, and packing are downstream docs generated after received PO confirmation.",
         href: "/dashboard/received-pos",
         badge: stats.receivedConfirmed > 0 ? `${stats.receivedConfirmed} ready` : "Documents",
       },
@@ -245,7 +255,7 @@ export function DashboardView(): JSX.Element {
       {
         title: "Received POs",
         detail:
-          "Review returned marketplace POs and generate barcode, invoice, and packing outputs.",
+          "Separate function: review returned marketplace POs, then generate barcode, invoice, and packing outputs.",
         href: "/dashboard/received-pos",
         metrics: [
           `${stats.receivedUploaded} uploaded`,
@@ -343,11 +353,11 @@ export function DashboardView(): JSX.Element {
                 document generation.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/dashboard/po-builder/new">
-                  <Button>Start PO builder</Button>
+                <Link href="/dashboard/catalog">
+                  <Button>Add items in catalog</Button>
                 </Link>
-                <Link href="/dashboard/received-pos/upload">
-                  <Button variant="secondary">Upload received PO</Button>
+                <Link href="/dashboard/po-builder/new">
+                  <Button variant="secondary">Then build PO workbook</Button>
                 </Link>
               </div>
             </div>
