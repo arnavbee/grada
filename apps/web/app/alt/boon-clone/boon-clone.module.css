@@ -327,6 +327,173 @@
   border: 1px solid rgba(160, 111, 66, 0.26);
 }
 
+.valueGridSection {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 112px 28px 0;
+}
+
+.valueGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.valueCardLight,
+.valueCardDark,
+.valueCardBeige {
+  position: relative;
+  border-radius: 12px;
+  padding: 30px 30px 22px;
+  min-height: 330px;
+  overflow: hidden;
+}
+
+.valueCardLight {
+  background: rgba(255, 252, 246, 0.82);
+  border: 1px solid rgba(87, 72, 51, 0.14);
+}
+
+.valueCardDark {
+  background: linear-gradient(165deg, #193e36 0%, #0f2b26 100%);
+  border: 1px solid rgba(247, 239, 226, 0.12);
+}
+
+.valueCardBeige {
+  background: #e8dfd1;
+  border: 1px solid rgba(87, 72, 51, 0.14);
+}
+
+.valueCardLight h3,
+.valueCardDark h3,
+.valueCardBeige h3 {
+  margin: 0;
+  font-size: clamp(23px, 1.55vw, 32px);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.valueCardLight p,
+.valueCardDark p,
+.valueCardBeige p {
+  margin: 16px 0 0;
+  max-width: 78%;
+  font-size: clamp(16px, 1vw, 18px);
+  line-height: 1.5;
+}
+
+.valueCardLight h3,
+.valueCardLight p,
+.valueCardBeige h3,
+.valueCardBeige p {
+  color: #2a332f;
+}
+
+.valueCardDark h3 {
+  color: #f2f8f5;
+}
+
+.valueCardDark p {
+  color: #acc8bd;
+}
+
+.valueIconCoin {
+  position: absolute;
+  left: 28px;
+  bottom: 24px;
+  width: 30px;
+  height: 30px;
+  border: 2px solid rgba(42, 51, 47, 0.55);
+  border-radius: 50%;
+}
+
+.valueIconCoin::before {
+  content: \"\";
+  position: absolute;
+  left: 10px;
+  top: -8px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(42, 51, 47, 0.45);
+  border-radius: 50%;
+}
+
+.valueLines {
+  position: absolute;
+  right: -34px;
+  bottom: -34px;
+  width: 230px;
+  height: 230px;
+  border: 1.5px solid rgba(255, 174, 88, 0.5);
+  border-radius: 50%;
+}
+
+.valueLines::before,
+.valueLines::after {
+  content: \"\";
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  border: 1px solid rgba(70, 140, 124, 0.5);
+  border-radius: 50%;
+}
+
+.valueLines::before {
+  width: 165px;
+  height: 165px;
+}
+
+.valueLines::after {
+  width: 104px;
+  height: 104px;
+}
+
+.valueVisualWrap {
+  position: absolute;
+  right: -60px;
+  bottom: -80px;
+  width: 58%;
+  min-height: 250px;
+  aspect-ratio: 1 / 1;
+  opacity: 0.94;
+}
+
+.valueVisual {
+  object-fit: cover;
+}
+
+.valueIconGrid {
+  position: absolute;
+  left: 30px;
+  bottom: 24px;
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid rgba(42, 51, 47, 0.48);
+}
+
+.valueIconGrid::before,
+.valueIconGrid::after {
+  content: \"\";
+  position: absolute;
+  border: 1.5px solid rgba(42, 51, 47, 0.48);
+}
+
+.valueIconGrid::before {
+  left: 8px;
+  top: 8px;
+  width: 34px;
+  height: 34px;
+}
+
+.valueIconGrid::after {
+  left: 16px;
+  top: -8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(248, 245, 238, 0.9);
+}
+
 .solutionSplit {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -657,6 +824,27 @@
   .trustedSection,
   .storySection {
     padding: 48px 16px 0;
+  }
+
+  .valueGridSection {
+    padding: 74px 16px 0;
+  }
+
+  .valueGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .valueCardLight,
+  .valueCardDark,
+  .valueCardBeige {
+    min-height: 260px;
+    padding: 22px 20px 16px;
+  }
+
+  .valueCardLight p,
+  .valueCardDark p,
+  .valueCardBeige p {
+    max-width: 100%;
   }
 
   .heroInner {

@@ -177,6 +177,54 @@ export default function GradaBoonStructuredPage() {
         </div>
       </section>
 
+      <section className={styles.valueGridSection}>
+        <div className={styles.valueGrid}>
+          <article className={styles.valueCardLight}>
+            <h3>Flat workflow pricing</h3>
+            <p>
+              Predictable pricing for catalog, PO review, and dispatch docs so ops teams can plan
+              confidently.
+            </p>
+            <div className={styles.valueIconCoin} aria-hidden />
+          </article>
+
+          <article className={styles.valueCardDark}>
+            <h3>Predictable processing windows</h3>
+            <p>
+              Know when uploads, validations, and generated outputs will be ready to keep
+              commitments reliable.
+            </p>
+            <div className={styles.valueLines} aria-hidden />
+          </article>
+
+          <article className={styles.valueCardBeige}>
+            <h3>Compliant document trail</h3>
+            <p>
+              Every barcode, invoice, and packing list stays tied to approved source data with full
+              history.
+            </p>
+            <div className={styles.valueVisualWrap}>
+              <Image
+                src={smartCatalogInfographicSrc}
+                alt="Grada data flow visual"
+                fill
+                className={styles.valueVisual}
+                sizes="(max-width: 1200px) 100vw, 520px"
+              />
+            </div>
+          </article>
+
+          <article className={styles.valueCardLight}>
+            <h3>Connected marketplace outputs</h3>
+            <p>
+              Use one product record to publish exports and dispatch files across your channel and
+              ops stack.
+            </p>
+            <div className={styles.valueIconGrid} aria-hidden />
+          </article>
+        </div>
+      </section>
+
       {/* 3. Solutions split section */}
       <section className={styles.solutionSplit}>
         <article className={styles.solutionLeft}>
