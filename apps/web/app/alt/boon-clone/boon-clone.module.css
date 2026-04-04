@@ -9,6 +9,7 @@
   --surface: rgba(255, 252, 246, 0.96);
   --border: rgba(87, 72, 51, 0.14);
   --shadow-soft: 0 14px 36px rgba(23, 33, 29, 0.08);
+  --shadow-elevated: 0 22px 48px rgba(23, 33, 29, 0.12);
   --container-pad: 34px;
   --space-section: 92px;
   --space-section-wide: 142px;
@@ -23,6 +24,7 @@
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
+  letter-spacing: -0.01em;
 }
 
 .navWrap {
@@ -46,6 +48,11 @@
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow-soft);
+  transition: box-shadow 180ms ease;
+}
+
+.nav:hover {
+  box-shadow: var(--shadow-elevated);
 }
 
 .logo {
@@ -91,6 +98,7 @@
   align-items: center;
   justify-content: center;
   transition: 0.2s ease;
+  cursor: pointer;
 }
 
 .loginBtn {
@@ -110,10 +118,13 @@
   background: var(--green);
   color: #f5fbf8;
   box-shadow: 0 8px 18px rgba(127, 89, 52, 0.22);
+  border: 1px solid transparent;
 }
 
 .primaryBtn:hover {
   background: #b37b47;
+  transform: translateY(-1px);
+  box-shadow: 0 14px 24px rgba(127, 89, 52, 0.26);
 }
 
 .heroSection,
@@ -136,6 +147,7 @@
   background: linear-gradient(180deg, rgba(255, 252, 246, 0.7) 0%, rgba(255, 252, 246, 0.32) 100%);
   text-align: center;
   padding: 128px 20px 78px;
+  box-shadow: 0 10px 28px rgba(23, 33, 29, 0.06);
 }
 
 .heroInner h1 {
@@ -156,6 +168,7 @@
   color: var(--muted);
   font-size: clamp(16px, 1.05vw, 19px);
   line-height: 1.5;
+  text-wrap: balance;
 }
 
 .heroActions {
@@ -175,9 +188,9 @@
   position: relative;
   margin: 86px auto 0;
   margin-bottom: 92px;
-  width: min(1120px, 100%);
-  min-height: 520px;
-  aspect-ratio: 16 / 8.9;
+  width: min(1180px, 100%);
+  min-height: 560px;
+  aspect-ratio: 16 / 9.2;
   border: 1px solid rgba(87, 72, 51, 0.18);
   border-radius: 22px;
   overflow: visible;
@@ -276,6 +289,14 @@
   padding: 22px 20px;
   border: 1px solid rgba(87, 72, 51, 0.1);
   box-shadow: 0 8px 20px rgba(23, 33, 29, 0.04);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.statCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 24px rgba(23, 33, 29, 0.08);
 }
 
 .statCard h3 {
@@ -310,6 +331,7 @@
   color: var(--muted);
   font-size: clamp(16px, 1vw, 18px);
   line-height: 1.35;
+  text-wrap: pretty;
 }
 
 .tabs {
@@ -355,16 +377,28 @@
   padding: 36px 34px 28px;
   min-height: 330px;
   overflow: hidden;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.valueCardLight:hover,
+.valueCardDark:hover,
+.valueCardBeige:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgba(23, 33, 29, 0.1);
 }
 
 .valueCardLight {
   background: rgba(255, 252, 246, 0.82);
   border: 1px solid rgba(87, 72, 51, 0.14);
+  box-shadow: 0 8px 18px rgba(23, 33, 29, 0.04);
 }
 
 .valueCardDark {
   background: linear-gradient(165deg, #193e36 0%, #0f2b26 100%);
   border: 1px solid rgba(247, 239, 226, 0.12);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
 }
 
 .valueCardBeige {
@@ -374,6 +408,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(360px, 46%);
   gap: 30px;
   align-items: start;
+  box-shadow: 0 8px 18px rgba(23, 33, 29, 0.04);
 }
 
 .valueCardLight h3,
@@ -392,6 +427,7 @@
   max-width: 78%;
   font-size: clamp(16px, 1vw, 18px);
   line-height: 1.5;
+  text-wrap: pretty;
 }
 
 .valueCardLight h3,
@@ -426,7 +462,8 @@
 
 .valueAnimWrap {
   margin-top: 20px;
-  min-height: 170px;
+  min-height: 210px;
+  aspect-ratio: 16 / 8.8;
   border-radius: 10px;
   border: 1px solid rgba(87, 72, 51, 0.14);
   background: rgba(255, 251, 246, 0.75);
@@ -435,7 +472,8 @@
 
 .valueAnimWrapDark {
   margin-top: 20px;
-  min-height: 170px;
+  min-height: 210px;
+  aspect-ratio: 16 / 8.8;
   border-radius: 10px;
   border: 1px solid rgba(247, 239, 226, 0.18);
   background: rgba(255, 255, 255, 0.04);
@@ -506,8 +544,8 @@
   right: auto;
   bottom: auto;
   width: 100%;
-  min-height: 300px;
-  aspect-ratio: 1.08 / 1;
+  min-height: 320px;
+  aspect-ratio: 1.15 / 1;
   border-radius: 12px;
   border: 1px solid rgba(87, 72, 51, 0.2);
   background: rgba(201, 147, 62, 0.16);
@@ -571,6 +609,7 @@
   color: var(--muted);
   font-size: clamp(16px, 0.95vw, 18px);
   line-height: 1.45;
+  text-wrap: pretty;
 }
 
 .solutionLeft ul {
@@ -592,6 +631,7 @@
   color: #636d74;
   font-size: clamp(15px, 0.95vw, 17px);
   line-height: 1.5;
+  text-wrap: pretty;
 }
 
 .solutionLeft .primaryBtn {
@@ -600,8 +640,8 @@
 
 .solutionImageWrap {
   position: relative;
-  min-height: 460px;
-  aspect-ratio: 16 / 10;
+  min-height: 500px;
+  aspect-ratio: 16 / 10.2;
   border: 1px solid rgba(87, 72, 51, 0.18);
   border-radius: 20px;
   overflow: hidden;
@@ -658,6 +698,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   transition: transform 140ms ease;
+  box-shadow: 0 6px 14px rgba(23, 33, 29, 0.04);
 }
 
 .logoChip:hover {
@@ -698,6 +739,11 @@
   gap: 44px;
   align-items: start;
   box-shadow: var(--shadow-soft);
+  transition: box-shadow 180ms ease;
+}
+
+.storyCard:hover {
+  box-shadow: var(--shadow-elevated);
 }
 
 .storyImage {
@@ -736,6 +782,7 @@
   font-size: clamp(24px, 1.55vw, 32px);
   line-height: 1.32;
   color: #3a3f48;
+  text-wrap: pretty;
 }
 
 .storyText h3 {
@@ -794,12 +841,12 @@
 
 .ctaVisual {
   margin: 42px auto 0;
-  width: min(760px, 100%);
+  width: min(860px, 100%);
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(247, 239, 226, 0.2);
-  min-height: 260px;
-  aspect-ratio: 16 / 5;
+  min-height: 300px;
+  aspect-ratio: 16 / 5.8;
   background: rgba(255, 255, 255, 0.04);
 }
 
@@ -885,6 +932,10 @@
     padding: 10px 14px;
   }
 
+  .primaryBtn:hover {
+    transform: none;
+  }
+
   .heroSection,
   .costSection,
   .solutionSplit,
@@ -910,7 +961,8 @@
 
   .valueAnimWrap,
   .valueAnimWrapDark {
-    min-height: 140px;
+    min-height: 170px;
+    aspect-ratio: 16 / 9.4;
   }
 
   .valueCardBeige {
@@ -935,7 +987,7 @@
   .heroVisual {
     margin-top: 54px;
     margin-bottom: 0;
-    min-height: 360px;
+    min-height: 400px;
     overflow: hidden;
   }
 
@@ -975,6 +1027,20 @@
   .storyImage {
     aspect-ratio: 16 / 10;
     min-height: 220px;
+  }
+
+  .valueVisualWrap {
+    min-height: 220px;
+    aspect-ratio: 1.15 / 0.95;
+  }
+
+  .solutionImageWrap {
+    min-height: 360px;
+  }
+
+  .ctaVisual {
+    min-height: 220px;
+    aspect-ratio: 16 / 6.2;
   }
 
   .footerZone {
