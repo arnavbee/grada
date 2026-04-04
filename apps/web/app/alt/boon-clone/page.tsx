@@ -198,11 +198,13 @@ export default function GradaBoonStructuredPage() {
           </article>
 
           <article className={styles.valueCardBeige}>
-            <h3>Compliant document trail</h3>
-            <p>
-              Every barcode, invoice, and packing list stays tied to approved source data with full
-              history.
-            </p>
+            <div className={styles.valueCardContent}>
+              <h3>Compliant document trail</h3>
+              <p>
+                Every barcode, invoice, and packing list stays tied to approved source data with
+                full history.
+              </p>
+            </div>
             <div className={styles.valueVisualWrap}>
               <Image
                 src={smartCatalogInfographicSrc}

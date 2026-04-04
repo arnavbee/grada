@@ -9,6 +9,11 @@
   --surface: rgba(255, 252, 246, 0.96);
   --border: rgba(87, 72, 51, 0.14);
   --shadow-soft: 0 14px 36px rgba(23, 33, 29, 0.08);
+  --container-pad: 34px;
+  --space-section: 92px;
+  --space-section-wide: 142px;
+  --space-stack-lg: 214px;
+  --space-stack-xl: 224px;
   --font: var(--font-grada-alt), "Avenir Next", "Segoe UI", sans-serif;
   background:
     radial-gradient(circle at top left, rgba(160, 111, 66, 0.12), transparent 28%),
@@ -118,7 +123,7 @@
 .storySection {
   max-width: 1480px;
   margin: 0 auto;
-  padding: 72px 28px 0;
+  padding: var(--space-section) var(--container-pad) 0;
 }
 
 .heroSection {
@@ -169,12 +174,13 @@
 .heroVisual {
   position: relative;
   margin: 86px auto 0;
+  margin-bottom: 92px;
   width: min(1120px, 100%);
   min-height: 520px;
   aspect-ratio: 16 / 8.9;
   border: 1px solid rgba(87, 72, 51, 0.18);
   border-radius: 22px;
-  overflow: hidden;
+  overflow: visible;
   background: #d9ccb8;
   box-shadow: var(--shadow-soft);
 }
@@ -190,21 +196,23 @@
 .heroOverlayRow {
   position: absolute;
   left: 50%;
-  bottom: 26px;
+  bottom: -56px;
   transform: translateX(-50%);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  width: min(620px, 90%);
+  gap: 14px;
+  width: min(670px, 92%);
+  z-index: 2;
 }
 
 .glassCard {
   border-radius: 16px;
-  padding: 13px 14px;
+  padding: 14px 16px;
   color: #fffaf3;
-  background: rgba(127, 89, 52, 0.36);
-  backdrop-filter: blur(7px);
-  border: 1px solid rgba(255, 248, 239, 0.25);
+  background: rgba(127, 89, 52, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 248, 239, 0.28);
+  box-shadow: 0 12px 28px rgba(70, 44, 23, 0.28);
 }
 
 .glassCard h3 {
@@ -256,10 +264,10 @@
 }
 
 .statsGrid {
-  margin-top: 62px;
+  margin-top: 74px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 20px;
 }
 
 .statCard {
@@ -285,7 +293,7 @@
 }
 
 .solutionsCenter {
-  margin-top: 190px;
+  margin-top: 214px;
   text-align: center;
 }
 
@@ -305,7 +313,7 @@
 }
 
 .tabs {
-  margin-top: 22px;
+  margin-top: 30px;
   display: inline-flex;
   gap: 12px;
 }
@@ -330,13 +338,13 @@
 .valueGridSection {
   max-width: 1480px;
   margin: 0 auto;
-  padding: 112px 28px 0;
+  padding: var(--space-section-wide) var(--container-pad) 0;
 }
 
 .valueGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 22px;
 }
 
 .valueCardLight,
@@ -344,7 +352,7 @@
 .valueCardBeige {
   position: relative;
   border-radius: 12px;
-  padding: 30px 30px 22px;
+  padding: 36px 34px 28px;
   min-height: 330px;
   overflow: hidden;
 }
@@ -362,6 +370,10 @@
 .valueCardBeige {
   background: #e8dfd1;
   border: 1px solid rgba(87, 72, 51, 0.14);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 46%);
+  gap: 30px;
+  align-items: start;
 }
 
 .valueCardLight h3,
@@ -376,7 +388,7 @@
 .valueCardLight p,
 .valueCardDark p,
 .valueCardBeige p {
-  margin: 16px 0 0;
+  margin: 18px 0 0;
   max-width: 78%;
   font-size: clamp(16px, 1vw, 18px);
   line-height: 1.5;
@@ -387,6 +399,21 @@
 .valueCardBeige h3,
 .valueCardBeige p {
   color: #2a332f;
+}
+
+.valueCardBeige h3,
+.valueCardBeige p {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+}
+
+.valueCardContent {
+  max-width: 620px;
+}
+
+.valueCardContent p {
+  max-width: 40ch;
 }
 
 .valueCardDark h3 {
@@ -449,17 +476,22 @@
 }
 
 .valueVisualWrap {
-  position: absolute;
-  right: -60px;
-  bottom: -80px;
-  width: 58%;
-  min-height: 250px;
-  aspect-ratio: 1 / 1;
-  opacity: 0.94;
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  min-height: 300px;
+  aspect-ratio: 1.08 / 1;
+  border-radius: 12px;
+  border: 1px solid rgba(87, 72, 51, 0.2);
+  background: rgba(201, 147, 62, 0.16);
+  overflow: hidden;
+  opacity: 0.98;
 }
 
 .valueVisual {
-  object-fit: cover;
+  object-fit: contain;
+  padding: 16px;
 }
 
 .valueIconGrid {
@@ -497,9 +529,9 @@
 .solutionSplit {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 42px;
+  gap: 56px;
   align-items: center;
-  padding-top: 124px;
+  padding-top: 156px;
 }
 
 .solutionLeft h2 {
@@ -516,11 +548,11 @@
 }
 
 .solutionLeft ul {
-  margin: 46px 0 0;
+  margin: 54px 0 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 22px;
+  gap: 26px;
 }
 
 .solutionLeft li h3 {
@@ -577,21 +609,21 @@
 }
 
 .trustedSection {
-  padding-top: 180px;
+  padding-top: var(--space-stack-lg);
 }
 
 .logoRail {
-  margin-top: 56px;
+  margin-top: 62px;
   display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(126px, 1fr));
+  gap: 16px;
 }
 
 .logoChip {
   border-radius: 16px;
   background: rgba(255, 251, 246, 0.95);
   border: 1px solid rgba(87, 72, 51, 0.1);
-  min-height: 86px;
+  min-height: 92px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -607,13 +639,14 @@
 }
 
 .storySection {
-  padding-top: 190px;
+  padding-top: var(--space-stack-xl);
 }
 
 .storyHeader {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
+  gap: 24px;
 }
 
 .storyHeader h2 {
@@ -629,15 +662,15 @@
 }
 
 .storyCard {
-  margin-top: 40px;
+  margin-top: 54px;
   border-radius: 18px;
   background: rgba(255, 251, 246, 0.98);
   border: 1px solid rgba(87, 72, 51, 0.12);
-  padding: 54px;
+  padding: 56px;
   display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 34px;
-  align-items: center;
+  grid-template-columns: 400px 1fr;
+  gap: 44px;
+  align-items: start;
   box-shadow: var(--shadow-soft);
 }
 
@@ -665,22 +698,22 @@
 }
 
 .storyText .quoteMark {
-  margin: 0;
+  margin: 0 0 12px;
   color: #8f6034;
   font-size: clamp(52px, 4vw, 80px);
-  line-height: 1;
+  line-height: 0.85;
 }
 
 .storyText blockquote {
   margin: 0;
-  max-width: 860px;
+  max-width: 900px;
   font-size: clamp(24px, 1.55vw, 32px);
-  line-height: 1.35;
+  line-height: 1.32;
   color: #3a3f48;
 }
 
 .storyText h3 {
-  margin: 22px 0 0;
+  margin: 28px 0 0;
   font-size: clamp(20px, 1.1vw, 24px);
 }
 
@@ -691,10 +724,10 @@
 }
 
 .footerZone {
-  margin-top: 210px;
+  margin-top: calc(var(--space-stack-xl) + 26px);
   background: var(--dark);
   color: #e8dac8;
-  padding: 64px 28px 56px;
+  padding: 78px var(--container-pad) 64px;
 }
 
 .ctaPanel {
@@ -807,6 +840,14 @@
 }
 
 @media (max-width: 1099px) {
+  .page {
+    --container-pad: 18px;
+    --space-section: 58px;
+    --space-section-wide: 92px;
+    --space-stack-lg: 120px;
+    --space-stack-xl: 120px;
+  }
+
   .logo {
     font-size: 32px;
   }
@@ -823,11 +864,11 @@
   .solutionSplit,
   .trustedSection,
   .storySection {
-    padding: 48px 16px 0;
+    padding: var(--space-section) var(--container-pad) 0;
   }
 
   .valueGridSection {
-    padding: 74px 16px 0;
+    padding: var(--space-section-wide) var(--container-pad) 0;
   }
 
   .valueGrid {
@@ -839,6 +880,15 @@
   .valueCardBeige {
     min-height: 260px;
     padding: 22px 20px 16px;
+  }
+
+  .valueCardBeige {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .valueCardContent {
+    max-width: 100%;
   }
 
   .valueCardLight p,
@@ -853,7 +903,9 @@
 
   .heroVisual {
     margin-top: 54px;
+    margin-bottom: 0;
     min-height: 360px;
+    overflow: hidden;
   }
 
   .solutionsCenter {
@@ -861,7 +913,9 @@
   }
 
   .heroOverlayRow {
+    bottom: 18px;
     grid-template-columns: 1fr;
+    width: min(460px, 90%);
   }
 
   .statsGrid {
@@ -883,7 +937,8 @@
 
   .storyCard {
     grid-template-columns: 1fr;
-    padding: 28px;
+    gap: 24px;
+    padding: 30px;
   }
 
   .storyImage {
@@ -892,8 +947,8 @@
   }
 
   .footerZone {
-    margin-top: 130px;
-    padding: 38px 16px 42px;
+    margin-top: 160px;
+    padding: 44px var(--container-pad) 46px;
   }
 
   .footer {
