@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 const protectedRoutes = ["/dashboard"];
 const authRoutes = ["/login", "/signup", "/forgot-password", "/reset-password"];
+const LOOPBACK_HOST_REGEX = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(?:\/|$)/i;
 
 function normalizeToken(raw: string | undefined): string {
   if (!raw) return "";
@@ -70,20 +71,65 @@ function isAuthPath(pathname: string): boolean {
   return authRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 
-export function middleware(request: NextRequest): NextResponse {
+function buildApiBaseUrl(request: NextRequest): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (configured) {
+    if (process.env.NODE_ENV === "production" && LOOPBACK_HOST_REGEX.test(configured)) {
+      return `${request.nextUrl.origin}/api/v1`;
+    }
+    return configured.endsWith("/api/v1") ? configured : `${configured.replace(/\/+$/, "")}/api/v1`;
+  }
+  return `${request.nextUrl.origin}/api/v1`;
+}
+
+function clearAuthCookies(response: NextResponse): void {
+  response.cookies.set("kira_access_token", "", { path: "/", maxAge: 0 });
+  response.cookies.set("kira_refresh_token", "", { path: "/", maxAge: 0 });
+}
+
+async function validateSession(request: NextRequest, accessToken: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${buildApiBaseUrl(request)}/auth/me`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${normalizeToken(accessToken)}`,
+      },
+      cache: "no-store",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get("kira_access_token")?.value;
   const refreshToken = request.cookies.get("kira_refresh_token")?.value;
-  const hasValidSession = hasActiveJwt(accessToken) || hasActiveJwt(refreshToken);
+  const hasToken = Boolean(normalizeToken(accessToken) || normalizeToken(refreshToken));
+
+  const looksSessionLikeJwt = hasActiveJwt(accessToken) || hasActiveJwt(refreshToken);
+  const hasValidSession =
+    looksSessionLikeJwt && accessToken ? await validateSession(request, accessToken) : false;
 
   if (isProtectedPath(pathname) && !hasValidSession) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    if (hasToken) {
+      clearAuthCookies(response);
+    }
+    return response;
   }
 
   if (isAuthPath(pathname) && hasValidSession) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  if (isAuthPath(pathname) && hasToken && !hasValidSession) {
+    const response = NextResponse.next();
+    clearAuthCookies(response);
+    return response;
   }
 
   return NextResponse.next();
