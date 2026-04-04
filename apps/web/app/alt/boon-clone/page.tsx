@@ -16,10 +16,13 @@ export const metadata: Metadata = {
   description: "Grada predictive ops system landing page.",
 };
 
-const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
 const receivedPoProcessingAnimationSrc = "/marketing/grada-received-po-processing-animated.html";
 const commercialInvoicesAnimationSrc = "/marketing/grada-commercial-invoices-autoplay.html";
 const smartCatalogInfographicSrc = "/marketing/grada-smart-catalog-infographic.svg";
+const onePipelineAnimationSrc = "/marketing/grada_one_pipeline.html";
+const returnRiskAnimationSrc = "/marketing/grada_return_risk.html";
+const demandSignalsAnimationSrc = "/marketing/grada_demand_signals.html";
+const complianceDriftAnimationSrc = "/marketing/grada_compliance_drift.html";
 
 const stats = [
   { value: "You know what sold last month.", text: "You don't know what's coming back." },
@@ -120,8 +123,8 @@ export default function GradaBoonStructuredPage() {
         </div>
         <div className={styles.heroVisual}>
           <iframe
-            title="Grada smart catalog animation"
-            src={smartCatalogAnimationSrc}
+            title="Grada one pipeline animation"
+            src={onePipelineAnimationSrc}
             className={styles.visualFrame}
             loading="lazy"
           />
@@ -184,7 +187,14 @@ export default function GradaBoonStructuredPage() {
               Flag return-prone SKUs before dispatch using size curve, fabric type, listing quality,
               and historical return behavior.
             </p>
-            <div className={styles.valueIconCoin} aria-hidden />
+            <div className={styles.valueAnimWrap}>
+              <iframe
+                title="Grada return risk animation"
+                src={returnRiskAnimationSrc}
+                className={styles.valueAnimFrame}
+                loading="lazy"
+              />
+            </div>
           </article>
 
           <article className={styles.valueCardDark}>
@@ -193,7 +203,14 @@ export default function GradaBoonStructuredPage() {
               Surface reorder signals before stockouts by reading PO history and sell-through
               patterns across your catalogue.
             </p>
-            <div className={styles.valueLines} aria-hidden />
+            <div className={styles.valueAnimWrapDark}>
+              <iframe
+                title="Grada demand signals animation"
+                src={demandSignalsAnimationSrc}
+                className={styles.valueAnimFrame}
+                loading="lazy"
+              />
+            </div>
           </article>
 
           <article className={styles.valueCardBeige}>
@@ -205,12 +222,11 @@ export default function GradaBoonStructuredPage() {
               </p>
             </div>
             <div className={styles.valueVisualWrap}>
-              <Image
-                src={smartCatalogInfographicSrc}
-                alt="Grada data flow visual"
-                fill
-                className={styles.valueVisual}
-                sizes="(max-width: 1200px) 100vw, 520px"
+              <iframe
+                title="Grada compliance drift animation"
+                src={complianceDriftAnimationSrc}
+                className={styles.valueAnimFrame}
+                loading="lazy"
               />
             </div>
           </article>

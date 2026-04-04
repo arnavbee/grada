@@ -1,0 +1,222 @@
+
+<style>
+@keyframes draw{from{stroke-dashoffset:var(--l)}to{stroke-dashoffset:0}}
+@keyframes pop{0%{opacity:0;transform:scale(0)}100%{opacity:1;transform:scale(1)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+@keyframes rowIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pulse{0%,100%{opacity:0.6;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+svg{display:block;width:100%;height:auto}
+</style>
+
+<svg viewBox="0 0 900 540" xmlns="http://www.w3.org/2000/svg">
+<rect width="900" height="540" fill="#0e0e18"/>
+
+<defs>
+  <pattern id="g3" width="48" height="48" patternUnits="userSpaceOnUse">
+    <path d="M48 0L0 0 0 48" fill="none" stroke="rgba(220,220,255,0.04)" stroke-width="0.6"/>
+  </pattern>
+</defs>
+<rect width="900" height="540" fill="url(#g3)"/>
+
+<!-- ── SPEC TABLE ── -->
+<!-- table shell -->
+<rect x="100" y="80" width="520" height="340" rx="4"
+  fill="rgba(220,220,255,0.02)" stroke="rgba(220,220,255,0.12)" stroke-width="1"
+  stroke-dasharray="1740" stroke-dashoffset="1740"
+  style="animation:draw 1.8s ease 0.3s forwards;--l:1740"/>
+
+<!-- column headers -->
+<rect x="100" y="80" width="520" height="36" rx="4"
+  fill="rgba(220,220,255,0.05)" opacity="0"
+  style="animation:fadeUp 0.3s ease 2.1s forwards"/>
+<line x1="100" y1="116" x2="620" y2="116"
+  stroke="rgba(220,220,255,0.1)" stroke-width="0.8"
+  stroke-dasharray="520" stroke-dashoffset="520"
+  style="animation:draw 0.5s ease 2.1s forwards;--l:520"/>
+
+<!-- header text -->
+<text x="140" y="103" font-family="Georgia,serif" font-size="9.5" letter-spacing="1.5"
+  fill="rgba(220,220,255,0.35)" opacity="0"
+  style="animation:fadeUp 0.3s ease 2.3s forwards">SPEC FIELD</text>
+<text x="350" y="103" font-family="Georgia,serif" font-size="9.5" letter-spacing="1.5"
+  fill="rgba(220,220,255,0.35)" text-anchor="middle" opacity="0"
+  style="animation:fadeUp 0.3s ease 2.3s forwards">YOUR DATA</text>
+<text x="530" y="103" font-family="Georgia,serif" font-size="9.5" letter-spacing="1.5"
+  fill="rgba(220,220,255,0.35)" text-anchor="middle" opacity="0"
+  style="animation:fadeUp 0.3s ease 2.3s forwards">PLATFORM SPEC</text>
+
+<!-- ── ROWS ── -->
+<!-- Row 1: OK -->
+<line x1="100" y1="152" x2="620" y2="152" stroke="rgba(220,220,255,0.06)" stroke-width="0.6"
+  stroke-dasharray="520" stroke-dashoffset="520"
+  style="animation:draw 0.3s ease 2.5s forwards;--l:520"/>
+<text x="140" y="139" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  font-style="italic" opacity="0"
+  style="animation:rowIn 0.4s ease 2.6s forwards">Image size</text>
+<text x="350" y="139" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 2.6s forwards">1200×1500px</text>
+<text x="530" y="139" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 2.6s forwards">1200×1500px</text>
+<!-- ok check -->
+<text x="612" y="140" font-family="Georgia,serif" font-size="11" fill="rgba(80,200,120,0.8)"
+  opacity="0" style="animation:rowIn 0.4s ease 2.7s forwards">✓</text>
+
+<!-- Row 2: DRIFT -->
+<rect x="101" y="153" width="518" height="38" fill="rgba(220,60,40,0.07)" opacity="0"
+  style="animation:fadeUp 0.3s ease 2.8s forwards"/>
+<line x1="100" y1="191" x2="620" y2="191" stroke="rgba(220,220,255,0.06)" stroke-width="0.6"
+  stroke-dasharray="520" stroke-dashoffset="520"
+  style="animation:draw 0.3s ease 2.8s forwards;--l:520"/>
+<text x="140" y="177" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  font-style="italic" opacity="0"
+  style="animation:rowIn 0.4s ease 2.9s forwards">Fabric composition</text>
+<text x="350" y="177" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,80,60,0.9)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 2.9s forwards">Cotton blend</text>
+<text x="530" y="177" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 2.9s forwards">100% Cotton</text>
+<!-- alert -->
+<text x="600" y="178" font-family="Georgia,serif" font-size="13" fill="rgba(220,60,40,0.9)"
+  opacity="0" style="animation:blink 1.2s ease 3.1s infinite forwards">!</text>
+
+<!-- Row 3: DRIFT -->
+<rect x="101" y="192" width="518" height="38" fill="rgba(220,60,40,0.05)" opacity="0"
+  style="animation:fadeUp 0.3s ease 3.1s forwards"/>
+<line x1="100" y1="230" x2="620" y2="230" stroke="rgba(220,220,255,0.06)" stroke-width="0.6"
+  stroke-dasharray="520" stroke-dashoffset="520"
+  style="animation:draw 0.3s ease 3.1s forwards;--l:520"/>
+<text x="140" y="216" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  font-style="italic" opacity="0"
+  style="animation:rowIn 0.4s ease 3.2s forwards">Packing spec</text>
+<text x="350" y="216" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,80,60,0.9)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 3.2s forwards">Polybag, no label</text>
+<text x="530" y="216" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 3.2s forwards">Polybag + barcode</text>
+<text x="600" y="217" font-family="Georgia,serif" font-size="13" fill="rgba(220,60,40,0.9)"
+  opacity="0" style="animation:blink 1.4s ease 3.4s infinite forwards">!</text>
+
+<!-- Row 4: OK -->
+<line x1="100" y1="268" x2="620" y2="268" stroke="rgba(220,220,255,0.06)" stroke-width="0.6"
+  stroke-dasharray="520" stroke-dashoffset="520"
+  style="animation:draw 0.3s ease 3.4s forwards;--l:520"/>
+<text x="140" y="254" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  font-style="italic" opacity="0"
+  style="animation:rowIn 0.4s ease 3.5s forwards">Product title length</text>
+<text x="350" y="254" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 3.5s forwards">80 chars</text>
+<text x="530" y="254" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 3.5s forwards">≤ 100 chars</text>
+<text x="612" y="255" font-family="Georgia,serif" font-size="11" fill="rgba(80,200,120,0.8)"
+  opacity="0" style="animation:rowIn 0.4s ease 3.6s forwards">✓</text>
+
+<!-- Row 5: DRIFT -->
+<rect x="101" y="269" width="518" height="38" fill="rgba(220,60,40,0.07)" opacity="0"
+  style="animation:fadeUp 0.3s ease 3.7s forwards"/>
+<line x1="100" y1="307" x2="620" y2="307" stroke="rgba(220,220,255,0.06)" stroke-width="0.6"
+  stroke-dasharray="520" stroke-dashoffset="520"
+  style="animation:draw 0.3s ease 3.7s forwards;--l:520"/>
+<text x="140" y="293" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  font-style="italic" opacity="0"
+  style="animation:rowIn 0.4s ease 3.8s forwards">Category taxonomy</text>
+<text x="350" y="293" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,80,60,0.9)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 3.8s forwards">Ethnic / Kurta</text>
+<text x="530" y="293" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 3.8s forwards">Kurta-Sets / Women</text>
+<text x="600" y="294" font-family="Georgia,serif" font-size="13" fill="rgba(220,60,40,0.9)"
+  opacity="0" style="animation:blink 1s ease 4s infinite forwards">!</text>
+
+<!-- Row 6: OK -->
+<line x1="100" y1="345" x2="620" y2="345" stroke="rgba(220,220,255,0.06)" stroke-width="0.6"
+  stroke-dasharray="520" stroke-dashoffset="520"
+  style="animation:draw 0.3s ease 4.1s forwards;--l:520"/>
+<text x="140" y="331" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  font-style="italic" opacity="0"
+  style="animation:rowIn 0.4s ease 4.2s forwards">Return window</text>
+<text x="350" y="331" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 4.2s forwards">10 days</text>
+<text x="530" y="331" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 4.2s forwards">10 days</text>
+<text x="612" y="332" font-family="Georgia,serif" font-size="11" fill="rgba(80,200,120,0.8)"
+  opacity="0" style="animation:rowIn 0.4s ease 4.3s forwards">✓</text>
+
+<!-- Row 7: DRIFT -->
+<rect x="101" y="346" width="518" height="33" fill="rgba(220,60,40,0.06)" opacity="0"
+  style="animation:fadeUp 0.3s ease 4.4s forwards"/>
+<text x="140" y="368" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  font-style="italic" opacity="0"
+  style="animation:rowIn 0.4s ease 4.5s forwards">HSN code format</text>
+<text x="350" y="368" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,80,60,0.9)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 4.5s forwards">6101</text>
+<text x="530" y="368" font-family="Georgia,serif" font-size="11.5" fill="rgba(220,220,255,0.6)"
+  text-anchor="middle" opacity="0"
+  style="animation:rowIn 0.4s ease 4.5s forwards">61019010</text>
+<text x="600" y="369" font-family="Georgia,serif" font-size="13" fill="rgba(220,60,40,0.9)"
+  opacity="0" style="animation:blink 0.9s ease 4.7s infinite forwards">!</text>
+
+<!-- column dividers -->
+<line x1="285" y1="116" x2="285" y2="420" stroke="rgba(220,220,255,0.07)" stroke-width="0.6"
+  stroke-dasharray="304" stroke-dashoffset="304"
+  style="animation:draw 0.6s ease 2.4s forwards;--l:304"/>
+<line x1="455" y1="116" x2="455" y2="420" stroke="rgba(220,220,255,0.07)" stroke-width="0.6"
+  stroke-dasharray="304" stroke-dashoffset="304"
+  style="animation:draw 0.6s ease 2.4s forwards;--l:304"/>
+
+<!-- ── CALLOUTS ── -->
+
+<!-- drift alert -->
+<circle cx="620" cy="177" r="0" fill="rgba(220,60,40,0.9)"
+  style="animation:pop 0.3s ease 5s forwards"/>
+<line x1="624" y1="177" x2="720" y2="148"
+  stroke="rgba(220,220,255,0.35)" stroke-width="0.8" stroke-dasharray="4 3"
+  stroke-dashoffset="120" style="animation:draw 0.4s ease 5.1s forwards;--l:120"/>
+<text x="730" y="141" font-family="Georgia,serif" font-size="13" font-weight="700"
+  letter-spacing="1.5" fill="rgba(220,220,255,0.95)" opacity="0"
+  style="animation:fadeUp 0.4s ease 5.3s forwards">SPEC DRIFT</text>
+<text x="730" y="159" font-family="Georgia,serif" font-size="11" font-style="italic"
+  fill="rgba(220,220,255,0.45)" opacity="0"
+  style="animation:fadeUp 0.4s ease 5.4s forwards">Detected before shipment</text>
+
+<!-- penalty warning -->
+<circle cx="620" cy="293" r="0" fill="rgba(220,60,40,0.8)"
+  style="animation:pop 0.3s ease 5.5s forwards"/>
+<line x1="624" y1="293" x2="720" y2="310"
+  stroke="rgba(220,220,255,0.35)" stroke-width="0.8" stroke-dasharray="4 3"
+  stroke-dashoffset="110" style="animation:draw 0.4s ease 5.6s forwards;--l:110"/>
+<text x="730" y="303" font-family="Georgia,serif" font-size="13" font-weight="700"
+  letter-spacing="1.5" fill="rgba(220,220,255,0.95)" opacity="0"
+  style="animation:fadeUp 0.4s ease 5.8s forwards">PENALTY PREVENTED</text>
+<text x="730" y="321" font-family="Georgia,serif" font-size="11" font-style="italic"
+  fill="rgba(220,220,255,0.45)" opacity="0"
+  style="animation:fadeUp 0.4s ease 5.9s forwards">Alert before takedown</text>
+
+<!-- summary -->
+<text x="730" y="400" font-family="Georgia,serif" font-size="9.5" letter-spacing="2"
+  fill="rgba(167,139,250,0.6)" opacity="0"
+  style="animation:fadeUp 0.4s ease 6.1s forwards">MONITORING · REAL-TIME</text>
+
+<!-- bottom rule -->
+<line x1="24" y1="510" x2="876" y2="510"
+  stroke="rgba(220,220,255,0.08)" stroke-width="0.8"
+  stroke-dasharray="852" stroke-dashoffset="852"
+  style="animation:draw 1s ease 6.3s forwards;--l:852"/>
+<text x="24" y="528" font-family="Georgia,serif" font-size="9.5" letter-spacing="2"
+  fill="rgba(220,220,255,0.22)" opacity="0"
+  style="animation:fadeUp 0.5s ease 6.5s forwards">COMPLIANCE DRIFT DETECTION — GRADA</text>
+<text x="876" y="528" font-family="Georgia,serif" font-size="9.5" letter-spacing="1.5"
+  fill="rgba(220,220,255,0.22)" text-anchor="end" opacity="0"
+  style="animation:fadeUp 0.5s ease 6.6s forwards">INTELLIGENCE LAYER</text>
+
+</svg>
