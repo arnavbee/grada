@@ -137,7 +137,7 @@ export function POBuilderListView(): JSX.Element {
               <p className="text-xs uppercase tracking-[0.2em] text-kira-midgray">
                 Workbook history
               </p>
-              <h1 className="mt-3 font-serif text-4xl leading-tight text-kira-black">
+              <h1 className="mt-3 font-sans text-4xl leading-tight text-kira-black">
                 Treat PO builders like working files, not one-off exports.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-kira-darkgray">

@@ -334,7 +334,7 @@ export function DashboardView(): JSX.Element {
               <p className="text-xs uppercase tracking-[0.22em] text-kira-midgray">
                 Operations command center
               </p>
-              <h1 className="mt-3 font-serif text-4xl leading-tight text-kira-black">
+              <h1 className="mt-3 font-sans text-4xl leading-tight text-kira-black">
                 Run the real workflows from one place.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-kira-darkgray">

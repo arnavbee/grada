@@ -4478,7 +4478,7 @@ export function CatalogView(): JSX.Element {
         <section className="surface-card p-6 md:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="font-serif text-5xl font-semibold leading-tight">Catalog</h1>
+              <h1 className="font-sans text-5xl font-semibold leading-tight">Catalog</h1>
               <p className="mt-2 text-lg text-kira-midgray">Manage your clothing inventory</p>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-3">
@@ -5210,7 +5210,7 @@ export function CatalogView(): JSX.Element {
         {outOfBoundsPrompt && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
             <div className="kira-modal-open w-full max-w-md border border-kira-warmgray/50 bg-[#FAFAFA] p-6 shadow-2xl">
-              <h3 className="mb-3 font-serif text-2xl font-semibold text-kira-black ">
+              <h3 className="mb-3 font-sans text-2xl font-semibold text-kira-black ">
                 Unrecognized Value
               </h3>
               <p className="mb-4 text-sm text-kira-darkgray ">
@@ -5447,7 +5447,7 @@ export function CatalogView(): JSX.Element {
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 p-4 md:p-6">
           <div className="kira-modal-open mx-auto my-2 w-full max-w-[1120px] border border-[#D1D5DB] dark:border-white/10 bg-[#F7F7F5] dark:bg-[#12141B] shadow-[0_30px_90px_rgba(6,6,6,0.24)]">
             <div className="sticky top-0 z-20 flex items-center justify-between border-b border-[#D9DDDB] dark:border-white/10 bg-[#F7F7F5] dark:bg-[#12141B] px-7 py-5">
-              <h3 className="font-serif text-4xl font-semibold leading-none md:text-5xl dark:text-white">
+              <h3 className="font-sans text-4xl font-semibold leading-none md:text-5xl dark:text-white">
                 Template Manager
               </h3>
               <div className="flex items-center gap-2">
@@ -5720,7 +5720,7 @@ export function CatalogView(): JSX.Element {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="kira-modal-open w-full max-w-[850px] border border-kira-warmgray/50 dark:border-white/10 bg-[#FAFAFA] dark:bg-[#12141B] shadow-2xl transition-all duration-300">
             <div className="flex items-center justify-between border-b border-kira-warmgray/50 dark:border-white/10 px-6 py-5">
-              <h2 className="font-serif text-[28px] font-semibold text-kira-black dark:text-white tracking-tight">
+              <h2 className="font-sans text-[28px] font-semibold text-kira-black dark:text-white tracking-tight">
                 Bulk Upload
               </h2>
               <button
@@ -6482,7 +6482,7 @@ export function CatalogView(): JSX.Element {
           <div className="kira-modal-open mx-auto my-2 w-full max-w-[1120px] border border-[#D1D5DB] dark:border-white/10 bg-[#F7F7F5] dark:bg-[#12141B] shadow-[0_30px_90px_rgba(6,6,6,0.24)] transition-all duration-300">
             <div className="sticky top-0 z-20 flex items-center justify-between border-b border-[#D9DDDB] dark:border-white/10 bg-[#F7F7F5] dark:bg-[#12141B] px-7 py-5">
               <div className="flex items-center gap-4">
-                <h2 className="font-serif text-4xl font-semibold leading-none md:text-5xl dark:text-white">
+                <h2 className="font-sans text-4xl font-semibold leading-none md:text-5xl dark:text-white">
                   {isEditMode ? "Edit Item" : "Add New Item"}
                 </h2>
               </div>
@@ -7117,7 +7117,7 @@ export function CatalogView(): JSX.Element {
           <div className="w-full max-w-[460px] border border-kira-warmgray/60 bg-kira-offwhite p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-kira-warmgray/50 pb-3">
               <div>
-                <h3 className="font-serif text-2xl font-semibold text-kira-black ">
+                <h3 className="font-sans text-2xl font-semibold text-kira-black ">
                   Correction Feedback
                 </h3>
                 <p className="mt-1 text-sm text-kira-midgray">

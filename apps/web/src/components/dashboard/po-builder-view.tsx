@@ -667,7 +667,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
         {isLoadingRequest ? (
           <div className="rounded-[28px] border border-kira-warmgray/70 bg-kira-offwhite/35 px-6 py-16 text-center dark:bg-white/5">
             <div className="mx-auto mb-5 h-14 w-14 animate-spin rounded-full border-4 border-kira-brown border-t-transparent" />
-            <h2 className="font-serif text-3xl text-kira-black">Loading builder workspace...</h2>
+            <h2 className="font-sans text-3xl text-kira-black">Loading builder workspace...</h2>
             <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-kira-darkgray">
               Restoring the selected styles, colorways, review state, and workbook preview.
             </p>
@@ -681,7 +681,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-kira-darkgray/65">
                   Current builder, upgraded
                 </p>
-                <h2 className="font-serif text-3xl text-kira-black">
+                <h2 className="font-sans text-3xl text-kira-black">
                   Pick the base styles for this workbook.
                 </h2>
                 <p className="text-sm leading-6 text-kira-darkgray">
@@ -779,7 +779,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-kira-darkgray/55">
                   Style configuration
                 </p>
-                <h2 className="font-serif text-2xl text-kira-black">
+                <h2 className="font-sans text-2xl text-kira-black">
                   Set each style up the way the workbook expects it.
                 </h2>
                 <p className="text-sm leading-6 text-kira-darkgray">
@@ -828,7 +828,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                       <p className="text-xs uppercase tracking-[0.18em] text-kira-darkgray/50">
                         {item.product?.sku || item.product_id}
                       </p>
-                      <h3 className="font-serif text-2xl text-kira-black">
+                      <h3 className="font-sans text-2xl text-kira-black">
                         {item.product?.title || "Catalog style"}
                       </h3>
                       <p className="text-sm text-kira-darkgray">
@@ -1052,7 +1052,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
             {poData.status === "analyzing" ? (
               <div className="rounded-[28px] border border-kira-warmgray/70 bg-kira-offwhite/35 px-6 py-16 text-center dark:bg-white/5">
                 <div className="mx-auto mb-5 h-14 w-14 animate-spin rounded-full border-4 border-kira-brown border-t-transparent" />
-                <h2 className="font-serif text-3xl text-kira-black">AI is reviewing each style.</h2>
+                <h2 className="font-sans text-3xl text-kira-black">AI is reviewing each style.</h2>
                 <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-kira-darkgray">
                   We’re constraining the dress attributes to safe enum values and pulling confidence
                   scores so you only need to touch the fields that look uncertain.
@@ -1064,7 +1064,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                   <p className="text-sm font-semibold uppercase tracking-[0.18em] text-kira-darkgray/55">
                     AI attribute review
                   </p>
-                  <h2 className="mt-2 font-serif text-2xl text-kira-black">
+                  <h2 className="mt-2 font-sans text-2xl text-kira-black">
                     Review the enum-constrained dress attributes before export.
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-kira-darkgray">
@@ -1089,7 +1089,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                           <p className="text-xs uppercase tracking-[0.18em] text-kira-darkgray/50">
                             {item.product?.sku || item.product_id}
                           </p>
-                          <h3 className="mt-1 font-serif text-2xl text-kira-black">
+                          <h3 className="mt-1 font-sans text-2xl text-kira-black">
                             {item.product?.title || "Catalog style"}
                           </h3>
                         </div>
@@ -1219,7 +1219,7 @@ export function POBuilderView({ initialPoRequestId }: POBuilderViewProps): JSX.E
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-kira-offwhite/60 dark:text-kira-offwhite/60">
                   Workbook preview
                 </p>
-                <h2 className="font-serif text-3xl">Your submission rows are ready.</h2>
+                <h2 className="font-sans text-3xl">Your submission rows are ready.</h2>
                 <p className="max-w-2xl text-sm leading-6 text-kira-offwhite/78 dark:text-kira-offwhite/78">
                   The builder has already exploded each style into colorway x size rows and placed
                   dress attributes into the correct section of the workbook. Export now to hand your
