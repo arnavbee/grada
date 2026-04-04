@@ -15,7 +15,7 @@
   --space-section-wide: 142px;
   --space-stack-lg: 214px;
   --space-stack-xl: 224px;
-  --font: var(--font-grada-alt), "Avenir Next", "Segoe UI", sans-serif;
+  --font: var(--font-geist-sans), "Geist", "Avenir Next", "Segoe UI", sans-serif;
   background:
     radial-gradient(circle at top left, rgba(160, 111, 66, 0.12), transparent 28%),
     radial-gradient(circle at top right, rgba(183, 140, 99, 0.1), transparent 22%),

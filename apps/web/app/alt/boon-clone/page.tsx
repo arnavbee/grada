@@ -1,16 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import type { SyntheticEvent } from "react";
-import { Manrope } from "next/font/google";
 
 import styles from "./boon-clone.module.css";
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-grada-alt",
-  weight: ["400", "500", "600", "700", "800"],
-});
 
 export const metadata: Metadata = {
   title: "grada | Alternate Landing",
@@ -80,20 +72,8 @@ const marketplaceLogos = [
 ];
 
 export default function GradaBoonStructuredPage() {
-  const disableIframeScroll = (event: SyntheticEvent<HTMLIFrameElement>) => {
-    const frame = event.currentTarget;
-    const doc = frame.contentDocument;
-    if (!doc) return;
-    doc.documentElement.style.overflow = "hidden";
-    doc.documentElement.style.margin = "0";
-    if (doc.body) {
-      doc.body.style.overflow = "hidden";
-      doc.body.style.margin = "0";
-    }
-  };
-
   return (
-    <main className={`${styles.page} ${manrope.variable}`}>
+    <main className={styles.page}>
       <header className={styles.navWrap}>
         <div className={styles.nav}>
           <div className={styles.logo}>grada</div>
@@ -140,7 +120,6 @@ export default function GradaBoonStructuredPage() {
             src={onePipelineAnimationSrc}
             className={styles.visualFrame}
             loading="lazy"
-            onLoad={disableIframeScroll}
             scrolling="no"
           />
           <div className={styles.heroOverlayRow}>
@@ -208,7 +187,6 @@ export default function GradaBoonStructuredPage() {
                 src={returnRiskAnimationSrc}
                 className={styles.valueAnimFrame}
                 loading="lazy"
-                onLoad={disableIframeScroll}
                 scrolling="no"
               />
             </div>
@@ -226,7 +204,6 @@ export default function GradaBoonStructuredPage() {
                 src={demandSignalsAnimationSrc}
                 className={styles.valueAnimFrame}
                 loading="lazy"
-                onLoad={disableIframeScroll}
                 scrolling="no"
               />
             </div>
@@ -246,7 +223,6 @@ export default function GradaBoonStructuredPage() {
                 src={complianceDriftAnimationSrc}
                 className={styles.valueAnimFrame}
                 loading="lazy"
-                onLoad={disableIframeScroll}
                 scrolling="no"
               />
             </div>
@@ -290,7 +266,6 @@ export default function GradaBoonStructuredPage() {
               src={receivedPoProcessingAnimationSrc}
               className={styles.visualFrame}
               loading="lazy"
-              onLoad={disableIframeScroll}
               scrolling="no"
             />
             <div className={styles.solutionOverlay}>
@@ -372,7 +347,6 @@ export default function GradaBoonStructuredPage() {
               src={commercialInvoicesAnimationSrc}
               className={styles.visualFrame}
               loading="lazy"
-              onLoad={disableIframeScroll}
               scrolling="no"
             />
           </div>

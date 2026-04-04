@@ -121,6 +121,14 @@ function SectionHeader({ eyebrow, title, description }: SectionHeaderProps): JSX
   );
 }
 
+const SETTINGS_SECTIONS = [
+  { id: "brand-identity", label: "Brand" },
+  { id: "po-builder-defaults", label: "PO Builder" },
+  { id: "invoice-defaults", label: "Invoice" },
+  { id: "invoice-buyer-templates", label: "Buyer Templates" },
+  { id: "packing-rules", label: "Packing" },
+] as const;
+
 export function SettingsView(): JSX.Element {
   const [brandProfile, setBrandProfile] = useState<BrandProfileInput>(EMPTY_BRAND_PROFILE);
   const [poBuilderDefaults, setPOBuilderDefaults] =
@@ -138,6 +146,8 @@ export function SettingsView(): JSX.Element {
   const [uploadingStamp, setUploadingStamp] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeSectionId, setActiveSectionId] =
+    useState<(typeof SETTINGS_SECTIONS)[number]["id"]>("brand-identity");
 
   useEffect(() => {
     let active = true;
@@ -445,6 +455,12 @@ export function SettingsView(): JSX.Element {
     }
   };
 
+  const handleJumpToSection = (sectionId: (typeof SETTINGS_SECTIONS)[number]["id"]): void => {
+    setActiveSectionId(sectionId);
+    const section = document.getElementById(sectionId);
+    section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <DashboardShell
       subtitle="Centralize operational defaults for documents, packing, and the upgraded PO builder."
@@ -462,707 +478,753 @@ export function SettingsView(): JSX.Element {
           </Card>
         ) : null}
 
-        <Card className="p-5 md:p-6">
-          <SectionHeader
-            description="Your legal and company identity. This is the business profile the rest of the operational flows build from."
-            eyebrow="Identity"
-            title="Brand identity"
-          />
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
-            <InputField
-              disabled={loading}
-              label="FBS name"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, fbs_name: event.target.value }))
-              }
-              value={brandProfile.fbs_name}
+        <Card className="sticky top-16 z-20 p-3 md:top-20 md:p-4">
+          <div className="flex flex-wrap gap-2">
+            {SETTINGS_SECTIONS.map((section) => (
+              <Button
+                key={section.id}
+                onClick={() => handleJumpToSection(section.id)}
+                type="button"
+                variant={activeSectionId === section.id ? "primary" : "secondary"}
+              >
+                {section.label}
+              </Button>
+            ))}
+          </div>
+        </Card>
+
+        <section className="scroll-mt-28" id="brand-identity">
+          <Card className="p-5 md:p-6">
+            <SectionHeader
+              description="Your legal and company identity. This is the business profile the rest of the operational flows build from."
+              eyebrow="Identity"
+              title="Brand identity"
             />
-            <InputField
-              disabled={loading}
-              label="Vendor company name"
-              onChange={(event) =>
-                setBrandProfile((current) => ({
-                  ...current,
-                  vendor_company_name: event.target.value,
-                }))
-              }
-              value={brandProfile.vendor_company_name}
+            <div className="mt-6 grid gap-5 md:grid-cols-2">
+              <InputField
+                disabled={loading}
+                label="FBS name"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, fbs_name: event.target.value }))
+                }
+                value={brandProfile.fbs_name}
+              />
+              <InputField
+                disabled={loading}
+                label="Vendor company name"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({
+                    ...current,
+                    vendor_company_name: event.target.value,
+                  }))
+                }
+                value={brandProfile.vendor_company_name}
+              />
+              <InputField
+                disabled={loading}
+                label="Supplier name"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, supplier_name: event.target.value }))
+                }
+                value={brandProfile.supplier_name}
+              />
+              <InputField
+                disabled={loading}
+                label="GST number"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, gst_number: event.target.value }))
+                }
+                value={brandProfile.gst_number}
+              />
+              <InputField
+                disabled={loading}
+                label="PAN number"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, pan_number: event.target.value }))
+                }
+                value={brandProfile.pan_number}
+              />
+              <InputField
+                disabled={loading}
+                label="Supplier city"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, supplier_city: event.target.value }))
+                }
+                value={brandProfile.supplier_city}
+              />
+              <InputField
+                disabled={loading}
+                label="Supplier state"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, supplier_state: event.target.value }))
+                }
+                value={brandProfile.supplier_state}
+              />
+              <InputField
+                disabled={loading}
+                label="Supplier pincode"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({
+                    ...current,
+                    supplier_pincode: event.target.value,
+                  }))
+                }
+                value={brandProfile.supplier_pincode}
+              />
+              <InputField
+                disabled={loading}
+                label="Instagram handle"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({
+                    ...current,
+                    instagram_handle: event.target.value,
+                  }))
+                }
+                value={brandProfile.instagram_handle}
+              />
+              <InputField
+                disabled={loading}
+                label="Website"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, website_url: event.target.value }))
+                }
+                value={brandProfile.website_url}
+              />
+              <InputField
+                disabled={loading}
+                label="Facebook handle"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({
+                    ...current,
+                    facebook_handle: event.target.value,
+                  }))
+                }
+                value={brandProfile.facebook_handle}
+              />
+              <InputField
+                disabled={loading}
+                label="Snapchat handle"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({
+                    ...current,
+                    snapchat_handle: event.target.value,
+                  }))
+                }
+                value={brandProfile.snapchat_handle}
+              />
+              <div className="md:col-span-2">
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-kira-darkgray">
+                    Registered address
+                  </span>
+                  <textarea
+                    className="kira-focus-ring min-h-28 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
+                    disabled={loading}
+                    onChange={(event) =>
+                      setBrandProfile((current) => ({ ...current, address: event.target.value }))
+                    }
+                    value={brandProfile.address}
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button disabled={loading || savingBrandIdentity} onClick={handleSaveBrandIdentity}>
+                {savingBrandIdentity ? "Saving..." : "Save brand identity"}
+              </Button>
+            </div>
+          </Card>
+        </section>
+
+        <section className="scroll-mt-28" id="po-builder-defaults">
+          <Card className="p-5 md:p-6">
+            <SectionHeader
+              description="These defaults prefill the PO Format Builder so teams start from the same ratio, commercial inputs, and fabric assumptions every time."
+              eyebrow="PO Builder"
+              title="PO builder defaults"
             />
-            <InputField
-              disabled={loading}
-              label="Supplier name"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, supplier_name: event.target.value }))
-              }
-              value={brandProfile.supplier_name}
-            />
-            <InputField
-              disabled={loading}
-              label="GST number"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, gst_number: event.target.value }))
-              }
-              value={brandProfile.gst_number}
-            />
-            <InputField
-              disabled={loading}
-              label="PAN number"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, pan_number: event.target.value }))
-              }
-              value={brandProfile.pan_number}
-            />
-            <InputField
-              disabled={loading}
-              label="Supplier city"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, supplier_city: event.target.value }))
-              }
-              value={brandProfile.supplier_city}
-            />
-            <InputField
-              disabled={loading}
-              label="Supplier state"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, supplier_state: event.target.value }))
-              }
-              value={brandProfile.supplier_state}
-            />
-            <InputField
-              disabled={loading}
-              label="Supplier pincode"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, supplier_pincode: event.target.value }))
-              }
-              value={brandProfile.supplier_pincode}
-            />
-            <InputField
-              disabled={loading}
-              label="Instagram handle"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, instagram_handle: event.target.value }))
-              }
-              value={brandProfile.instagram_handle}
-            />
-            <InputField
-              disabled={loading}
-              label="Website"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, website_url: event.target.value }))
-              }
-              value={brandProfile.website_url}
-            />
-            <InputField
-              disabled={loading}
-              label="Facebook handle"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, facebook_handle: event.target.value }))
-              }
-              value={brandProfile.facebook_handle}
-            />
-            <InputField
-              disabled={loading}
-              label="Snapchat handle"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, snapchat_handle: event.target.value }))
-              }
-              value={brandProfile.snapchat_handle}
-            />
-            <div className="md:col-span-2">
+            <div className="mt-6 grid gap-5 md:grid-cols-2">
+              <InputField
+                disabled={loading}
+                label="Default PO price"
+                min="0"
+                onChange={(event) =>
+                  setPOBuilderDefaults((current) => ({
+                    ...current,
+                    default_po_price: Number(event.target.value) || 0,
+                  }))
+                }
+                step="0.01"
+                type="number"
+                value={poBuilderDefaults.default_po_price}
+              />
+              <InputField
+                disabled={loading}
+                label="Default OSP in SAR"
+                min="0"
+                onChange={(event) =>
+                  setPOBuilderDefaults((current) => ({
+                    ...current,
+                    default_osp_in_sar: Number(event.target.value) || 0,
+                  }))
+                }
+                step="0.01"
+                type="number"
+                value={poBuilderDefaults.default_osp_in_sar}
+              />
+              <div className="md:col-span-2">
+                <InputField
+                  disabled={loading}
+                  label="Default fibre composition"
+                  onChange={(event) =>
+                    setPOBuilderDefaults((current) => ({
+                      ...current,
+                      default_fabric_composition: event.target.value,
+                    }))
+                  }
+                  value={poBuilderDefaults.default_fabric_composition}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <div className="rounded-2xl border border-kira-warmgray/35 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-kira-black">Default size ratio</p>
+                      <p className="mt-1 text-xs text-kira-midgray">
+                        Used when the builder creates a new style before anyone edits it.
+                      </p>
+                    </div>
+                    <div className="rounded-full bg-kira-warmgray/20 px-3 py-1 text-xs font-semibold text-kira-darkgray">
+                      {Object.values(poBuilderDefaults.default_size_ratio).reduce(
+                        (sum, value) => sum + value,
+                        0,
+                      )}{" "}
+                      pieces / colorway
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-5 gap-3">
+                    {SIZE_KEYS.map((size) => (
+                      <label className="space-y-2 text-center" key={size}>
+                        <span className="block text-sm font-medium text-kira-darkgray">{size}</span>
+                        <input
+                          className="kira-focus-ring w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-2 py-2 text-center text-kira-black"
+                          disabled={loading}
+                          min="0"
+                          onChange={(event) =>
+                            setPOBuilderDefaults((current) => ({
+                              ...current,
+                              default_size_ratio: {
+                                ...current.default_size_ratio,
+                                [size]: Number(event.target.value) || 0,
+                              },
+                            }))
+                          }
+                          type="number"
+                          value={poBuilderDefaults.default_size_ratio[size] ?? 0}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button
+                disabled={loading || savingPOBuilderDefaults}
+                onClick={handleSavePOBuilderDefaults}
+              >
+                {savingPOBuilderDefaults ? "Saving..." : "Save PO builder defaults"}
+              </Button>
+            </div>
+          </Card>
+        </section>
+
+        <section className="scroll-mt-28" id="invoice-defaults">
+          <Card className="p-5 md:p-6">
+            <SectionHeader description="" eyebrow="Invoice" title="Invoice defaults" />
+            <div className="mt-6 grid gap-5 md:grid-cols-2">
+              <InputField
+                disabled={loading}
+                label="Invoice prefix"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, invoice_prefix: event.target.value }))
+                }
+                value={brandProfile.invoice_prefix}
+              />
+              <InputField
+                disabled={loading}
+                label="Default IGST rate"
+                min="0"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({
+                    ...current,
+                    default_igst_rate: Number(event.target.value) || 0,
+                  }))
+                }
+                step="0.01"
+                type="number"
+                value={brandProfile.default_igst_rate}
+              />
+              <InputField
+                disabled={loading}
+                label="Bill To name"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, bill_to_name: event.target.value }))
+                }
+                value={brandProfile.bill_to_name}
+              />
+              <InputField
+                disabled={loading}
+                label="Bill To GST"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, bill_to_gst: event.target.value }))
+                }
+                value={brandProfile.bill_to_gst}
+              />
+              <InputField
+                disabled={loading}
+                label="Bill To PAN"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, bill_to_pan: event.target.value }))
+                }
+                value={brandProfile.bill_to_pan}
+              />
+              <InputField
+                disabled={loading}
+                label="Ship To name"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, ship_to_name: event.target.value }))
+                }
+                value={brandProfile.ship_to_name}
+              />
+              <InputField
+                disabled={loading}
+                label="Ship To GST"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, ship_to_gst: event.target.value }))
+                }
+                value={brandProfile.ship_to_gst}
+              />
+              <InputField
+                disabled={loading}
+                label="Delivery from name"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({
+                    ...current,
+                    delivery_from_name: event.target.value,
+                  }))
+                }
+                value={brandProfile.delivery_from_name}
+              />
+              <InputField
+                disabled={loading}
+                label="Delivery from city"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({
+                    ...current,
+                    delivery_from_city: event.target.value,
+                  }))
+                }
+                value={brandProfile.delivery_from_city}
+              />
+              <InputField
+                disabled={loading}
+                label="Delivery from pincode"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({
+                    ...current,
+                    delivery_from_pincode: event.target.value,
+                  }))
+                }
+                value={brandProfile.delivery_from_pincode}
+              />
+              <InputField
+                disabled={loading}
+                label="Origin country"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, origin_country: event.target.value }))
+                }
+                value={brandProfile.origin_country}
+              />
+              <InputField
+                disabled={loading}
+                label="Origin state"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({ ...current, origin_state: event.target.value }))
+                }
+                value={brandProfile.origin_state}
+              />
+              <InputField
+                disabled={loading}
+                label="Origin district"
+                onChange={(event) =>
+                  setBrandProfile((current) => ({
+                    ...current,
+                    origin_district: event.target.value,
+                  }))
+                }
+                value={brandProfile.origin_district}
+              />
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-kira-darkgray">
-                  Registered address
+                  Default Bill To address
                 </span>
                 <textarea
                   className="kira-focus-ring min-h-28 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
                   disabled={loading}
                   onChange={(event) =>
-                    setBrandProfile((current) => ({ ...current, address: event.target.value }))
+                    setBrandProfile((current) => ({
+                      ...current,
+                      bill_to_address: event.target.value,
+                    }))
                   }
-                  value={brandProfile.address}
+                  value={brandProfile.bill_to_address}
                 />
               </label>
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end">
-            <Button disabled={loading || savingBrandIdentity} onClick={handleSaveBrandIdentity}>
-              {savingBrandIdentity ? "Saving..." : "Save brand identity"}
-            </Button>
-          </div>
-        </Card>
-
-        <Card className="p-5 md:p-6">
-          <SectionHeader
-            description="These defaults prefill the PO Format Builder so teams start from the same ratio, commercial inputs, and fabric assumptions every time."
-            eyebrow="PO Builder"
-            title="PO builder defaults"
-          />
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
-            <InputField
-              disabled={loading}
-              label="Default PO price"
-              min="0"
-              onChange={(event) =>
-                setPOBuilderDefaults((current) => ({
-                  ...current,
-                  default_po_price: Number(event.target.value) || 0,
-                }))
-              }
-              step="0.01"
-              type="number"
-              value={poBuilderDefaults.default_po_price}
-            />
-            <InputField
-              disabled={loading}
-              label="Default OSP in SAR"
-              min="0"
-              onChange={(event) =>
-                setPOBuilderDefaults((current) => ({
-                  ...current,
-                  default_osp_in_sar: Number(event.target.value) || 0,
-                }))
-              }
-              step="0.01"
-              type="number"
-              value={poBuilderDefaults.default_osp_in_sar}
-            />
-            <div className="md:col-span-2">
-              <InputField
-                disabled={loading}
-                label="Default fibre composition"
-                onChange={(event) =>
-                  setPOBuilderDefaults((current) => ({
-                    ...current,
-                    default_fabric_composition: event.target.value,
-                  }))
-                }
-                value={poBuilderDefaults.default_fabric_composition}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <div className="rounded-2xl border border-kira-warmgray/35 p-4">
-                <div className="flex items-center justify-between gap-3">
+              <label className="block">
+                <span className="mb-1 block text-sm font-medium text-kira-darkgray">
+                  Default Ship To address
+                </span>
+                <textarea
+                  className="kira-focus-ring min-h-28 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
+                  disabled={loading}
+                  onChange={(event) =>
+                    setBrandProfile((current) => ({
+                      ...current,
+                      ship_to_address: event.target.value,
+                    }))
+                  }
+                  value={brandProfile.ship_to_address}
+                />
+              </label>
+              <label className="block md:col-span-2">
+                <span className="mb-1 block text-sm font-medium text-kira-darkgray">
+                  Delivery from address
+                </span>
+                <textarea
+                  className="kira-focus-ring min-h-24 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
+                  disabled={loading}
+                  onChange={(event) =>
+                    setBrandProfile((current) => ({
+                      ...current,
+                      delivery_from_address: event.target.value,
+                    }))
+                  }
+                  value={brandProfile.delivery_from_address}
+                />
+              </label>
+              <div className="md:col-span-2 rounded-2xl border border-kira-warmgray/35 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-kira-black">Default size ratio</p>
+                    <p className="text-sm font-medium text-kira-black">Stamp / signature</p>
                     <p className="mt-1 text-xs text-kira-midgray">
-                      Used when the builder creates a new style before anyone edits it.
+                      This image is placed in the invoice footer when available.
                     </p>
                   </div>
-                  <div className="rounded-full bg-kira-warmgray/20 px-3 py-1 text-xs font-semibold text-kira-darkgray">
-                    {Object.values(poBuilderDefaults.default_size_ratio).reduce(
-                      (sum, value) => sum + value,
-                      0,
-                    )}{" "}
-                    pieces / colorway
-                  </div>
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-kira-darkgray px-3 py-2 text-sm text-kira-darkgray hover:bg-kira-warmgray/18">
+                    <input
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      className="hidden"
+                      onChange={(event) => {
+                        void handleStampUpload(event);
+                      }}
+                      type="file"
+                    />
+                    <span>{uploadingStamp ? "Uploading..." : "Upload stamp"}</span>
+                  </label>
                 </div>
-                <div className="mt-4 grid grid-cols-5 gap-3">
-                  {SIZE_KEYS.map((size) => (
-                    <label className="space-y-2 text-center" key={size}>
-                      <span className="block text-sm font-medium text-kira-darkgray">{size}</span>
+                {brandProfile.stamp_image_url ? (
+                  <div className="mt-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      alt="Invoice stamp preview"
+                      className="max-h-28 rounded-lg border border-kira-warmgray/35 bg-white object-contain p-2"
+                      src={resolveSettingsAssetUrl(brandProfile.stamp_image_url) ?? ""}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button
+                disabled={loading || savingInvoiceDefaults}
+                onClick={handleSaveInvoiceDefaults}
+              >
+                {savingInvoiceDefaults ? "Saving..." : "Save invoice defaults"}
+              </Button>
+            </div>
+          </Card>
+        </section>
+
+        <section className="scroll-mt-28" id="invoice-buyer-templates">
+          <Card className="p-5 md:p-6">
+            <SectionHeader
+              description="Create buyer-specific invoice profiles so Landmark, Styli, or any other buyer can start from the right bill-to, ship-to, stamp, and layout defaults."
+              eyebrow="Buyer Templates"
+              title="Invoice buyer templates"
+            />
+            <div className="mt-6 grid gap-6 lg:grid-cols-[280px,minmax(0,1fr)]">
+              <div className="space-y-3">
+                <Button onClick={() => handleSelectBuyerTemplate(null)} variant="secondary">
+                  New buyer template
+                </Button>
+                <div className="space-y-2">
+                  {buyerTemplates.length === 0 ? (
+                    <Card className="border border-dashed border-kira-warmgray/35 p-4 text-sm text-kira-midgray">
+                      No buyer templates yet. Create one to auto-match invoice defaults by buyer.
+                    </Card>
+                  ) : (
+                    buyerTemplates.map((template) => (
+                      <button
+                        className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                          selectedBuyerTemplateId === template.id
+                            ? "border-kira-black bg-kira-offwhite"
+                            : "border-kira-warmgray/30 hover:border-kira-midgray/40"
+                        }`}
+                        key={template.id}
+                        onClick={() => handleSelectBuyerTemplate(template)}
+                        type="button"
+                      >
+                        <p className="text-sm font-medium text-kira-black">{template.name}</p>
+                        <p className="mt-1 text-xs text-kira-midgray">
+                          {template.buyer_key} · {template.layout_key}
+                          {template.is_default ? " · default" : ""}
+                          {!template.is_active ? " · inactive" : ""}
+                        </p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                <div className="grid gap-5 md:grid-cols-2">
+                  <InputField
+                    disabled={loading || savingBuyerTemplate}
+                    label="Template name"
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        name: event.target.value,
+                      }))
+                    }
+                    value={buyerTemplateDraft.name}
+                  />
+                  <InputField
+                    disabled={loading || savingBuyerTemplate}
+                    hint="Used to auto-match the received PO distributor."
+                    label="Buyer key"
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        buyer_key: event.target.value,
+                      }))
+                    }
+                    value={buyerTemplateDraft.buyer_key}
+                  />
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-medium text-kira-darkgray">
+                      Layout
+                    </span>
+                    <select
+                      className="kira-focus-ring w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
+                      disabled={loading || savingBuyerTemplate}
+                      onChange={(event) =>
+                        setBuyerTemplateDraft((current) => ({
+                          ...current,
+                          layout_key: event.target
+                            .value as BuyerDocumentTemplateInput["layout_key"],
+                        }))
+                      }
+                      value={buyerTemplateDraft.layout_key}
+                    >
+                      <option value="default_v1">Default invoice</option>
+                      <option value="landmark_v1">Landmark invoice</option>
+                    </select>
+                  </label>
+                  <div className="flex flex-wrap items-center gap-4 pt-7 text-sm text-kira-darkgray">
+                    <label className="inline-flex items-center gap-2">
                       <input
-                        className="kira-focus-ring w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-2 py-2 text-center text-kira-black"
-                        disabled={loading}
-                        min="0"
+                        checked={buyerTemplateDraft.is_default}
                         onChange={(event) =>
-                          setPOBuilderDefaults((current) => ({
+                          setBuyerTemplateDraft((current) => ({
                             ...current,
-                            default_size_ratio: {
-                              ...current.default_size_ratio,
-                              [size]: Number(event.target.value) || 0,
-                            },
+                            is_default: event.target.checked,
                           }))
                         }
-                        type="number"
-                        value={poBuilderDefaults.default_size_ratio[size] ?? 0}
+                        type="checkbox"
                       />
+                      <span>Set as default</span>
                     </label>
-                  ))}
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        checked={buyerTemplateDraft.is_active}
+                        onChange={(event) =>
+                          setBuyerTemplateDraft((current) => ({
+                            ...current,
+                            is_active: event.target.checked,
+                          }))
+                        }
+                        type="checkbox"
+                      />
+                      <span>Active</span>
+                    </label>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end">
-            <Button
-              disabled={loading || savingPOBuilderDefaults}
-              onClick={handleSavePOBuilderDefaults}
-            >
-              {savingPOBuilderDefaults ? "Saving..." : "Save PO builder defaults"}
-            </Button>
-          </div>
-        </Card>
 
-        <Card className="p-5 md:p-6">
-          <SectionHeader description="" eyebrow="Invoice" title="Invoice defaults" />
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
-            <InputField
-              disabled={loading}
-              label="Invoice prefix"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, invoice_prefix: event.target.value }))
-              }
-              value={brandProfile.invoice_prefix}
-            />
-            <InputField
-              disabled={loading}
-              label="Default IGST rate"
-              min="0"
-              onChange={(event) =>
-                setBrandProfile((current) => ({
-                  ...current,
-                  default_igst_rate: Number(event.target.value) || 0,
-                }))
-              }
-              step="0.01"
-              type="number"
-              value={brandProfile.default_igst_rate}
-            />
-            <InputField
-              disabled={loading}
-              label="Bill To name"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, bill_to_name: event.target.value }))
-              }
-              value={brandProfile.bill_to_name}
-            />
-            <InputField
-              disabled={loading}
-              label="Bill To GST"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, bill_to_gst: event.target.value }))
-              }
-              value={brandProfile.bill_to_gst}
-            />
-            <InputField
-              disabled={loading}
-              label="Bill To PAN"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, bill_to_pan: event.target.value }))
-              }
-              value={brandProfile.bill_to_pan}
-            />
-            <InputField
-              disabled={loading}
-              label="Ship To name"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, ship_to_name: event.target.value }))
-              }
-              value={brandProfile.ship_to_name}
-            />
-            <InputField
-              disabled={loading}
-              label="Ship To GST"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, ship_to_gst: event.target.value }))
-              }
-              value={brandProfile.ship_to_gst}
-            />
-            <InputField
-              disabled={loading}
-              label="Delivery from name"
-              onChange={(event) =>
-                setBrandProfile((current) => ({
-                  ...current,
-                  delivery_from_name: event.target.value,
-                }))
-              }
-              value={brandProfile.delivery_from_name}
-            />
-            <InputField
-              disabled={loading}
-              label="Delivery from city"
-              onChange={(event) =>
-                setBrandProfile((current) => ({
-                  ...current,
-                  delivery_from_city: event.target.value,
-                }))
-              }
-              value={brandProfile.delivery_from_city}
-            />
-            <InputField
-              disabled={loading}
-              label="Delivery from pincode"
-              onChange={(event) =>
-                setBrandProfile((current) => ({
-                  ...current,
-                  delivery_from_pincode: event.target.value,
-                }))
-              }
-              value={brandProfile.delivery_from_pincode}
-            />
-            <InputField
-              disabled={loading}
-              label="Origin country"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, origin_country: event.target.value }))
-              }
-              value={brandProfile.origin_country}
-            />
-            <InputField
-              disabled={loading}
-              label="Origin state"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, origin_state: event.target.value }))
-              }
-              value={brandProfile.origin_state}
-            />
-            <InputField
-              disabled={loading}
-              label="Origin district"
-              onChange={(event) =>
-                setBrandProfile((current) => ({ ...current, origin_district: event.target.value }))
-              }
-              value={brandProfile.origin_district}
-            />
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-kira-darkgray">
-                Default Bill To address
-              </span>
-              <textarea
-                className="kira-focus-ring min-h-28 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
-                disabled={loading}
-                onChange={(event) =>
-                  setBrandProfile((current) => ({
-                    ...current,
-                    bill_to_address: event.target.value,
-                  }))
-                }
-                value={brandProfile.bill_to_address}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-kira-darkgray">
-                Default Ship To address
-              </span>
-              <textarea
-                className="kira-focus-ring min-h-28 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
-                disabled={loading}
-                onChange={(event) =>
-                  setBrandProfile((current) => ({
-                    ...current,
-                    ship_to_address: event.target.value,
-                  }))
-                }
-                value={brandProfile.ship_to_address}
-              />
-            </label>
-            <label className="block md:col-span-2">
-              <span className="mb-1 block text-sm font-medium text-kira-darkgray">
-                Delivery from address
-              </span>
-              <textarea
-                className="kira-focus-ring min-h-24 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
-                disabled={loading}
-                onChange={(event) =>
-                  setBrandProfile((current) => ({
-                    ...current,
-                    delivery_from_address: event.target.value,
-                  }))
-                }
-                value={brandProfile.delivery_from_address}
-              />
-            </label>
-            <div className="md:col-span-2 rounded-2xl border border-kira-warmgray/35 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-kira-black">Stamp / signature</p>
-                  <p className="mt-1 text-xs text-kira-midgray">
-                    This image is placed in the invoice footer when available.
-                  </p>
-                </div>
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-kira-darkgray px-3 py-2 text-sm text-kira-darkgray hover:bg-kira-warmgray/18">
-                  <input
-                    accept="image/png,image/jpeg,image/jpg,image/webp"
-                    className="hidden"
-                    onChange={(event) => {
-                      void handleStampUpload(event);
-                    }}
-                    type="file"
+                <div className="grid gap-5 md:grid-cols-2">
+                  <InputField
+                    disabled={loading || savingBuyerTemplate}
+                    label="Marketplace label"
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        defaults: { ...current.defaults, marketplace_name: event.target.value },
+                      }))
+                    }
+                    value={buyerTemplateDraft.defaults.marketplace_name}
                   />
-                  <span>{uploadingStamp ? "Uploading..." : "Upload stamp"}</span>
-                </label>
-              </div>
-              {brandProfile.stamp_image_url ? (
-                <div className="mt-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    alt="Invoice stamp preview"
-                    className="max-h-28 rounded-lg border border-kira-warmgray/35 bg-white object-contain p-2"
-                    src={resolveSettingsAssetUrl(brandProfile.stamp_image_url) ?? ""}
+                  <InputField
+                    disabled={loading || savingBuyerTemplate}
+                    label="Stamp image URL"
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        defaults: { ...current.defaults, stamp_image_url: event.target.value },
+                      }))
+                    }
+                    value={buyerTemplateDraft.defaults.stamp_image_url}
                   />
+                  <InputField
+                    disabled={loading || savingBuyerTemplate}
+                    label="Bill To name"
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        defaults: { ...current.defaults, bill_to_name: event.target.value },
+                      }))
+                    }
+                    value={buyerTemplateDraft.defaults.bill_to_name}
+                  />
+                  <InputField
+                    disabled={loading || savingBuyerTemplate}
+                    label="Bill To GST"
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        defaults: { ...current.defaults, bill_to_gst: event.target.value },
+                      }))
+                    }
+                    value={buyerTemplateDraft.defaults.bill_to_gst}
+                  />
+                  <InputField
+                    disabled={loading || savingBuyerTemplate}
+                    label="Bill To PAN"
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        defaults: { ...current.defaults, bill_to_pan: event.target.value },
+                      }))
+                    }
+                    value={buyerTemplateDraft.defaults.bill_to_pan}
+                  />
+                  <InputField
+                    disabled={loading || savingBuyerTemplate}
+                    label="Ship To name"
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        defaults: { ...current.defaults, ship_to_name: event.target.value },
+                      }))
+                    }
+                    value={buyerTemplateDraft.defaults.ship_to_name}
+                  />
+                  <InputField
+                    disabled={loading || savingBuyerTemplate}
+                    label="Ship To GST"
+                    onChange={(event) =>
+                      setBuyerTemplateDraft((current) => ({
+                        ...current,
+                        defaults: { ...current.defaults, ship_to_gst: event.target.value },
+                      }))
+                    }
+                    value={buyerTemplateDraft.defaults.ship_to_gst}
+                  />
+                  <label className="block md:col-span-2">
+                    <span className="mb-1 block text-sm font-medium text-kira-darkgray">
+                      Bill To address
+                    </span>
+                    <textarea
+                      className="kira-focus-ring min-h-24 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
+                      disabled={loading || savingBuyerTemplate}
+                      onChange={(event) =>
+                        setBuyerTemplateDraft((current) => ({
+                          ...current,
+                          defaults: { ...current.defaults, bill_to_address: event.target.value },
+                        }))
+                      }
+                      value={buyerTemplateDraft.defaults.bill_to_address}
+                    />
+                  </label>
+                  <label className="block md:col-span-2">
+                    <span className="mb-1 block text-sm font-medium text-kira-darkgray">
+                      Ship To address
+                    </span>
+                    <textarea
+                      className="kira-focus-ring min-h-24 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
+                      disabled={loading || savingBuyerTemplate}
+                      onChange={(event) =>
+                        setBuyerTemplateDraft((current) => ({
+                          ...current,
+                          defaults: { ...current.defaults, ship_to_address: event.target.value },
+                        }))
+                      }
+                      value={buyerTemplateDraft.defaults.ship_to_address}
+                    />
+                  </label>
                 </div>
-              ) : null}
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end">
-            <Button disabled={loading || savingInvoiceDefaults} onClick={handleSaveInvoiceDefaults}>
-              {savingInvoiceDefaults ? "Saving..." : "Save invoice defaults"}
-            </Button>
-          </div>
-        </Card>
 
-        <Card className="p-5 md:p-6">
-          <SectionHeader
-            description="Create buyer-specific invoice profiles so Landmark, Styli, or any other buyer can start from the right bill-to, ship-to, stamp, and layout defaults."
-            eyebrow="Buyer Templates"
-            title="Invoice buyer templates"
-          />
-          <div className="mt-6 grid gap-6 lg:grid-cols-[280px,minmax(0,1fr)]">
-            <div className="space-y-3">
-              <Button onClick={() => handleSelectBuyerTemplate(null)} variant="secondary">
-                New buyer template
-              </Button>
-              <div className="space-y-2">
-                {buyerTemplates.length === 0 ? (
-                  <Card className="border border-dashed border-kira-warmgray/35 p-4 text-sm text-kira-midgray">
-                    No buyer templates yet. Create one to auto-match invoice defaults by buyer.
-                  </Card>
-                ) : (
-                  buyerTemplates.map((template) => (
-                    <button
-                      className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                        selectedBuyerTemplateId === template.id
-                          ? "border-kira-black bg-kira-offwhite"
-                          : "border-kira-warmgray/30 hover:border-kira-midgray/40"
-                      }`}
-                      key={template.id}
-                      onClick={() => handleSelectBuyerTemplate(template)}
-                      type="button"
+                <div className="flex flex-wrap justify-end gap-2">
+                  {selectedBuyerTemplate ? (
+                    <Button
+                      disabled={deletingBuyerTemplate}
+                      onClick={handleDeleteBuyerTemplate}
+                      variant="secondary"
                     >
-                      <p className="text-sm font-medium text-kira-black">{template.name}</p>
-                      <p className="mt-1 text-xs text-kira-midgray">
-                        {template.buyer_key} · {template.layout_key}
-                        {template.is_default ? " · default" : ""}
-                        {!template.is_active ? " · inactive" : ""}
-                      </p>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-5">
-              <div className="grid gap-5 md:grid-cols-2">
-                <InputField
-                  disabled={loading || savingBuyerTemplate}
-                  label="Template name"
-                  onChange={(event) =>
-                    setBuyerTemplateDraft((current) => ({
-                      ...current,
-                      name: event.target.value,
-                    }))
-                  }
-                  value={buyerTemplateDraft.name}
-                />
-                <InputField
-                  disabled={loading || savingBuyerTemplate}
-                  hint="Used to auto-match the received PO distributor."
-                  label="Buyer key"
-                  onChange={(event) =>
-                    setBuyerTemplateDraft((current) => ({
-                      ...current,
-                      buyer_key: event.target.value,
-                    }))
-                  }
-                  value={buyerTemplateDraft.buyer_key}
-                />
-                <label className="block">
-                  <span className="mb-1 block text-sm font-medium text-kira-darkgray">Layout</span>
-                  <select
-                    className="kira-focus-ring w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
-                    disabled={loading || savingBuyerTemplate}
-                    onChange={(event) =>
-                      setBuyerTemplateDraft((current) => ({
-                        ...current,
-                        layout_key: event.target.value as BuyerDocumentTemplateInput["layout_key"],
-                      }))
+                      {deletingBuyerTemplate ? "Deleting..." : "Delete template"}
+                    </Button>
+                  ) : null}
+                  <Button
+                    disabled={
+                      loading ||
+                      savingBuyerTemplate ||
+                      !buyerTemplateDraft.name.trim() ||
+                      !buyerTemplateDraft.buyer_key.trim()
                     }
-                    value={buyerTemplateDraft.layout_key}
+                    onClick={handleSaveBuyerTemplate}
                   >
-                    <option value="default_v1">Default invoice</option>
-                    <option value="landmark_v1">Landmark invoice</option>
-                  </select>
-                </label>
-                <div className="flex flex-wrap items-center gap-4 pt-7 text-sm text-kira-darkgray">
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      checked={buyerTemplateDraft.is_default}
-                      onChange={(event) =>
-                        setBuyerTemplateDraft((current) => ({
-                          ...current,
-                          is_default: event.target.checked,
-                        }))
-                      }
-                      type="checkbox"
-                    />
-                    <span>Set as default</span>
-                  </label>
-                  <label className="inline-flex items-center gap-2">
-                    <input
-                      checked={buyerTemplateDraft.is_active}
-                      onChange={(event) =>
-                        setBuyerTemplateDraft((current) => ({
-                          ...current,
-                          is_active: event.target.checked,
-                        }))
-                      }
-                      type="checkbox"
-                    />
-                    <span>Active</span>
-                  </label>
+                    {savingBuyerTemplate
+                      ? "Saving..."
+                      : selectedBuyerTemplate
+                        ? "Save template"
+                        : "Create template"}
+                  </Button>
                 </div>
               </div>
-
-              <div className="grid gap-5 md:grid-cols-2">
-                <InputField
-                  disabled={loading || savingBuyerTemplate}
-                  label="Marketplace label"
-                  onChange={(event) =>
-                    setBuyerTemplateDraft((current) => ({
-                      ...current,
-                      defaults: { ...current.defaults, marketplace_name: event.target.value },
-                    }))
-                  }
-                  value={buyerTemplateDraft.defaults.marketplace_name}
-                />
-                <InputField
-                  disabled={loading || savingBuyerTemplate}
-                  label="Stamp image URL"
-                  onChange={(event) =>
-                    setBuyerTemplateDraft((current) => ({
-                      ...current,
-                      defaults: { ...current.defaults, stamp_image_url: event.target.value },
-                    }))
-                  }
-                  value={buyerTemplateDraft.defaults.stamp_image_url}
-                />
-                <InputField
-                  disabled={loading || savingBuyerTemplate}
-                  label="Bill To name"
-                  onChange={(event) =>
-                    setBuyerTemplateDraft((current) => ({
-                      ...current,
-                      defaults: { ...current.defaults, bill_to_name: event.target.value },
-                    }))
-                  }
-                  value={buyerTemplateDraft.defaults.bill_to_name}
-                />
-                <InputField
-                  disabled={loading || savingBuyerTemplate}
-                  label="Bill To GST"
-                  onChange={(event) =>
-                    setBuyerTemplateDraft((current) => ({
-                      ...current,
-                      defaults: { ...current.defaults, bill_to_gst: event.target.value },
-                    }))
-                  }
-                  value={buyerTemplateDraft.defaults.bill_to_gst}
-                />
-                <InputField
-                  disabled={loading || savingBuyerTemplate}
-                  label="Bill To PAN"
-                  onChange={(event) =>
-                    setBuyerTemplateDraft((current) => ({
-                      ...current,
-                      defaults: { ...current.defaults, bill_to_pan: event.target.value },
-                    }))
-                  }
-                  value={buyerTemplateDraft.defaults.bill_to_pan}
-                />
-                <InputField
-                  disabled={loading || savingBuyerTemplate}
-                  label="Ship To name"
-                  onChange={(event) =>
-                    setBuyerTemplateDraft((current) => ({
-                      ...current,
-                      defaults: { ...current.defaults, ship_to_name: event.target.value },
-                    }))
-                  }
-                  value={buyerTemplateDraft.defaults.ship_to_name}
-                />
-                <InputField
-                  disabled={loading || savingBuyerTemplate}
-                  label="Ship To GST"
-                  onChange={(event) =>
-                    setBuyerTemplateDraft((current) => ({
-                      ...current,
-                      defaults: { ...current.defaults, ship_to_gst: event.target.value },
-                    }))
-                  }
-                  value={buyerTemplateDraft.defaults.ship_to_gst}
-                />
-                <label className="block md:col-span-2">
-                  <span className="mb-1 block text-sm font-medium text-kira-darkgray">
-                    Bill To address
-                  </span>
-                  <textarea
-                    className="kira-focus-ring min-h-24 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
-                    disabled={loading || savingBuyerTemplate}
-                    onChange={(event) =>
-                      setBuyerTemplateDraft((current) => ({
-                        ...current,
-                        defaults: { ...current.defaults, bill_to_address: event.target.value },
-                      }))
-                    }
-                    value={buyerTemplateDraft.defaults.bill_to_address}
-                  />
-                </label>
-                <label className="block md:col-span-2">
-                  <span className="mb-1 block text-sm font-medium text-kira-darkgray">
-                    Ship To address
-                  </span>
-                  <textarea
-                    className="kira-focus-ring min-h-24 w-full rounded-xl border border-kira-warmgray/35 bg-transparent px-3 py-3 text-kira-black"
-                    disabled={loading || savingBuyerTemplate}
-                    onChange={(event) =>
-                      setBuyerTemplateDraft((current) => ({
-                        ...current,
-                        defaults: { ...current.defaults, ship_to_address: event.target.value },
-                      }))
-                    }
-                    value={buyerTemplateDraft.defaults.ship_to_address}
-                  />
-                </label>
-              </div>
-
-              <div className="flex flex-wrap justify-end gap-2">
-                {selectedBuyerTemplate ? (
-                  <Button
-                    disabled={deletingBuyerTemplate}
-                    onClick={handleDeleteBuyerTemplate}
-                    variant="secondary"
-                  >
-                    {deletingBuyerTemplate ? "Deleting..." : "Delete template"}
-                  </Button>
-                ) : null}
-                <Button
-                  disabled={
-                    loading ||
-                    savingBuyerTemplate ||
-                    !buyerTemplateDraft.name.trim() ||
-                    !buyerTemplateDraft.buyer_key.trim()
-                  }
-                  onClick={handleSaveBuyerTemplate}
-                >
-                  {savingBuyerTemplate
-                    ? "Saving..."
-                    : selectedBuyerTemplate
-                      ? "Save template"
-                      : "Create template"}
-                </Button>
-              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        </section>
 
-        <Card className="p-5 md:p-6">
-          <SectionHeader
-            description="Category-based carton assumptions for packing-list generation. These control how received PO quantities get split across cartons."
-            eyebrow="Packing"
-            title="Packing rules"
-          />
-          <PackingRulesPanel className="mt-6" />
-        </Card>
+        <section className="scroll-mt-28" id="packing-rules">
+          <Card className="p-5 md:p-6">
+            <SectionHeader
+              description="Category-based carton assumptions for packing-list generation. These control how received PO quantities get split across cartons."
+              eyebrow="Packing"
+              title="Packing rules"
+            />
+            <PackingRulesPanel className="mt-6" />
+          </Card>
+        </section>
       </div>
     </DashboardShell>
   );
