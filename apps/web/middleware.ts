@@ -110,7 +110,9 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   const looksSessionLikeJwt = hasActiveJwt(accessToken) || hasActiveJwt(refreshToken);
   const hasValidSession =
-    looksSessionLikeJwt && accessToken ? await validateSession(request, accessToken) : false;
+    isAuthPath(pathname) && looksSessionLikeJwt && accessToken
+      ? await validateSession(request, accessToken)
+      : looksSessionLikeJwt;
 
   if (isProtectedPath(pathname) && !hasValidSession) {
     const loginUrl = new URL("/login", request.url);
