@@ -294,9 +294,9 @@ function MarketplaceCoverageLogo({
 
   if (marketplace.logo.kind === "amazon") {
     return (
-      <span className="relative inline-flex h-5 w-[4.9rem] items-start justify-start font-sans text-[0.95rem] font-medium lowercase tracking-[-0.05em] text-[#171717]">
+      <span className="relative inline-flex h-5 w-[4.9rem] items-start justify-start font-sans text-[0.95rem] font-medium lowercase tracking-[-0.05em] text-kira-black dark:text-kira-offwhite">
         <span>amazon</span>
-        <span className="absolute -right-0.5 top-0 text-[0.5rem] font-semibold tracking-normal text-[#f59e0b]">
+        <span className="absolute -right-0.5 top-0 text-[0.5rem] font-semibold tracking-normal text-[#f59e0b] dark:text-[#fbbf24]">
           .in
         </span>
         <svg
@@ -307,14 +307,14 @@ function MarketplaceCoverageLogo({
           <path
             d="M2 4.5C12 10.5 36 10.5 49 4.5"
             fill="none"
-            stroke="#f59e0b"
+            stroke="#fbbf24"
             strokeLinecap="round"
             strokeWidth="2"
           />
           <path
             d="M45.5 2.7L49 4.5L45.2 6.8"
             fill="none"
-            stroke="#f59e0b"
+            stroke="#fbbf24"
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth="1.8"
@@ -381,7 +381,11 @@ export default function LandingPage(): JSX.Element {
             </p>
 
             <div className="mt-10 flex flex-wrap items-center gap-3 md:mt-auto md:pt-8">
-              <Button asChild className="rounded-full px-6" size="lg">
+              <Button
+                asChild
+                className="rounded-full bg-kira-brown px-6 text-kira-offwhite hover:bg-kira-brown/90"
+                size="lg"
+              >
                 <Link href="/dashboard" prefetch={false}>
                   See It in Action
                 </Link>
@@ -559,7 +563,11 @@ export default function LandingPage(): JSX.Element {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button asChild className="rounded-full px-6" size="lg">
+            <Button
+              asChild
+              className="rounded-full bg-kira-brown px-6 text-kira-offwhite hover:bg-kira-brown/90"
+              size="lg"
+            >
               <Link href="/dashboard" prefetch={false}>
                 See It in Action
               </Link>

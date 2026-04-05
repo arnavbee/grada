@@ -39,7 +39,7 @@ export function WorkflowTabs({ views }: { views: WorkflowView[] }): JSX.Element 
                 "min-w-[10rem] justify-start rounded-full border border-kira-warmgray/40 bg-white/55 px-5 py-3 text-left text-sm dark:border-white/10 dark:bg-white/6 dark:text-kira-midgray",
                 isActive
                   ? "border-kira-brown/15 bg-[linear-gradient(135deg,rgba(160,111,66,0.96),rgba(22,33,29,0.92))] text-kira-offwhite dark:border-white/10 dark:bg-[linear-gradient(135deg,rgba(209,164,111,0.92),rgba(41,54,48,0.96))] dark:text-kira-offwhite"
-                  : "text-kira-darkgray hover:border-kira-brown/25 hover:text-kira-black",
+                  : "text-kira-darkgray hover:border-kira-brown/25 hover:text-kira-black dark:text-kira-offwhite/80 dark:hover:border-kira-brown/45 dark:hover:text-kira-offwhite",
               )}
               key={view.value}
               onClick={() => setActiveView(view.value)}
@@ -62,7 +62,7 @@ export function WorkflowTabs({ views }: { views: WorkflowView[] }): JSX.Element 
             <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
               {currentView.eyebrow}
             </p>
-            <h3 className="mt-3 text-[2rem] leading-tight text-kira-black md:text-[2.6rem]">
+            <h3 className="mt-3 text-[2rem] leading-tight text-kira-black dark:text-kira-offwhite md:text-[2.6rem]">
               {currentView.title}
             </h3>
             <p className="mt-4 text-base leading-7 text-kira-darkgray">{currentView.detail}</p>
