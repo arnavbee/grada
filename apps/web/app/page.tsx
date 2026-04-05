@@ -383,7 +383,7 @@ export default function LandingPage(): JSX.Element {
             <div className="mt-10 flex flex-wrap items-center gap-3 md:mt-auto md:pt-8">
               <Button
                 asChild
-                className="rounded-full bg-kira-brown px-6 text-kira-offwhite hover:bg-kira-brown/90"
+                className="rounded-full bg-kira-brown px-6 text-kira-offwhite hover:bg-kira-brown/90 dark:bg-kira-brown dark:text-kira-offwhite dark:hover:bg-kira-brown/90"
                 size="lg"
               >
                 <Link href="/dashboard" prefetch={false}>
@@ -565,7 +565,7 @@ export default function LandingPage(): JSX.Element {
           <div className="flex flex-wrap gap-3">
             <Button
               asChild
-              className="rounded-full bg-kira-brown px-6 text-kira-offwhite hover:bg-kira-brown/90"
+              className="rounded-full bg-kira-brown px-6 text-kira-offwhite hover:bg-kira-brown/90 dark:bg-kira-brown dark:text-kira-offwhite dark:hover:bg-kira-brown/90"
               size="lg"
             >
               <Link href="/dashboard" prefetch={false}>
