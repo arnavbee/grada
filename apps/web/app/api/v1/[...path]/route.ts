@@ -1,20 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-const LOCAL_API_BASE = 'http://127.0.0.1:8000/api/v1';
-const PROXY_ERROR_MESSAGE = 'API proxy target is not configured.';
+const LOCAL_API_BASE = "http://127.0.0.1:8000/api/v1";
+const PROXY_ERROR_MESSAGE = "API proxy target is not configured.";
+const LOOPBACK_HOST_REGEX = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(?:\/|$)/i;
+const UPSTREAM_TIMEOUT_MS = 8_000;
 
 function normalizeApiBase(rawBase: string): string {
-  const trimmed = rawBase.trim().replace(/\/+$/, '');
-  return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+  const trimmed = rawBase.trim().replace(/\/+$/, "");
+  return trimmed.endsWith("/api/v1") ? trimmed : `${trimmed}/api/v1`;
 }
 
 function getApiBaseUrl(): string | null {
-  const configuredBase = process.env.API_PROXY_TARGET?.trim() || process.env.NEXT_PUBLIC_API_URL?.trim();
+  const configuredBase =
+    process.env.API_PROXY_TARGET?.trim() || process.env.NEXT_PUBLIC_API_URL?.trim();
   if (configuredBase) {
+    if (process.env.NODE_ENV === "production" && LOOPBACK_HOST_REGEX.test(configuredBase)) {
+      return null;
+    }
     return normalizeApiBase(configuredBase);
   }
 
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === "production") {
     return null;
   }
 
@@ -35,17 +41,17 @@ async function proxyRequest(
     );
   }
 
-  const upstreamUrl = new URL(`${apiBase}/${params.path.join('/')}`);
+  const upstreamUrl = new URL(`${apiBase}/${params.path.join("/")}`);
   upstreamUrl.search = request.nextUrl.search;
 
   const method = request.method.toUpperCase();
   const headers = new Headers(request.headers);
-  headers.delete('host');
-  headers.delete('connection');
-  headers.delete('accept-encoding');
+  headers.delete("host");
+  headers.delete("connection");
+  headers.delete("accept-encoding");
 
   let body: ArrayBuffer | undefined;
-  if (method !== 'GET' && method !== 'HEAD') {
+  if (method !== "GET" && method !== "HEAD") {
     body = await request.arrayBuffer();
   }
 
@@ -54,15 +60,16 @@ async function proxyRequest(
       method,
       headers,
       body,
-      redirect: 'manual',
-      cache: 'no-store',
+      redirect: "manual",
+      cache: "no-store",
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
 
     const responseHeaders = new Headers(upstreamResponse.headers);
-    responseHeaders.delete('content-encoding');
-    responseHeaders.delete('content-length');
-    responseHeaders.delete('transfer-encoding');
-    responseHeaders.delete('connection');
+    responseHeaders.delete("content-encoding");
+    responseHeaders.delete("content-length");
+    responseHeaders.delete("transfer-encoding");
+    responseHeaders.delete("connection");
 
     return new NextResponse(upstreamResponse.body, {
       status: upstreamResponse.status,
@@ -78,32 +85,53 @@ async function proxyRequest(
   }
 }
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export function GET(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+export function GET(
+  request: NextRequest,
+  context: { params: { path: string[] } },
+): Promise<NextResponse> {
   return proxyRequest(request, context);
 }
 
-export function POST(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+export function POST(
+  request: NextRequest,
+  context: { params: { path: string[] } },
+): Promise<NextResponse> {
   return proxyRequest(request, context);
 }
 
-export function PUT(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+export function PUT(
+  request: NextRequest,
+  context: { params: { path: string[] } },
+): Promise<NextResponse> {
   return proxyRequest(request, context);
 }
 
-export function PATCH(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+export function PATCH(
+  request: NextRequest,
+  context: { params: { path: string[] } },
+): Promise<NextResponse> {
   return proxyRequest(request, context);
 }
 
-export function DELETE(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+export function DELETE(
+  request: NextRequest,
+  context: { params: { path: string[] } },
+): Promise<NextResponse> {
   return proxyRequest(request, context);
 }
 
-export function OPTIONS(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+export function OPTIONS(
+  request: NextRequest,
+  context: { params: { path: string[] } },
+): Promise<NextResponse> {
   return proxyRequest(request, context);
 }
 
-export function HEAD(request: NextRequest, context: { params: { path: string[] } }): Promise<NextResponse> {
+export function HEAD(
+  request: NextRequest,
+  context: { params: { path: string[] } },
+): Promise<NextResponse> {
   return proxyRequest(request, context);
 }
