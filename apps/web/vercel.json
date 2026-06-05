@@ -1,0 +1,13 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/warm-api",
+      "schedule": "*/5 * * * *"
+    }
+  ],
+  "functions": {
+    "app/api/cron/warm-api/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}
