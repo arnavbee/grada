@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const LOCAL_API_BASE = "http://127.0.0.1:8000/api/v1";
 const PROXY_ERROR_MESSAGE = "API proxy target is not configured.";
 const LOOPBACK_HOST_REGEX = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(?:\/|$)/i;
-const UPSTREAM_TIMEOUT_MS = 8_000;
+const UPSTREAM_TIMEOUT_MS = 60_000;
 
 function normalizeApiBase(rawBase: string): string {
   const trimmed = rawBase.trim().replace(/\/+$/, "");
@@ -49,6 +49,7 @@ async function proxyRequest(
   headers.delete("host");
   headers.delete("connection");
   headers.delete("accept-encoding");
+  headers.delete("content-length");
 
   let body: ArrayBuffer | undefined;
   if (method !== "GET" && method !== "HEAD") {
@@ -75,7 +76,8 @@ async function proxyRequest(
       status: upstreamResponse.status,
       headers: responseHeaders,
     });
-  } catch {
+  } catch (err) {
+    console.error("API proxy fetch error:", err);
     return NextResponse.json(
       {
         detail: `Unable to reach API target: ${apiBase}.`,
