@@ -941,7 +941,7 @@ function AiSuggestionRow({
           !isFeedbackLocked && "pr-0 transition-[padding-right] duration-150 hover:pr-14",
         )}
       >
-        <p className="min-w-0 max-w-full whitespace-nowrap text-right font-medium leading-none text-kira-black ">
+        <p className="min-w-0 max-w-full whitespace-nowrap text-right font-medium leading-none text-black">
           {value}
         </p>
         {confidence !== undefined && (
@@ -2831,46 +2831,14 @@ export function CatalogView(): JSX.Element {
     setEditingRowId(row.id);
     setItemStyleNo(row.styleNo);
     setItemCategory(normalizeCategory(row.category));
-    setItemStyleName(
-      STYLE_NAME_OPTIONS.includes(row.name as (typeof STYLE_NAME_OPTIONS)[number])
-        ? row.name
-        : STYLE_NAME_OPTIONS[0],
-    );
-    setItemColor(
-      COLOR_OPTIONS.includes(row.color as (typeof COLOR_OPTIONS)[number])
-        ? row.color
-        : COLOR_OPTIONS[0],
-    );
-    setItemFabric(
-      FABRIC_OPTIONS.includes(row.fabric as (typeof FABRIC_OPTIONS)[number])
-        ? row.fabric
-        : FABRIC_OPTIONS[0],
-    );
-    setItemComposition(
-      COMPOSITION_OPTIONS.includes(row.composition as (typeof COMPOSITION_OPTIONS)[number])
-        ? row.composition
-        : COMPOSITION_OPTIONS[0],
-    );
-    setItemWovenKnits(
-      WOVEN_KNITS_OPTIONS.includes(row.wovenKnits as (typeof WOVEN_KNITS_OPTIONS)[number])
-        ? row.wovenKnits
-        : WOVEN_KNITS_OPTIONS[0],
-    );
-    setItemTotalUnits(
-      TOTAL_UNITS_OPTIONS.includes(row.units as (typeof TOTAL_UNITS_OPTIONS)[number])
-        ? row.units
-        : TOTAL_UNITS_OPTIONS[0],
-    );
-    setItemPoPrice(
-      PO_PRICE_OPTIONS.includes(row.poPrice as (typeof PO_PRICE_OPTIONS)[number])
-        ? row.poPrice
-        : PO_PRICE_OPTIONS[0],
-    );
-    setItemOspSar(
-      OSP_OPTIONS.includes(row.price.replace("SAR", "").trim() as (typeof OSP_OPTIONS)[number])
-        ? row.price.replace("SAR", "").trim()
-        : OSP_OPTIONS[0],
-    );
+    setItemStyleName(row.name || STYLE_NAME_OPTIONS[0]);
+    setItemColor(row.color || COLOR_OPTIONS[0]);
+    setItemFabric(row.fabric || FABRIC_OPTIONS[0]);
+    setItemComposition(row.composition || COMPOSITION_OPTIONS[0]);
+    setItemWovenKnits(row.wovenKnits || WOVEN_KNITS_OPTIONS[0]);
+    setItemTotalUnits(row.units || TOTAL_UNITS_OPTIONS[0]);
+    setItemPoPrice(row.poPrice || PO_PRICE_OPTIONS[0]);
+    setItemOspSar(row.price ? row.price.replace("SAR", "").trim() : OSP_OPTIONS[0]);
     setItemImageName(row.imageName ?? row.name);
     setIsAddModalOpen(true);
   }
@@ -3635,58 +3603,45 @@ export function CatalogView(): JSX.Element {
     } else {
       const defaults = activeTemplate?.defaults ?? {};
       setItemCategory(
-        pickOptionValue(
-          typeof defaults.category === "string" ? defaults.category : undefined,
-          CATEGORY_OPTIONS,
-        ) ?? CATEGORY_OPTIONS[0],
+        typeof defaults.category === "string" && defaults.category
+          ? defaults.category
+          : CATEGORY_OPTIONS[0],
       );
       setItemStyleName(
-        pickOptionValue(
-          typeof defaults.styleName === "string" ? defaults.styleName : undefined,
-          STYLE_NAME_OPTIONS,
-        ) ?? STYLE_NAME_OPTIONS[0],
+        typeof defaults.styleName === "string" && defaults.styleName
+          ? defaults.styleName
+          : STYLE_NAME_OPTIONS[0],
       );
       setItemColor(
-        pickOptionValue(
-          typeof defaults.color === "string" ? defaults.color : undefined,
-          COLOR_OPTIONS,
-        ) ?? COLOR_OPTIONS[1],
+        typeof defaults.color === "string" && defaults.color ? defaults.color : COLOR_OPTIONS[1],
       );
       setItemFabric(
-        pickOptionValue(
-          typeof defaults.fabric === "string" ? defaults.fabric : undefined,
-          FABRIC_OPTIONS,
-        ) ?? FABRIC_OPTIONS[0],
+        typeof defaults.fabric === "string" && defaults.fabric
+          ? defaults.fabric
+          : FABRIC_OPTIONS[0],
       );
       setItemComposition(
-        pickOptionValue(
-          typeof defaults.composition === "string" ? defaults.composition : undefined,
-          COMPOSITION_OPTIONS,
-        ) ?? COMPOSITION_OPTIONS[1],
+        typeof defaults.composition === "string" && defaults.composition
+          ? defaults.composition
+          : COMPOSITION_OPTIONS[1],
       );
       setItemWovenKnits(
-        pickOptionValue(
-          typeof defaults.wovenKnits === "string" ? defaults.wovenKnits : undefined,
-          WOVEN_KNITS_OPTIONS,
-        ) ?? WOVEN_KNITS_OPTIONS[1],
+        typeof defaults.wovenKnits === "string" && defaults.wovenKnits
+          ? defaults.wovenKnits
+          : WOVEN_KNITS_OPTIONS[1],
       );
       setItemTotalUnits(
-        pickOptionValue(
-          typeof defaults.units === "string" ? defaults.units : undefined,
-          TOTAL_UNITS_OPTIONS,
-        ) ?? TOTAL_UNITS_OPTIONS[0],
+        typeof defaults.units === "string" && defaults.units
+          ? defaults.units
+          : TOTAL_UNITS_OPTIONS[0],
       );
       setItemPoPrice(
-        pickOptionValue(
-          typeof defaults.poPrice === "string" ? defaults.poPrice : undefined,
-          PO_PRICE_OPTIONS,
-        ) ?? PO_PRICE_OPTIONS[2],
+        typeof defaults.poPrice === "string" && defaults.poPrice
+          ? defaults.poPrice
+          : PO_PRICE_OPTIONS[2],
       );
       setItemOspSar(
-        pickOptionValue(
-          typeof defaults.ospSar === "string" ? defaults.ospSar : undefined,
-          OSP_OPTIONS,
-        ) ?? OSP_OPTIONS[1],
+        typeof defaults.ospSar === "string" && defaults.ospSar ? defaults.ospSar : OSP_OPTIONS[1],
       );
     }
 

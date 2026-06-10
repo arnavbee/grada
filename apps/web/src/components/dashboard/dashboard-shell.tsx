@@ -30,7 +30,8 @@ function DotIcon(): JSX.Element {
 }
 
 interface DashboardShellProps {
-  title?: string;
+  title?: ReactNode;
+  titleAppend?: ReactNode;
   subtitle?: string;
   hideHeader?: boolean;
   children: ReactNode;
@@ -70,6 +71,7 @@ function getCachedProfile(): Promise<AuthMeResponse> {
 
 export function DashboardShell({
   title = "",
+  titleAppend,
   subtitle = "",
   hideHeader = false,
   children,
@@ -156,7 +158,10 @@ export function DashboardShell({
             <Card className="animate-enter p-5 md:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h1>{title}</h1>
+                  <div className="flex items-center gap-2">
+                    <h1>{title}</h1>
+                    {titleAppend}
+                  </div>
                   <p className="mt-1 text-kira-darkgray">{subtitle}</p>
                 </div>
                 <div className="flex items-center gap-2">

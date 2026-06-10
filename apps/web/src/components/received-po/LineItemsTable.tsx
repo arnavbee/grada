@@ -119,7 +119,7 @@ function FragmentGroup({
             <td className="px-3 py-2 align-top" key={`${item.id}-${column.key}`}>
               {editable ? (
                 <input
-                  className="kira-focus-ring w-full rounded-md border border-kira-warmgray/35 bg-white px-2 py-2 text-sm text-kira-black"
+                  className="kira-focus-ring w-full rounded-md border border-kira-warmgray/35 bg-transparent px-2 py-2 text-sm text-kira-black"
                   min={column.type === "number" ? "0" : undefined}
                   onChange={(event) => onFieldChange(item.id, column.key, event.target.value)}
                   step={column.key === "po_price" ? "0.01" : "1"}

@@ -797,7 +797,10 @@ export function ReceivedPODocumentsView({
                   : "styli",
         );
         setInvoice(nextInvoice);
-        setNumberOfCartons(nextInvoice?.number_of_cartons?.toString() ?? "0");
+        const savedCartons = nextInvoice?.number_of_cartons ?? 0;
+        const actualCartons =
+          savedCartons > 0 ? savedCartons : (nextPackingList?.cartons.length ?? 0);
+        setNumberOfCartons(actualCartons.toString());
         setExportMode(nextInvoice?.export_mode ?? "Air");
         setGrossWeight(nextInvoice?.gross_weight?.toString() ?? "");
         setDefaultInvoiceDetails(defaultDetails);
@@ -1055,7 +1058,7 @@ export function ReceivedPODocumentsView({
     );
   };
 
-  const handleGenerateBarcodes = async (): Promise<void> => {
+  const handleGenerateBarcodes = async (isBatch = false): Promise<void> => {
     try {
       setActiveTab("barcode");
       setWorkingKey("barcodes");
@@ -1102,7 +1105,9 @@ export function ReceivedPODocumentsView({
         nextError instanceof Error ? nextError.message : "Failed to generate barcode sheet.",
       );
     } finally {
-      setWorkingKey(null);
+      if (!isBatch) {
+        setWorkingKey(null);
+      }
     }
   };
 
@@ -1264,7 +1269,7 @@ export function ReceivedPODocumentsView({
     }
   };
 
-  const handleGenerateInvoicePdf = async (): Promise<void> => {
+  const handleGenerateInvoicePdf = async (isBatch = false): Promise<void> => {
     try {
       setActiveTab("invoice");
       setWorkingKey("invoice-pdf");
@@ -1292,8 +1297,14 @@ export function ReceivedPODocumentsView({
       );
       setStatusLine("Invoice PDF generation started.");
     } catch (nextError) {
-      setWorkingKey(null);
+      if (!isBatch) {
+        setWorkingKey(null);
+      }
       setError(nextError instanceof Error ? nextError.message : "Failed to generate invoice PDF.");
+    } finally {
+      if (!isBatch) {
+        setWorkingKey(null);
+      }
     }
   };
 
@@ -1398,7 +1409,7 @@ export function ReceivedPODocumentsView({
     }
   };
 
-  const handleGeneratePackingListPdf = async (): Promise<void> => {
+  const handleGeneratePackingListPdf = async (isBatch = false): Promise<void> => {
     try {
       setActiveTab("packing");
       setWorkingKey("packing-list-pdf");
@@ -1423,10 +1434,16 @@ export function ReceivedPODocumentsView({
       );
       setStatusLine("Packing list PDF generation started.");
     } catch (nextError) {
-      setWorkingKey(null);
+      if (!isBatch) {
+        setWorkingKey(null);
+      }
       setError(
         nextError instanceof Error ? nextError.message : "Failed to generate packing list PDF.",
       );
+    } finally {
+      if (!isBatch) {
+        setWorkingKey(null);
+      }
     }
   };
 
@@ -1508,10 +1525,43 @@ export function ReceivedPODocumentsView({
     }
   };
 
-  const workspaceTabs = [
+  const handleGenerateAllDocuments = async (): Promise<void> => {
+    try {
+      setWorkingKey("generate-all");
+      setError(null);
+      setStatusLine("Generating all documents in sequence...");
+
+      if (!barcodeJob?.file_url) {
+        await handleGenerateBarcodes(true);
+      }
+
+      if (!invoice?.file_url) {
+        await handleGenerateInvoicePdf(true);
+      }
+
+      if (!packingList?.file_url) {
+        await handleGeneratePackingListPdf(true);
+      }
+
+      setStatusLine("All documents successfully generated!");
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error ? nextError.message : "Failed during batch document generation.",
+      );
+    } finally {
+      setWorkingKey(null);
+    }
+  };
+
+  const workspaceTabs: Array<{
+    key: DocumentWorkspaceTab;
+    label: string;
+    summary: string;
+    tone: SurfaceTone;
+  }> = [
     {
       key: "barcode",
-      label: "Barcode",
+      label: "Step 1: Barcodes",
       summary: barcodeJob
         ? `${barcodeJob.total_stickers} stickers · ${barcodeJob.total_pages || 0} pages`
         : selectedBarcodeTemplate === "styli"
@@ -1521,7 +1571,7 @@ export function ReceivedPODocumentsView({
     },
     {
       key: "invoice",
-      label: "Invoice",
+      label: "Step 2: Invoice",
       summary: invoice
         ? `${invoice.invoice_number} · ${formatDocumentCurrency(invoice.total_amount)}`
         : "Draft not created yet",
@@ -1529,7 +1579,7 @@ export function ReceivedPODocumentsView({
     },
     {
       key: "packing",
-      label: "Packing List",
+      label: "Step 3: Packing List",
       summary: packingList
         ? `${packingList.cartons.length} cartons · ${totalPieces} pieces`
         : invoice
@@ -1539,17 +1589,65 @@ export function ReceivedPODocumentsView({
         packingList?.status ?? (invoice ? "not created" : "requires invoice"),
       ),
     },
-  ] as Array<{
-    key: DocumentWorkspaceTab;
-    label: string;
-    summary: string;
-    tone: SurfaceTone;
-  }>;
+  ];
 
   return (
     <DashboardShell
       subtitle="Generate the three downstream documents from the confirmed marketplace PO."
       title="Received PO Documents"
+      titleAppend={
+        <div className="ml-3 flex items-center gap-3">
+          <Button disabled={workingKey === "generate-all"} onClick={handleGenerateAllDocuments}>
+            {workingKey === "generate-all" ? "Generating..." : "Generate All Documents"}
+          </Button>
+          <div className="group relative z-50 inline-block">
+            <button
+              className="flex h-5 w-5 items-center justify-center rounded-full bg-kira-warmgray/25 text-[10px] font-bold text-kira-darkgray hover:bg-kira-warmgray/40 dark:bg-white/10 dark:text-gray-300 dark:hover:bg-white/20"
+              type="button"
+            >
+              ?
+            </button>
+            <div className="absolute left-1/2 top-full hidden w-[340px] -translate-x-1/2 pt-2 group-hover:block">
+              <div className="flex max-h-[220px] flex-col gap-3 overflow-y-auto overscroll-contain rounded-[20px] border border-kira-warmgray/15 bg-white p-4 shadow-[0_30px_90px_-20px_rgba(76,56,37,0.35)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden dark:border-white/10 dark:bg-[#181411]">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-kira-midgray">
+                  Workflow
+                </p>
+                {[
+                  {
+                    step: "1",
+                    title: "Pick the output",
+                    body: "Switch between barcode, invoice, and packing list to focus the workspace.",
+                  },
+                  {
+                    step: "2",
+                    title: "Choose or learn a template",
+                    body: "Use the saved marketplace template, create one manually, or import from a sample file.",
+                  },
+                  {
+                    step: "3",
+                    title: "Generate the final document",
+                    body: "Review the current defaults, then create the draft or export the finished PDF.",
+                  },
+                ].map((item) => (
+                  <div className="flex gap-3 text-left" key={item.step}>
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-2xl bg-kira-black text-xs font-semibold text-white dark:bg-white dark:text-kira-black">
+                      {item.step}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-kira-black dark:text-white">
+                        {item.title}
+                      </p>
+                      <p className="mt-0.5 text-xs leading-5 text-kira-midgray dark:text-gray-400">
+                        {item.body}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      }
     >
       <div className="space-y-6">
         {loading ? (
@@ -1568,98 +1666,8 @@ export function ReceivedPODocumentsView({
           </Card>
         ) : null}
 
-        <Card className="overflow-hidden rounded-[32px] border border-kira-warmgray/15 bg-gradient-to-br from-[#fffaf1] via-[#f8f1e8] to-[#f2ebe4] p-0 shadow-[0_30px_90px_-55px_rgba(76,56,37,0.55)] dark:border-white/10 dark:from-[#181411] dark:via-[#141416] dark:to-[#13161d]">
-          <div className="grid gap-5 p-5 md:grid-cols-[minmax(0,1.35fr),minmax(320px,0.9fr)] md:p-6">
-            <div className="space-y-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusPill
-                  label={receivedPO?.status ?? "loading"}
-                  tone={resolveDocumentTone(receivedPO?.status ?? "neutral")}
-                />
-                <StatusPill label={receivedPO?.distributor || "Marketplace"} tone="neutral" />
-              </div>
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.2em] text-kira-midgray">
-                  Dispatch Workspace
-                </p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-kira-black dark:text-white">
-                  {receivedPO?.po_number || "Received PO"}
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-kira-darkgray dark:text-gray-300">
-                  Choose or learn marketplace templates, review the operational defaults, and
-                  generate production-ready downstream documents from one screen.
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <SummaryMetric
-                  detail={selectedBuyerTemplate ? buyerTemplateSummary : "Brand defaults in use"}
-                  label="Invoice state"
-                  value={invoice ? invoice.status : "Setup"}
-                />
-                <SummaryMetric
-                  detail={
-                    selectedPackingTemplate
-                      ? packingTemplateSummary
-                      : "Carton planning follows current defaults"
-                  }
-                  label="Packing state"
-                  value={packingList ? `${packingList.cartons.length} cartons` : "Pending"}
-                />
-                <SummaryMetric
-                  detail={
-                    selectedBarcodeMarketplaceTemplate
-                      ? barcodeMarketplaceSummary
-                      : selectedStickerTemplateName
-                  }
-                  label="Barcode state"
-                  value={barcodeJob ? `${barcodeJob.total_stickers} labels` : "Ready"}
-                />
-              </div>
-            </div>
-            <div className="rounded-[28px] border border-white/50 bg-white/70 p-4 backdrop-blur dark:border-white/10 dark:bg-white/[0.04]">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-kira-midgray">Workflow</p>
-              <div className="mt-4 space-y-3">
-                {[
-                  {
-                    step: "1",
-                    title: "Pick the output",
-                    body: "Switch between barcode, invoice, and packing list to focus the workspace.",
-                  },
-                  {
-                    step: "2",
-                    title: "Choose or learn a template",
-                    body: "Use the saved marketplace template, create one manually, or import from a sample file.",
-                  },
-                  {
-                    step: "3",
-                    title: "Generate the final document",
-                    body: "Review the current defaults, then create the draft or export the finished PDF.",
-                  },
-                ].map((item) => (
-                  <div
-                    className="flex gap-3 rounded-2xl border border-kira-warmgray/15 bg-white/75 p-3 dark:border-white/10 dark:bg-white/[0.03]"
-                    key={item.step}
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-kira-black text-sm font-semibold text-white dark:bg-white dark:text-kira-black">
-                      {item.step}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-kira-black dark:text-white">
-                        {item.title}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-kira-midgray dark:text-gray-400">
-                        {item.body}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <div className="overflow-x-auto">
-          <div className="inline-flex min-w-full gap-3 rounded-[28px] border border-kira-warmgray/20 bg-kira-offwhite/35 p-3 shadow-[0_24px_70px_-55px_rgba(76,56,37,0.45)] dark:border-white/10 dark:bg-white/5">
+        <div className="rounded-[28px] border border-kira-warmgray/20 bg-kira-offwhite/35 p-3 shadow-[0_24px_70px_-55px_rgba(76,56,37,0.45)] dark:border-white/10 dark:bg-white/5">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
             {workspaceTabs.map((tab) => (
               <WorkspaceTabCard
                 active={activeTab === tab.key}
@@ -1692,237 +1700,304 @@ export function ReceivedPODocumentsView({
               status={barcodeJob?.status ?? "not generated"}
               title="Barcode sheet"
             >
-              <div className="space-y-3 text-sm text-kira-darkgray dark:text-gray-200">
-                <div className="rounded-2xl border border-kira-warmgray/25 bg-kira-offwhite/40 p-4 dark:border-white/10 dark:bg-white/5">
-                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-end">
-                    <label className="block">
-                      <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                        Marketplace barcode template
-                      </span>
-                      <select
-                        aria-label="Marketplace barcode template"
-                        className={DOC_INPUT_CLASS}
-                        onChange={(event) =>
-                          setSelectedBarcodeMarketplaceTemplateId(event.target.value || null)
-                        }
-                        value={selectedBarcodeMarketplaceTemplateId ?? ""}
-                      >
-                        <option value="">Use sticker selection directly</option>
-                        {barcodeTemplates.map((template) => (
-                          <option key={template.id} value={template.id}>
-                            {template.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <Button
-                      onClick={() => setBarcodeTemplateEditorOpen((current) => !current)}
-                      variant="secondary"
-                    >
-                      {barcodeTemplateEditorOpen ? "Hide template form" : "Save template"}
-                    </Button>
-                  </div>
-                  <p className="mt-2 text-xs text-kira-midgray">{barcodeMarketplaceSummary}</p>
-                  {barcodeTemplateEditorOpen ? (
-                    <div className="mt-4 space-y-5">
-                      <div className="rounded-xl border border-kira-warmgray/20 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
-                        <p className="text-sm font-semibold text-kira-black dark:text-white">
-                          Import from sample
-                        </p>
-                        <p className="mt-1 text-xs text-kira-midgray">
-                          Upload a barcode PDF or image sample and we&apos;ll infer the sticker
-                          dimensions for you.
-                        </p>
-                        <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr),auto]">
-                          <input
-                            accept=".pdf,.png,.jpg,.jpeg,.webp"
-                            className={DOC_INPUT_CLASS}
-                            onChange={(event) =>
-                              setBarcodeTemplateSampleFile(event.target.files?.[0] ?? null)
-                            }
-                            type="file"
-                          />
-                          <Button
-                            disabled={isParsingBarcodeTemplate}
-                            onClick={handleParseBarcodeTemplateSample}
-                            variant="secondary"
-                          >
-                            {isParsingBarcodeTemplate ? "Parsing..." : "Import from sample"}
-                          </Button>
-                        </div>
-                        {parsedBarcodeTemplateSample ? (
-                          <p className="mt-2 text-xs text-kira-midgray">
-                            Learned size: {String(parsedBarcodeTemplateSample.layout.width_mm)} ×{" "}
-                            {String(parsedBarcodeTemplateSample.layout.height_mm)} mm
-                          </p>
-                        ) : null}
-                      </div>
+              <div className="space-y-8 text-sm text-kira-darkgray dark:text-gray-200">
+                {/* --- CONFIGURATION --- */}
+                <div className="space-y-5">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-kira-midgray">
+                    Configuration
+                  </h3>
 
-                      <div className="rounded-xl border border-kira-warmgray/20 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
-                        <p className="text-sm font-semibold text-kira-black dark:text-white">
-                          Create manually
-                        </p>
-                        <p className="mt-1 text-xs text-kira-midgray">
-                          Set the marketplace key, sticker source, and dimensions yourself.
-                        </p>
-                        <div className="mt-3 grid gap-3 md:grid-cols-2">
-                          <label className="block text-sm">
-                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                              Template name
-                            </span>
-                            <input
-                              className={DOC_INPUT_CLASS}
-                              onChange={(event) =>
-                                setBarcodeTemplateDraft((current) => ({
-                                  ...current,
-                                  name: event.target.value,
-                                }))
-                              }
-                              type="text"
-                              value={barcodeTemplateDraft.name}
-                            />
-                          </label>
-                          <label className="block text-sm">
-                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                              Marketplace key
-                            </span>
-                            <input
-                              className={DOC_INPUT_CLASS}
-                              onChange={(event) =>
-                                setBarcodeTemplateDraft((current) => ({
-                                  ...current,
-                                  marketplace_key: event.target.value,
-                                }))
-                              }
-                              type="text"
-                              value={barcodeTemplateDraft.marketplace_key}
-                            />
-                          </label>
-                          <label className="block text-sm">
-                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                              Sticker source
-                            </span>
-                            <select
-                              className={DOC_INPUT_CLASS}
-                              onChange={(event) =>
-                                setBarcodeTemplateDraft((current) => ({
-                                  ...current,
-                                  sticker_template_kind: event.target.value as StickerTemplateKind,
-                                }))
-                              }
-                              value={barcodeTemplateDraft.sticker_template_kind}
+                  {/* Step 1: Sticker Design */}
+                  <div className="rounded-2xl border border-kira-warmgray/25 bg-kira-offwhite/40 p-5 dark:border-white/10 dark:bg-white/5">
+                    <label className="block">
+                      <span className="mb-1 block font-medium text-kira-black dark:text-white">
+                        1. Sticker Design
+                      </span>
+                      <p className="mb-4 text-xs text-kira-midgray">
+                        Select the core design format for your stickers.
+                      </p>
+                      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto]">
+                        <button
+                          className="kira-focus-ring flex w-full items-center justify-between rounded-md border border-kira-warmgray/35 bg-white px-3 py-2 text-left text-kira-black dark:border-white/15 dark:bg-white/5 dark:text-white"
+                          onClick={() => setTemplatePickerOpen(true)}
+                          type="button"
+                        >
+                          <span>{selectedStickerTemplateName}</span>
+                          <span className="text-xs text-kira-midgray dark:text-gray-400">
+                            Choose
+                          </span>
+                        </button>
+                        <Button
+                          onClick={() =>
+                            router.push(
+                              `/dashboard/sticker-builder?returnTo=${encodeURIComponent(
+                                `/dashboard/received-pos/${receivedPoId}/documents`,
+                              )}&preset=styli`,
+                            )
+                          }
+                          variant="secondary"
+                        >
+                          Open sticker builder
+                        </Button>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Step 2: Marketplace Formatting */}
+                  <div className="rounded-2xl border border-kira-warmgray/25 bg-kira-offwhite/40 p-5 dark:border-white/10 dark:bg-white/5">
+                    <label className="block">
+                      <span className="mb-1 block font-medium text-kira-black dark:text-white">
+                        2. Marketplace Formatting (Optional)
+                      </span>
+                      <p className="mb-4 text-xs text-kira-midgray">
+                        Apply specific marketplace layouts like Styli or Landmark to your sticker.
+                      </p>
+                      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto]">
+                        <select
+                          aria-label="Marketplace barcode template"
+                          className={cn(
+                            DOC_INPUT_CLASS,
+                            "bg-transparent dark:bg-white/5 dark:text-white",
+                          )}
+                          onChange={(event) =>
+                            setSelectedBarcodeMarketplaceTemplateId(event.target.value || null)
+                          }
+                          value={selectedBarcodeMarketplaceTemplateId ?? ""}
+                        >
+                          <option className="dark:bg-[#1A1C23] dark:text-white" value="">
+                            Use sticker selection directly
+                          </option>
+                          {barcodeTemplates.map((template) => (
+                            <option
+                              className="dark:bg-[#1A1C23] dark:text-white"
+                              key={template.id}
+                              value={template.id}
                             >
-                              <option value="styli">Standard format</option>
-                              <option value="custom">Custom sticker template</option>
-                            </select>
-                          </label>
-                          <label className="block text-sm">
-                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                              Custom sticker template
-                            </span>
-                            <select
-                              className={DOC_INPUT_CLASS}
-                              disabled={barcodeTemplateDraft.sticker_template_kind !== "custom"}
-                              onChange={(event) =>
-                                setBarcodeTemplateDraft((current) => ({
-                                  ...current,
-                                  sticker_template_id: event.target.value,
-                                }))
-                              }
-                              value={barcodeTemplateDraft.sticker_template_id}
-                            >
-                              <option value="">Select custom sticker template</option>
-                              {stickerTemplates.map((template) => (
-                                <option key={template.id} value={template.id}>
-                                  {template.name}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="block text-sm">
-                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                              Width (mm)
-                            </span>
+                              {template.name}
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          onClick={() => setBarcodeTemplateEditorOpen(true)}
+                          variant="secondary"
+                        >
+                          Import / Create Template
+                        </Button>
+                      </div>
+                      {barcodeMarketplaceSummary ? (
+                        <p className="mt-2 text-xs text-kira-midgray">
+                          {barcodeMarketplaceSummary}
+                        </p>
+                      ) : null}
+                    </label>
+                  </div>
+                </div>
+
+                {/* --- SUMMARY --- */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-kira-midgray">
+                    Output Summary
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-kira-warmgray/25 bg-kira-offwhite/80 p-4 dark:border-white/10 dark:bg-white/5">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-kira-warmgray/25 bg-white px-3 py-1.5 text-sm font-medium text-kira-black shadow-sm dark:border-white/10 dark:bg-[#1A1C23] dark:text-white">
+                      <span className="text-base">🏷️</span>
+                      {barcodeJob?.total_stickers ?? 0} Stickers
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-kira-warmgray/25 bg-white px-3 py-1.5 text-sm font-medium text-kira-black shadow-sm dark:border-white/10 dark:bg-[#1A1C23] dark:text-white">
+                      <span className="text-base">📏</span>
+                      {selectedBarcodeTemplate === "styli" ? "Standard format" : "Custom template"}
+                    </span>
+                    {barcodeJob?.total_pages ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-kira-warmgray/25 bg-white px-3 py-1.5 text-sm font-medium text-kira-black shadow-sm dark:border-white/10 dark:bg-[#1A1C23] dark:text-white">
+                        <span className="text-base">📄</span>
+                        {barcodeJob.total_pages} Page{barcodeJob.total_pages === 1 ? "" : "s"}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                {barcodeTemplateEditorOpen ? (
+                  <div className="fixed inset-0 z-50 flex items-start justify-center bg-kira-black/40 px-4 py-8">
+                    <div
+                      aria-modal="true"
+                      className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl dark:border dark:border-white/10 dark:bg-[#12141B]"
+                      role="dialog"
+                    >
+                      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+                        <h2 className="text-xl font-semibold text-kira-black dark:text-white">
+                          Barcode template setup
+                        </h2>
+                        <Button
+                          onClick={() => setBarcodeTemplateEditorOpen(false)}
+                          variant="secondary"
+                        >
+                          Close
+                        </Button>
+                      </div>
+                      <div className="space-y-6">
+                        <div className="rounded-xl border border-kira-warmgray/20 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                          <p className="text-sm font-semibold text-kira-black dark:text-white">
+                            Import from sample
+                          </p>
+                          <p className="mt-1 text-xs text-kira-midgray">
+                            Upload a barcode PDF or image sample and we&apos;ll infer the sticker
+                            dimensions for you.
+                          </p>
+                          <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr),auto]">
                             <input
+                              accept=".pdf,.png,.jpg,.jpeg,.webp"
                               className={DOC_INPUT_CLASS}
                               onChange={(event) =>
-                                setBarcodeTemplateDraft((current) => ({
-                                  ...current,
-                                  width_mm: event.target.value,
-                                }))
+                                setBarcodeTemplateSampleFile(event.target.files?.[0] ?? null)
                               }
-                              type="number"
-                              value={barcodeTemplateDraft.width_mm}
+                              type="file"
                             />
-                          </label>
-                          <label className="block text-sm">
-                            <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                              Height (mm)
-                            </span>
-                            <input
-                              className={DOC_INPUT_CLASS}
-                              onChange={(event) =>
-                                setBarcodeTemplateDraft((current) => ({
-                                  ...current,
-                                  height_mm: event.target.value,
-                                }))
-                              }
-                              type="number"
-                              value={barcodeTemplateDraft.height_mm}
-                            />
-                          </label>
-                          <div className="md:col-span-2">
                             <Button
-                              disabled={workingKey === "barcode-template-create"}
-                              onClick={handleCreateBarcodeTemplate}
+                              disabled={isParsingBarcodeTemplate}
+                              onClick={handleParseBarcodeTemplateSample}
                               variant="secondary"
                             >
-                              {workingKey === "barcode-template-create"
-                                ? "Saving..."
-                                : "Create barcode template"}
+                              {isParsingBarcodeTemplate ? "Parsing..." : "Import from sample"}
                             </Button>
+                          </div>
+                          {parsedBarcodeTemplateSample ? (
+                            <p className="mt-2 text-xs text-kira-midgray">
+                              Learned size: {String(parsedBarcodeTemplateSample.layout.width_mm)} ×{" "}
+                              {String(parsedBarcodeTemplateSample.layout.height_mm)} mm
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="rounded-xl border border-kira-warmgray/20 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
+                          <p className="text-sm font-semibold text-kira-black dark:text-white">
+                            Create manually
+                          </p>
+                          <p className="mt-1 text-xs text-kira-midgray">
+                            Set the marketplace key, sticker source, and dimensions yourself.
+                          </p>
+                          <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Template name
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setBarcodeTemplateDraft((current) => ({
+                                    ...current,
+                                    name: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={barcodeTemplateDraft.name}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Marketplace key
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setBarcodeTemplateDraft((current) => ({
+                                    ...current,
+                                    marketplace_key: event.target.value,
+                                  }))
+                                }
+                                type="text"
+                                value={barcodeTemplateDraft.marketplace_key}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Sticker source
+                              </span>
+                              <select
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setBarcodeTemplateDraft((current) => ({
+                                    ...current,
+                                    sticker_template_kind: event.target
+                                      .value as StickerTemplateKind,
+                                  }))
+                                }
+                                value={barcodeTemplateDraft.sticker_template_kind}
+                              >
+                                <option value="styli">Standard format</option>
+                                <option value="custom">Custom sticker template</option>
+                              </select>
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Custom sticker template
+                              </span>
+                              <select
+                                className={DOC_INPUT_CLASS}
+                                disabled={barcodeTemplateDraft.sticker_template_kind !== "custom"}
+                                onChange={(event) =>
+                                  setBarcodeTemplateDraft((current) => ({
+                                    ...current,
+                                    sticker_template_id: event.target.value,
+                                  }))
+                                }
+                                value={barcodeTemplateDraft.sticker_template_id}
+                              >
+                                <option value="">Select custom sticker template</option>
+                                {stickerTemplates.map((template) => (
+                                  <option key={template.id} value={template.id}>
+                                    {template.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Width (mm)
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setBarcodeTemplateDraft((current) => ({
+                                    ...current,
+                                    width_mm: event.target.value,
+                                  }))
+                                }
+                                type="number"
+                                value={barcodeTemplateDraft.width_mm}
+                              />
+                            </label>
+                            <label className="block text-sm">
+                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                Height (mm)
+                              </span>
+                              <input
+                                className={DOC_INPUT_CLASS}
+                                onChange={(event) =>
+                                  setBarcodeTemplateDraft((current) => ({
+                                    ...current,
+                                    height_mm: event.target.value,
+                                  }))
+                                }
+                                type="number"
+                                value={barcodeTemplateDraft.height_mm}
+                              />
+                            </label>
+                            <div className="md:col-span-2">
+                              <Button
+                                disabled={workingKey === "barcode-template-create"}
+                                onClick={handleCreateBarcodeTemplate}
+                                variant="secondary"
+                              >
+                                {workingKey === "barcode-template-create"
+                                  ? "Saving..."
+                                  : "Create barcode template"}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ) : null}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-kira-brown/10 px-2 py-1 text-xs font-medium uppercase tracking-[0.08em] text-kira-brown dark:bg-kira-brown/20 dark:text-amber-200">
-                    {selectedBarcodeTemplate === "styli" ? "Standard format" : "Custom template"}
-                  </span>
-                  {barcodeJob?.total_pages ? <span>{barcodeJob.total_pages} page(s)</span> : null}
-                </div>
-                <label className="block">
-                  <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                    Sticker template
-                  </span>
-                  <button
-                    className="kira-focus-ring flex w-full items-center justify-between rounded-md border border-kira-warmgray/35 bg-white px-3 py-2 text-left text-kira-black dark:border-white/15 dark:bg-white/5 dark:text-white"
-                    onClick={() => setTemplatePickerOpen(true)}
-                    type="button"
-                  >
-                    <span>{selectedStickerTemplateName}</span>
-                    <span className="text-xs text-kira-midgray dark:text-gray-400">Choose</span>
-                  </button>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    onClick={() =>
-                      router.push(
-                        `/dashboard/sticker-builder?returnTo=${encodeURIComponent(
-                          `/dashboard/received-pos/${receivedPoId}/documents`,
-                        )}&preset=styli`,
-                      )
-                    }
-                    variant="secondary"
-                  >
-                    Open sticker builder
-                  </Button>
-                  <p className="text-xs text-kira-midgray">
-                    Save a new template in the builder and you&apos;ll return here with it selected.
-                  </p>
-                </div>
+                  </div>
+                ) : null}
               </div>
             </DocumentCard>
           ) : null}
@@ -2037,130 +2112,150 @@ export function ReceivedPODocumentsView({
                     </p>
                     <div className="mt-3">
                       <Button
-                        onClick={() => setInvoiceTemplateEditorOpen((current) => !current)}
+                        onClick={() => setInvoiceTemplateEditorOpen(true)}
                         variant="secondary"
                       >
-                        {invoiceTemplateEditorOpen
-                          ? "Hide template setup"
-                          : "Create or import template"}
+                        Create or import template
                       </Button>
                     </div>
                     {invoiceTemplateEditorOpen ? (
-                      <div className="mt-4 space-y-4 rounded-2xl border border-kira-warmgray/20 bg-white/70 p-4 dark:border-white/10 dark:bg-white/5">
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-kira-black dark:text-white">
-                            Import from sample
-                          </p>
-                          <p className="text-xs text-kira-midgray">
-                            Upload an existing invoice PDF and we&apos;ll prefill the buyer layout
-                            and destination blocks before you save the template.
-                          </p>
-                          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-end">
-                            <label className="block text-sm">
-                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                                Invoice PDF sample
-                              </span>
-                              <input
-                                accept="application/pdf"
-                                className={DOC_INPUT_CLASS}
-                                onChange={(event) =>
-                                  setInvoiceTemplateSampleFile(event.target.files?.[0] ?? null)
-                                }
-                                type="file"
-                              />
-                            </label>
+                      <div className="fixed inset-0 z-50 flex items-start justify-center bg-kira-black/40 px-4 py-8">
+                        <div
+                          aria-modal="true"
+                          className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[28px] bg-white p-6 shadow-2xl dark:border dark:border-white/10 dark:bg-[#12141B]"
+                          role="dialog"
+                        >
+                          <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+                            <h2 className="text-xl font-semibold text-kira-black dark:text-white">
+                              Invoice template setup
+                            </h2>
                             <Button
-                              disabled={isParsingInvoiceTemplate}
-                              onClick={handleParseInvoiceTemplateSample}
+                              onClick={() => setInvoiceTemplateEditorOpen(false)}
                               variant="secondary"
                             >
-                              {isParsingInvoiceTemplate ? "Parsing..." : "Import sample"}
+                              Close
                             </Button>
                           </div>
-                          {parsedInvoiceTemplateSample ? (
-                            <p className="text-xs text-kira-midgray">
-                              Learned layout: {parsedInvoiceTemplateSample.layout_key}
-                              {parsedInvoiceTemplateSample.detected_headers.length > 0
-                                ? ` · detected ${parsedInvoiceTemplateSample.detected_headers.join(", ")}`
-                                : ""}
-                            </p>
-                          ) : null}
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-kira-black dark:text-white">
-                            Create manually
-                          </p>
-                          <p className="text-xs text-kira-midgray">
-                            The template will save the current invoice details. Use the invoice
-                            details editor if you want to adjust addresses, GST fields, or stamp
-                            defaults first.
-                          </p>
-                          <div className="grid gap-3 md:grid-cols-3">
-                            <label className="block text-sm">
-                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                                Template name
-                              </span>
-                              <input
-                                className={DOC_INPUT_CLASS}
-                                onChange={(event) =>
-                                  setInvoiceTemplateDraft((current) => ({
-                                    ...current,
-                                    name: event.target.value,
-                                  }))
-                                }
-                                value={invoiceTemplateDraft.name}
-                              />
-                            </label>
-                            <label className="block text-sm">
-                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                                Buyer key
-                              </span>
-                              <input
-                                className={DOC_INPUT_CLASS}
-                                onChange={(event) =>
-                                  setInvoiceTemplateDraft((current) => ({
-                                    ...current,
-                                    buyer_key: event.target.value,
-                                  }))
-                                }
-                                value={invoiceTemplateDraft.buyer_key}
-                              />
-                            </label>
-                            <label className="block text-sm">
-                              <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
-                                Layout
-                              </span>
-                              <select
-                                className={DOC_INPUT_CLASS}
-                                onChange={(event) =>
-                                  setInvoiceTemplateDraft((current) => ({
-                                    ...current,
-                                    layout_key: event.target.value as "default_v1" | "landmark_v1",
-                                  }))
-                                }
-                                value={invoiceTemplateDraft.layout_key}
-                              >
-                                <option value="default_v1">Default v1</option>
-                                <option value="landmark_v1">Landmark v1</option>
-                              </select>
-                            </label>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              onClick={() => setInvoiceDetailsDialogOpen(true)}
-                              variant="secondary"
-                            >
-                              Edit template defaults
-                            </Button>
-                            <Button
-                              disabled={workingKey === "invoice-template-create"}
-                              onClick={handleCreateInvoiceTemplate}
-                              variant="secondary"
-                            >
-                              {workingKey === "invoice-template-create"
-                                ? "Saving..."
-                                : "Create buyer template"}
-                            </Button>
+                          <div className="space-y-6">
+                            <div className="space-y-2">
+                              <p className="text-sm font-medium text-kira-black dark:text-white">
+                                Import from sample
+                              </p>
+                              <p className="text-xs text-kira-midgray">
+                                Upload an existing invoice PDF and we&apos;ll prefill the buyer
+                                layout and destination blocks before you save the template.
+                              </p>
+                              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr),auto] md:items-end">
+                                <label className="block text-sm">
+                                  <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                    Invoice PDF sample
+                                  </span>
+                                  <input
+                                    accept="application/pdf"
+                                    className={DOC_INPUT_CLASS}
+                                    onChange={(event) =>
+                                      setInvoiceTemplateSampleFile(event.target.files?.[0] ?? null)
+                                    }
+                                    type="file"
+                                  />
+                                </label>
+                                <Button
+                                  disabled={isParsingInvoiceTemplate}
+                                  onClick={handleParseInvoiceTemplateSample}
+                                  variant="secondary"
+                                >
+                                  {isParsingInvoiceTemplate ? "Parsing..." : "Import sample"}
+                                </Button>
+                              </div>
+                              {parsedInvoiceTemplateSample ? (
+                                <p className="text-xs text-kira-midgray">
+                                  Learned layout: {parsedInvoiceTemplateSample.layout_key}
+                                  {parsedInvoiceTemplateSample.detected_headers.length > 0
+                                    ? ` · detected ${parsedInvoiceTemplateSample.detected_headers.join(", ")}`
+                                    : ""}
+                                </p>
+                              ) : null}
+                            </div>
+                            <hr className="border-kira-warmgray/20 dark:border-white/10" />
+                            <div className="space-y-3">
+                              <p className="text-sm font-medium text-kira-black dark:text-white">
+                                Create manually
+                              </p>
+                              <p className="text-xs text-kira-midgray">
+                                The template will save the current invoice details. Use the invoice
+                                details editor if you want to adjust addresses, GST fields, or stamp
+                                defaults first.
+                              </p>
+                              <div className="grid gap-3 md:grid-cols-3">
+                                <label className="block text-sm">
+                                  <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                    Template name
+                                  </span>
+                                  <input
+                                    className={DOC_INPUT_CLASS}
+                                    onChange={(event) =>
+                                      setInvoiceTemplateDraft((current) => ({
+                                        ...current,
+                                        name: event.target.value,
+                                      }))
+                                    }
+                                    value={invoiceTemplateDraft.name}
+                                  />
+                                </label>
+                                <label className="block text-sm">
+                                  <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                    Buyer key
+                                  </span>
+                                  <input
+                                    className={DOC_INPUT_CLASS}
+                                    onChange={(event) =>
+                                      setInvoiceTemplateDraft((current) => ({
+                                        ...current,
+                                        buyer_key: event.target.value,
+                                      }))
+                                    }
+                                    value={invoiceTemplateDraft.buyer_key}
+                                  />
+                                </label>
+                                <label className="block text-sm">
+                                  <span className="mb-1 block text-kira-darkgray dark:text-gray-200">
+                                    Layout
+                                  </span>
+                                  <select
+                                    className={DOC_INPUT_CLASS}
+                                    onChange={(event) =>
+                                      setInvoiceTemplateDraft((current) => ({
+                                        ...current,
+                                        layout_key: event.target.value as
+                                          | "default_v1"
+                                          | "landmark_v1",
+                                      }))
+                                    }
+                                    value={invoiceTemplateDraft.layout_key}
+                                  >
+                                    <option value="default_v1">Default v1</option>
+                                    <option value="landmark_v1">Landmark v1</option>
+                                  </select>
+                                </label>
+                              </div>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                <Button
+                                  onClick={() => setInvoiceDetailsDialogOpen(true)}
+                                  variant="secondary"
+                                >
+                                  Edit template defaults
+                                </Button>
+                                <Button
+                                  disabled={workingKey === "invoice-template-create"}
+                                  onClick={handleCreateInvoiceTemplate}
+                                  variant="secondary"
+                                >
+                                  {workingKey === "invoice-template-create"
+                                    ? "Saving..."
+                                    : "Create buyer template"}
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>

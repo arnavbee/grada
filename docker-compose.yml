@@ -46,7 +46,7 @@ services:
       sh -c "pip install --no-cache-dir -e .[dev] &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     env_file:
-      - ./apps/api/.env.example
+      - ./apps/api/.env
     ports:
       - "8000:8000"
 
@@ -63,7 +63,7 @@ services:
              pnpm install &&
              pnpm --filter @kira/web dev --hostname 0.0.0.0 --port 3000"
     env_file:
-      - ./apps/web/.env.example
+      - ./apps/web/.env
     ports:
       - "3000:3000"
 

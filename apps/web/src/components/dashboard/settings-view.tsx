@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Wand2 } from "lucide-react";
 
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
 import { PackingRulesPanel } from "@/src/components/dashboard/packing-rules-panel";
@@ -107,13 +108,22 @@ interface SectionHeaderProps {
   eyebrow: string;
   title: string;
   description: string;
+  titleAppend?: React.ReactNode;
 }
 
-function SectionHeader({ eyebrow, title, description }: SectionHeaderProps): JSX.Element {
+function SectionHeader({
+  eyebrow,
+  title,
+  description,
+  titleAppend,
+}: SectionHeaderProps): JSX.Element {
   return (
     <div>
       <p className="text-xs uppercase tracking-[0.16em] text-kira-midgray">{eyebrow}</p>
-      <h2 className="mt-2 text-2xl font-semibold text-kira-black">{title}</h2>
+      <div className="mt-2 flex items-center gap-2">
+        <h2 className="text-2xl font-semibold text-kira-black">{title}</h2>
+        {titleAppend}
+      </div>
       {description ? (
         <p className="mt-2 max-w-2xl text-sm leading-6 text-kira-darkgray">{description}</p>
       ) : null}
@@ -131,6 +141,9 @@ const SETTINGS_SECTIONS = [
 
 export function SettingsView(): JSX.Element {
   const [brandProfile, setBrandProfile] = useState<BrandProfileInput>(EMPTY_BRAND_PROFILE);
+  const [preSampleBrandProfile, setPreSampleBrandProfile] = useState<BrandProfileInput | null>(
+    null,
+  );
   const [poBuilderDefaults, setPOBuilderDefaults] =
     useState<POBuilderDefaultsInput>(EMPTY_PO_BUILDER_DEFAULTS);
   const [loading, setLoading] = useState(true);
@@ -138,6 +151,10 @@ export function SettingsView(): JSX.Element {
   const [selectedBuyerTemplateId, setSelectedBuyerTemplateId] = useState<string | null>(null);
   const [buyerTemplateDraft, setBuyerTemplateDraft] =
     useState<BuyerDocumentTemplateInput>(EMPTY_BUYER_TEMPLATE);
+  const [preSampleInvoiceDefaults, setPreSampleInvoiceDefaults] =
+    useState<BrandProfileInput | null>(null);
+  const [preSampleBuyerTemplate, setPreSampleBuyerTemplate] =
+    useState<BuyerDocumentTemplateInput | null>(null);
   const [savingBrandIdentity, setSavingBrandIdentity] = useState(false);
   const [savingInvoiceDefaults, setSavingInvoiceDefaults] = useState(false);
   const [savingPOBuilderDefaults, setSavingPOBuilderDefaults] = useState(false);
@@ -163,42 +180,42 @@ export function SettingsView(): JSX.Element {
           return;
         }
         setBrandProfile({
-          supplier_name: profile.supplier_name,
-          address: profile.address,
-          gst_number: profile.gst_number,
-          pan_number: profile.pan_number,
-          fbs_name: profile.fbs_name,
-          vendor_company_name: profile.vendor_company_name,
-          supplier_city: profile.supplier_city,
-          supplier_state: profile.supplier_state,
-          supplier_pincode: profile.supplier_pincode,
-          delivery_from_name: profile.delivery_from_name,
-          delivery_from_address: profile.delivery_from_address,
-          delivery_from_city: profile.delivery_from_city,
-          delivery_from_pincode: profile.delivery_from_pincode,
-          origin_country: profile.origin_country,
-          origin_state: profile.origin_state,
-          origin_district: profile.origin_district,
-          bill_to_name: profile.bill_to_name,
-          bill_to_address: profile.bill_to_address,
-          bill_to_gst: profile.bill_to_gst,
-          bill_to_pan: profile.bill_to_pan,
-          ship_to_name: profile.ship_to_name,
-          ship_to_address: profile.ship_to_address,
-          ship_to_gst: profile.ship_to_gst,
-          stamp_image_url: profile.stamp_image_url,
-          instagram_handle: profile.instagram_handle,
-          website_url: profile.website_url,
-          facebook_handle: profile.facebook_handle,
-          snapchat_handle: profile.snapchat_handle,
-          invoice_prefix: profile.invoice_prefix,
-          default_igst_rate: profile.default_igst_rate,
+          supplier_name: profile.supplier_name ?? "",
+          address: profile.address ?? "",
+          gst_number: profile.gst_number ?? "",
+          pan_number: profile.pan_number ?? "",
+          fbs_name: profile.fbs_name ?? "",
+          vendor_company_name: profile.vendor_company_name ?? "",
+          supplier_city: profile.supplier_city ?? "",
+          supplier_state: profile.supplier_state ?? "",
+          supplier_pincode: profile.supplier_pincode ?? "",
+          delivery_from_name: profile.delivery_from_name ?? "",
+          delivery_from_address: profile.delivery_from_address ?? "",
+          delivery_from_city: profile.delivery_from_city ?? "",
+          delivery_from_pincode: profile.delivery_from_pincode ?? "",
+          origin_country: profile.origin_country ?? "",
+          origin_state: profile.origin_state ?? "",
+          origin_district: profile.origin_district ?? "",
+          bill_to_name: profile.bill_to_name ?? "",
+          bill_to_address: profile.bill_to_address ?? "",
+          bill_to_gst: profile.bill_to_gst ?? "",
+          bill_to_pan: profile.bill_to_pan ?? "",
+          ship_to_name: profile.ship_to_name ?? "",
+          ship_to_address: profile.ship_to_address ?? "",
+          ship_to_gst: profile.ship_to_gst ?? "",
+          stamp_image_url: profile.stamp_image_url ?? "",
+          instagram_handle: profile.instagram_handle ?? "",
+          website_url: profile.website_url ?? "",
+          facebook_handle: profile.facebook_handle ?? "",
+          snapchat_handle: profile.snapchat_handle ?? "",
+          invoice_prefix: profile.invoice_prefix ?? "",
+          default_igst_rate: profile.default_igst_rate ?? 5,
         });
         setPOBuilderDefaults({
-          default_po_price: builderDefaults.default_po_price,
-          default_osp_in_sar: builderDefaults.default_osp_in_sar,
-          default_fabric_composition: builderDefaults.default_fabric_composition,
-          default_size_ratio: builderDefaults.default_size_ratio,
+          default_po_price: builderDefaults.default_po_price ?? 0,
+          default_osp_in_sar: builderDefaults.default_osp_in_sar ?? 0,
+          default_fabric_composition: builderDefaults.default_fabric_composition ?? "",
+          default_size_ratio: builderDefaults.default_size_ratio ?? {},
         });
         setBuyerTemplates(templates);
         const initialTemplate =
@@ -392,6 +409,7 @@ export function SettingsView(): JSX.Element {
 
   const handleSelectBuyerTemplate = (template: BuyerDocumentTemplate | null): void => {
     setSelectedBuyerTemplateId(template?.id ?? null);
+    setPreSampleBuyerTemplate(null);
     setBuyerTemplateDraft(
       template
         ? {
@@ -455,6 +473,82 @@ export function SettingsView(): JSX.Element {
     }
   };
 
+  const handleFillSampleBrandIdentity = () => {
+    if (preSampleBrandProfile) {
+      setBrandProfile(preSampleBrandProfile);
+      setPreSampleBrandProfile(null);
+    } else {
+      setPreSampleBrandProfile(brandProfile);
+      setBrandProfile((current) => ({
+        ...current,
+        fbs_name: "House of Raeli",
+        vendor_company_name: "Raeli Fashion Pvt Ltd",
+        supplier_name: "House of Raeli",
+        gst_number: "27ABCDE1234F1Z5",
+        pan_number: "ABCDE1234F",
+        supplier_city: "Mumbai",
+        supplier_state: "Maharashtra",
+        supplier_pincode: "400001",
+        instagram_handle: "@houseofraeli",
+        facebook_handle: "@houseofraeli",
+        snapchat_handle: "@houseofraeli",
+        website_url: "https://houseofraeli.com",
+        address: "123 Industrial Estate, Phase 1, Andheri East, Mumbai",
+      }));
+    }
+  };
+
+  const handleFillSampleInvoiceDefaults = () => {
+    if (preSampleInvoiceDefaults) {
+      setBrandProfile(preSampleInvoiceDefaults);
+      setPreSampleInvoiceDefaults(null);
+    } else {
+      setPreSampleInvoiceDefaults(brandProfile);
+      setBrandProfile((current) => ({
+        ...current,
+        invoice_prefix: "INV-",
+        default_igst_rate: 5,
+        bill_to_name: "Sample Bill To",
+        bill_to_gst: "11AAAAA0000A1Z5",
+        bill_to_pan: "AAAAA0000A",
+        ship_to_name: "Sample Ship To",
+        ship_to_gst: "11AAAAA0000A1Z5",
+        delivery_from_name: "Sample Delivery",
+        delivery_from_city: "Mumbai",
+        delivery_from_pincode: "400001",
+        origin_country: "India",
+        origin_state: "Maharashtra",
+        origin_district: "Mumbai Suburban",
+        bill_to_address: "456 Sample Bill Address",
+        ship_to_address: "789 Sample Ship Address",
+        delivery_from_address: "123 Sample Delivery Address",
+      }));
+    }
+  };
+
+  const handleFillSampleBuyerTemplate = () => {
+    if (preSampleBuyerTemplate) {
+      setBuyerTemplateDraft(preSampleBuyerTemplate);
+      setPreSampleBuyerTemplate(null);
+    } else {
+      setPreSampleBuyerTemplate(buyerTemplateDraft);
+      setBuyerTemplateDraft((current) => ({
+        ...current,
+        name: "Sample Buyer Template",
+        buyer_key: "sample_buyer",
+        document_type: "commercial_invoice",
+        layout_key: "default_v1",
+        defaults: {
+          ...current.defaults,
+          bill_to_name: "Sample Buyer Co.",
+          bill_to_address: "101 Buyer St, Dubai",
+          ship_to_name: "Sample Ship Co.",
+          ship_to_address: "Warehouse 5, Dubai",
+        },
+      }));
+    }
+  };
+
   const handleJumpToSection = (sectionId: (typeof SETTINGS_SECTIONS)[number]["id"]): void => {
     setActiveSectionId(sectionId);
     const section = document.getElementById(sectionId);
@@ -499,6 +593,21 @@ export function SettingsView(): JSX.Element {
               description="Your legal and company identity. This is the business profile the rest of the operational flows build from."
               eyebrow="Identity"
               title="Brand identity"
+              titleAppend={
+                <button
+                  className="group relative flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-kira-warmgray/20"
+                  onClick={handleFillSampleBrandIdentity}
+                  type="button"
+                >
+                  <Wand2
+                    className={`h-4 w-4 transition-colors ${preSampleBrandProfile ? "text-kira-black dark:text-white" : "text-kira-darkgray group-hover:text-kira-black dark:text-kira-midgray dark:group-hover:text-white"}`}
+                  />
+                  <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-kira-black px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:border dark:border-white/10 dark:bg-transparent dark:text-white dark:backdrop-blur-md">
+                    {preSampleBrandProfile ? "Undo Sample Values" : "Fill Sample Values"}
+                    <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-kira-black dark:border-t-transparent" />
+                  </div>
+                </button>
+              }
             />
             <div className="mt-6 grid gap-5 md:grid-cols-2">
               <InputField
@@ -741,7 +850,26 @@ export function SettingsView(): JSX.Element {
 
         <section className="scroll-mt-28" id="invoice-defaults">
           <Card className="p-5 md:p-6">
-            <SectionHeader description="" eyebrow="Invoice" title="Invoice defaults" />
+            <SectionHeader
+              description=""
+              eyebrow="Invoice"
+              title="Invoice defaults"
+              titleAppend={
+                <button
+                  className="group relative flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-kira-warmgray/20"
+                  onClick={handleFillSampleInvoiceDefaults}
+                  type="button"
+                >
+                  <Wand2
+                    className={`h-4 w-4 transition-colors ${preSampleInvoiceDefaults ? "text-kira-black dark:text-white" : "text-kira-darkgray group-hover:text-kira-black dark:text-kira-midgray dark:group-hover:text-white"}`}
+                  />
+                  <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-kira-black px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:border dark:border-white/10 dark:bg-transparent dark:text-white dark:backdrop-blur-md">
+                    {preSampleInvoiceDefaults ? "Undo Sample Values" : "Fill Sample Values"}
+                    <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-kira-black dark:border-t-transparent" />
+                  </div>
+                </button>
+              }
+            />
             <div className="mt-6 grid gap-5 md:grid-cols-2">
               <InputField
                 disabled={loading}
@@ -962,6 +1090,21 @@ export function SettingsView(): JSX.Element {
               description="Create buyer-specific invoice profiles so Landmark, Styli, or any other buyer can start from the right bill-to, ship-to, stamp, and layout defaults."
               eyebrow="Buyer Templates"
               title="Invoice buyer templates"
+              titleAppend={
+                <button
+                  className="group relative flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-kira-warmgray/20"
+                  onClick={handleFillSampleBuyerTemplate}
+                  type="button"
+                >
+                  <Wand2
+                    className={`h-4 w-4 transition-colors ${preSampleBuyerTemplate ? "text-kira-black dark:text-white" : "text-kira-darkgray group-hover:text-kira-black dark:text-kira-midgray dark:group-hover:text-white"}`}
+                  />
+                  <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-kira-black px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 dark:border dark:border-white/10 dark:bg-transparent dark:text-white dark:backdrop-blur-md">
+                    {preSampleBuyerTemplate ? "Undo Sample Values" : "Fill Sample Values"}
+                    <div className="absolute top-full left-1/2 -mt-1 -translate-x-1/2 border-4 border-transparent border-t-kira-black dark:border-t-transparent" />
+                  </div>
+                </button>
+              }
             />
             <div className="mt-6 grid gap-6 lg:grid-cols-[280px,minmax(0,1fr)]">
               <div className="space-y-3">

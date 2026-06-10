@@ -1,8 +1,12 @@
 import json
+import logging
 import math
 import re
 from collections import OrderedDict
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
+
 from datetime import timezone
 from contextlib import contextmanager
 from io import BytesIO
@@ -1091,7 +1095,7 @@ def _render_sticker_template(
                     )
                     continue
                 if asset_url:
-                    raise ValueError('Template image asset could not be loaded for PDF generation.')
+                    logger.warning('Template image asset could not be loaded for PDF generation: %s', asset_url)
                 pdf.setStrokeColor(colors.lightgrey)
                 pdf.rect(absolute_x, absolute_y, box_width, box_height, stroke=1, fill=0)
                 pdf.setFillColor(colors.grey)

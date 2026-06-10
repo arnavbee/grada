@@ -49,6 +49,11 @@ def _json_loads(raw: str | None) -> dict[str, object]:
     return parsed if isinstance(parsed, dict) else {}
 
 
+def _json_dumps(payload: dict[str, object]) -> str:
+    return json.dumps(payload, separators=(',', ':'))
+
+
+
 def _get_or_create_company_settings(db: Session, company_id: str) -> CompanySettings:
     company_settings = db.query(CompanySettings).filter(CompanySettings.company_id == company_id).first()
     if company_settings is not None:

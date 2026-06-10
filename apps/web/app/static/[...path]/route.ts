@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 const LOCAL_API_ORIGIN = "http://127.0.0.1:8000";
 const PROXY_ERROR_MESSAGE = "Static proxy target is not configured.";
 const LOOPBACK_HOST_REGEX = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?(?:\/|$)/i;
-const UPSTREAM_TIMEOUT_MS = 8_000;
+const UPSTREAM_TIMEOUT_MS = 60_000;
 
 function normalizeApiOrigin(rawBase: string): string {
   return rawBase
@@ -70,7 +70,8 @@ async function proxyStaticRequest(
       status: upstreamResponse.status,
       headers: responseHeaders,
     });
-  } catch {
+  } catch (err) {
+    console.error("Static proxy fetch error:", err);
     return NextResponse.json(
       {
         detail: `Unable to reach static target: ${apiOrigin}.`,

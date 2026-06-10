@@ -30,6 +30,7 @@ export function InputField({
         )}
         id={fieldId}
         {...props}
+        value={props.value ?? ""}
       />
       {error ? (
         <small className="mt-1 block text-kira-warmgray">{error}</small>
