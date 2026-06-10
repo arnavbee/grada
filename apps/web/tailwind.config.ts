@@ -7,6 +7,7 @@ const config: Config = {
     extend: {
       colors: {
         brand: "rgb(var(--kira-brown-rgb) / <alpha-value>)",
+        olive: "#111111",
         kira: {
           black: "rgb(var(--kira-ink-rgb) / <alpha-value>)",
           darkgray: "rgb(var(--kira-muted-rgb) / <alpha-value>)",
@@ -25,6 +26,15 @@ const config: Config = {
           "Helvetica",
           "Arial",
           "sans-serif",
+        ],
+        serif: [
+          "var(--font-instrument)",
+          "Playfair Display",
+          "Georgia",
+          "Cambria",
+          "Times New Roman",
+          "Times",
+          "serif",
         ],
         mono: [
           "var(--font-geist-mono)",
@@ -63,12 +73,17 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(20px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        marquee: {
+          "0%": { transform: "translateX(0%)" },
+          "100%": { transform: "translateX(-100%)" },
+        },
       },
       animation: {
         enter: "enter 420ms ease-out both",
         "cube-dot": "cube-dot 2.6s linear infinite",
         "letter-spacing": "letter-spacing 800ms cubic-bezier(0.16, 1, 0.3, 1) both",
         "fade-in-up": "fade-in-up 800ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        marquee: "marquee 30s linear infinite",
       },
     },
   },

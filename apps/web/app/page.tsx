@@ -1,89 +1,13 @@
-import dynamic from "next/dynamic";
-import Image from "next/image";
+"use client";
+
 import Link from "next/link";
-
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { GridBackground } from "@/src/components/GridBackground";
-import { SectionEyebrow } from "@/src/components/marketing/section-eyebrow";
-import { Card } from "@/src/components/ui/card";
-
-const ModulesShowcase = dynamic(
-  () =>
-    import("@/src/components/marketing/modules-showcase").then((module) => ({
-      default: module.ModulesShowcase,
-    })),
-  { loading: () => <div className="surface-card h-32 animate-pulse" /> },
-);
-
-const WorkflowTabs = dynamic(
-  () =>
-    import("@/src/components/marketing/workflow-tabs").then((module) => ({
-      default: module.WorkflowTabs,
-    })),
-  { loading: () => <div className="h-44 rounded-2xl border border-kira-warmgray/35" /> },
-);
-
-const FooterBrand = dynamic(
-  () =>
-    import("@/src/components/FooterBrand").then((module) => ({
-      default: module.FooterBrand,
-    })),
-  { loading: () => <div className="h-32" /> },
-);
 
 const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
 const marketplaceExportsAnimationSrc = "/marketing/grada-marketplace-exports-animated.html";
-const barcodeAnimationSrc = "/marketing/grada-barcode-animated.html";
 const commercialInvoicesAnimationSrc = "/marketing/grada-commercial-invoices-autoplay.html";
 const receivedPoProcessingAnimationSrc = "/marketing/grada-received-po-processing-animated.html";
-
-const modules = [
-  {
-    number: "01",
-    title: "Smart Catalog",
-    detail: "Extract clean product data from images and lock one reusable record.",
-    highlight: "One product record before export or ops work begins.",
-  },
-  {
-    number: "02",
-    title: "Marketplace Exports",
-    detail: "Generate channel-ready exports from the same approved catalog.",
-    highlight: "Channel-specific files without spreadsheet drift.",
-  },
-  {
-    number: "03",
-    title: "Received PO Processing",
-    detail: "Review the received PO once before downstream work starts.",
-    highlight: "One review step before barcode or invoice generation.",
-  },
-  {
-    number: "04",
-    title: "Dispatch Documents",
-    detail: "Generate barcodes, invoices, packing lists, and stickers from approved data.",
-    highlight: "Dispatch-ready outputs from one confirmed source.",
-  },
-];
-
-const heroBadges = ["Catalog -> PO -> dispatch"];
-
-const coverageBlocks = [
-  {
-    title: "One record, reused everywhere",
-    detail: "The same SKU-level record drives catalog fields, PO lines, and dispatch documents.",
-  },
-  {
-    title: "Approve once, lock downstream docs",
-    detail:
-      "After PO approval, barcodes, invoices, and stickers pull from that exact approved data.",
-  },
-];
-
-const modulePrinciples = [
-  "Approve data once.",
-  "Review PO before docs.",
-  "Keep every output tied to the same record.",
-];
 
 type MarketplaceCoverageItem = {
   detail: string;
@@ -110,6 +34,7 @@ const marketplaceCoverage: MarketplaceCoverageItem[] = [
     label: "Myntra",
     detail: "Structured exports tied to the same SKU logic.",
     logo: {
+      className: "h-[18px] w-auto object-contain",
       height: 28,
       kind: "image",
       src: "https://upload.wikimedia.org/wikipedia/commons/b/bc/Myntra_Logo.png",
@@ -120,6 +45,7 @@ const marketplaceCoverage: MarketplaceCoverageItem[] = [
     label: "Ajio",
     detail: "Channel-ready exports without manual remapping.",
     logo: {
+      className: "h-7 w-auto object-contain",
       height: 26,
       kind: "image",
       src: "https://images.seeklogo.com/logo-png/34/1/ajio-logo-png_seeklogo-348946.png",
@@ -137,7 +63,7 @@ const marketplaceCoverage: MarketplaceCoverageItem[] = [
     label: "Flipkart",
     detail: "Marketplace-specific formats from one source.",
     logo: {
-      className: "h-6 w-auto origin-center scale-125 object-contain",
+      className: "h-10 w-auto origin-center scale-[1.5] object-contain",
       height: 26,
       kind: "image",
       src: "https://upload.wikimedia.org/wikipedia/commons/e/e5/Flipkart_logo_%282026%29.svg",
@@ -148,6 +74,7 @@ const marketplaceCoverage: MarketplaceCoverageItem[] = [
     label: "Nykaa",
     detail: "Keep rich attribute structure intact across teams.",
     logo: {
+      className: "h-[18px] w-auto object-contain",
       height: 26,
       kind: "image",
       src: "https://upload.wikimedia.org/wikipedia/commons/0/00/Nykaa_New_Logo.svg",
@@ -164,58 +91,191 @@ const marketplaceCoverage: MarketplaceCoverageItem[] = [
   },
 ];
 
+function MarketplaceCoverageLogo({
+  marketplace,
+}: {
+  marketplace: MarketplaceCoverageItem;
+}): JSX.Element {
+  const baseEffects =
+    "opacity-40 grayscale hover:grayscale-0 hover:opacity-100 transition duration-500";
+
+  if (marketplace.logo.kind === "image") {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        alt=""
+        aria-hidden="true"
+        className={`${marketplace.logo.className ?? "h-7 w-auto object-contain"} ${baseEffects}`}
+        height={marketplace.logo.height}
+        src={marketplace.logo.src}
+        width={marketplace.logo.width}
+      />
+    );
+  }
+
+  if (marketplace.logo.kind === "amazon") {
+    return (
+      <span
+        className={`relative inline-flex h-6 w-[5.5rem] items-start justify-start font-sans text-[1.05rem] font-medium lowercase tracking-[-0.05em] text-[#111] ${baseEffects}`}
+      >
+        <span>amazon</span>
+        <span className="absolute right-0 top-0 text-[0.5rem] font-semibold tracking-normal text-[#111]">
+          .in
+        </span>
+        <svg
+          aria-hidden="true"
+          className="absolute -bottom-0.5 left-0 h-2.5 w-[4rem]"
+          viewBox="0 0 58 12"
+        >
+          <path
+            d="M2 4.5C12 10.5 36 10.5 49 4.5"
+            fill="none"
+            stroke="#111"
+            strokeLinecap="round"
+            strokeWidth="2"
+          />
+          <path
+            d="M45.5 2.7L49 4.5L45.2 6.8"
+            fill="none"
+            stroke="#111"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-xs font-semibold uppercase tracking-[0.08em] opacity-40 hover:opacity-100 transition duration-500 text-[#111]">
+      {marketplace.logo.text}
+    </span>
+  );
+}
+
+const modules = [
+  {
+    number: "01",
+    title: "Smart Catalog",
+    detail: "Extract clean product data from images and lock one reusable record.",
+    highlight: "One product record before export or ops work begins.",
+    icon: (
+      <svg
+        className="w-5 h-5 text-kira-brown"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    ),
+  },
+  {
+    number: "02",
+    title: "Marketplace Exports",
+    detail: "Generate channel-ready exports from the same approved catalog.",
+    highlight: "Channel-specific files without spreadsheet drift.",
+    icon: (
+      <svg
+        className="w-5 h-5 text-kira-brown"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+        />
+      </svg>
+    ),
+  },
+  {
+    number: "03",
+    title: "Received PO Processing",
+    detail: "Review the received PO once before downstream work starts.",
+    highlight: "One review step before barcode or invoice generation.",
+    icon: (
+      <svg
+        className="w-5 h-5 text-kira-brown"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+  },
+  {
+    number: "04",
+    title: "Dispatch Documents",
+    detail: "Generate barcodes, invoices, packing lists, and stickers from approved data.",
+    highlight: "Dispatch-ready outputs from one confirmed source.",
+    icon: (
+      <svg
+        className="w-5 h-5 text-kira-brown"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        />
+      </svg>
+    ),
+  },
+];
+
+const coverageBlocks = [
+  {
+    title: "One record, reused everywhere",
+    detail: "The same SKU-level record drives catalog fields, PO lines, and dispatch documents.",
+  },
+  {
+    title: "Approve once, lock downstream docs",
+    detail:
+      "After PO approval, barcodes, invoices, and stickers pull from that exact approved data.",
+  },
+];
+
 const workflowViews = [
   {
     value: "catalog",
     label: "Catalog AI",
     eyebrow: "Phase 01",
     title: "Lock the product record before the business starts improvising.",
-    panelTone: "kira-tint-warm",
-    carryTone: "kira-tint-mixed",
-    bulletTone: "bg-kira-brown",
-    detail: "Turn product images and team knowledge into one reusable catalog record.",
-    bullets: [
-      "Extract key attributes from product imagery.",
-      "Keep merchandising and ops in one workspace.",
-      "Reuse approved catalog data later.",
-    ],
-    carryTitle: "What carries forward",
-    carryDetail: "Approved catalog attributes become the base layer for exports and PO handling.",
+    detail:
+      "Turn product images and team knowledge into one reusable catalog record. Extract key attributes from product imagery. Keep merchandising and ops in one workspace.",
+    animationSrc: smartCatalogAnimationSrc,
   },
   {
     value: "po-review",
     label: "PO Review",
     eyebrow: "Phase 02",
     title: "Review the received PO once, then stop reconciling downstream mistakes.",
-    panelTone: "kira-tint-sage",
-    carryTone: "kira-tint-sage",
-    bulletTone: "bg-kira-brown dark:bg-[#8E9B87]",
-    detail: "Upload the PO, verify parsed rows, and confirm one operational version.",
-    bullets: [
-      "Accept PDF, XLS, and XLSX files.",
-      "Confirm line items before docs begin.",
-      "Keep one approved PO state.",
-    ],
-    carryTitle: "Why it matters",
-    carryDetail: "One review step keeps barcode sheets, invoices, and packing outputs aligned.",
+    detail:
+      "Upload the PO, verify parsed rows, and confirm one operational version. Accept PDF, XLS, and XLSX files. Confirm line items before docs begin.",
+    animationSrc: receivedPoProcessingAnimationSrc,
   },
   {
     value: "dispatch",
     label: "Dispatch Docs",
     eyebrow: "Phase 03",
     title: "Generate dispatch-ready outputs from approved data, not from memory.",
-    panelTone: "kira-tint-mixed",
-    carryTone: "kira-tint-warm",
-    bulletTone: "bg-[#C47F56]",
-    detail: "Generate barcodes, invoices, packing lists, and stickers from the confirmed PO.",
-    bullets: [
-      "Create barcode sheets and sticker templates.",
-      "Handle GST logic inside the flow.",
-      "Store generated files with history.",
-    ],
-    carryTitle: "Operational result",
-    carryDetail:
-      "Dispatch teams move faster because every output comes from approved upstream data.",
+    detail:
+      "Generate barcodes, invoices, packing lists, and stickers from the confirmed PO. Handle GST logic inside the flow. Store generated files with history.",
+    animationSrc: commercialInvoicesAnimationSrc,
   },
 ];
 
@@ -245,355 +305,340 @@ const playbookQuestions = [
   },
 ];
 
-const contactChannels = [
-  {
-    label: "Request Access",
-    sublabel: "Create your account",
-    href: "/signup",
-  },
-  {
-    label: "See It in Action",
-    sublabel: "Open the live product",
-    href: "/dashboard",
-  },
-  {
-    label: "Talk to the Founder",
-    sublabel: "hello@arnavb.xyz",
-    href: "mailto:hello@arnavb.xyz",
-  },
-];
+export default function LandingPage() {
+  const [activeWorkflow, setActiveWorkflow] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-const tickerItems = [
-  "AI Catalog Extraction",
-  "Marketplace Export Engine",
-  "Received PO Review",
-  "Barcode Generation",
-  "GST Invoices",
-  "Packing Lists",
-  "R2 Document Storage",
-];
-
-function MarketplaceCoverageLogo({
-  marketplace,
-}: {
-  marketplace: MarketplaceCoverageItem;
-}): JSX.Element {
-  if (marketplace.logo.kind === "image") {
-    return (
-      <Image
-        alt=""
-        aria-hidden="true"
-        className={marketplace.logo.className ?? "h-5 w-auto object-contain"}
-        height={marketplace.logo.height}
-        src={marketplace.logo.src}
-        unoptimized
-        width={marketplace.logo.width}
-      />
-    );
-  }
-
-  if (marketplace.logo.kind === "amazon") {
-    return (
-      <span className="relative inline-flex h-5 w-[4.9rem] items-start justify-start font-sans text-[0.95rem] font-medium lowercase tracking-[-0.05em] text-kira-black dark:text-kira-offwhite">
-        <span>amazon</span>
-        <span className="absolute -right-0.5 top-0 text-[0.5rem] font-semibold tracking-normal text-[#f59e0b] dark:text-[#fbbf24]">
-          .in
-        </span>
-        <svg
-          aria-hidden="true"
-          className="absolute -bottom-0.5 left-0 h-2 w-[3.7rem]"
-          viewBox="0 0 58 12"
+  return (
+    <main className="min-h-screen bg-[#FAFAFA] text-[#111] font-sans selection:bg-black selection:text-white pb-12 overflow-hidden">
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4 md:px-12 md:py-6 sticky top-0 bg-white/40 backdrop-blur-2xl z-50 border-b border-white/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
+        <div className="font-serif text-3xl font-normal tracking-tight pt-1">
+          Grada<span className="text-kira-brown text-[1.1em]">.</span>
+        </div>
+        <nav className="hidden md:flex gap-8 text-sm font-medium tracking-wide">
+          <Link href="#spine" className="hover:text-gray-500 transition-colors duration-300">
+            Operational Spine
+          </Link>
+          <Link href="#workflow" className="hover:text-gray-500 transition-colors duration-300">
+            Workflow
+          </Link>
+          <Link href="#faq" className="hover:text-gray-500 transition-colors duration-300">
+            Ops FAQ
+          </Link>
+        </nav>
+        <Button
+          asChild
+          className="bg-[#111] text-white hover:bg-black/80 rounded-full px-6 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
         >
-          <path
-            d="M2 4.5C12 10.5 36 10.5 49 4.5"
-            fill="none"
-            stroke="#fbbf24"
-            strokeLinecap="round"
-            strokeWidth="2"
-          />
-          <path
-            d="M45.5 2.7L49 4.5L45.2 6.8"
-            fill="none"
-            stroke="#fbbf24"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-        </svg>
-      </span>
-    );
-  }
+          <Link href="/dashboard">See It in Action ↗</Link>
+        </Button>
+      </header>
 
-  return (
-    <span className="text-xs font-semibold uppercase tracking-[0.08em]">
-      {marketplace.logo.text}
-    </span>
-  );
-}
+      {/* Hero */}
+      <section className="px-6 md:px-12 pt-20 pb-32 max-w-7xl mx-auto text-center relative">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000_70%,transparent_100%)] -z-10" />
 
-export default function LandingPage(): JSX.Element {
-  return (
-    <main className="relative w-full max-w-none space-y-6 p-4 md:space-y-8 md:p-8">
-      <GridBackground />
+        <h1 className="font-serif font-normal text-6xl md:text-[100px] lg:text-[130px] leading-[0.9] tracking-tight mb-8 relative z-10">
+          From catalog
+          <br />
+          to dispatch<span className="text-kira-brown text-[1.1em]">.</span>
+        </h1>
+        <p className="text-xl md:text-2xl text-gray-500 font-light mb-12 max-w-2xl mx-auto relative z-10">
+          Grada gives Indian fashion brands one system for catalog, PO review, and dispatch,
+          simplified.
+        </p>
 
-      <section className="surface-card kira-tint-mixed animate-enter relative overflow-hidden p-6 md:p-10">
-        <div className="absolute -right-24 top-0 h-64 w-64 rounded-full bg-kira-brown/10 blur-xl" />
-        <div className="absolute -left-16 bottom-0 h-40 w-40 rounded-full bg-kira-brown/8 blur-xl dark:bg-[#A6B09B]/14" />
-        <div className="absolute right-24 top-28 h-28 w-28 rounded-full bg-[#D7B08B]/10 blur-lg" />
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
-          <div className="relative z-10 flex h-full flex-col md:col-span-7">
-            <div className="flex flex-wrap gap-y-2">
-              {heroBadges.map((badge) => (
-                <SectionEyebrow className="tracking-[0.22em]" key={badge} linePosition="before">
-                  {badge}
-                </SectionEyebrow>
-              ))}
-            </div>
+        <div className="relative mt-24 max-w-6xl mx-auto z-10">
+          {/* Solid Background Tile */}
+          <div className="absolute top-[15%] bottom-[-10%] -left-4 -right-4 md:-left-12 md:-right-12 bg-[#8C987A] rounded-[32px] md:rounded-[64px] z-0 shadow-lg" />
 
-            <h1 className="max-w-3xl text-[4.5rem] font-bold leading-none tracking-tighter md:text-[7.5rem] lg:text-[9rem] animate-fade-in-up">
-              Grada
-              <span
-                className="kira-cube-shell mb-1 ml-0 inline-block h-3 w-3 [--cube-depth:6px] md:mb-3 md:ml-1 md:h-6 md:w-6 md:[--cube-depth:12px]"
-                style={{ animationDelay: "400ms" }}
-              >
-                <span className="kira-cube-dot">
-                  <span className="kira-cube-face kira-cube-face-front" />
-                  <span className="kira-cube-face kira-cube-face-back" />
-                  <span className="kira-cube-face kira-cube-face-top" />
-                  <span className="kira-cube-face kira-cube-face-left" />
-                  <span className="kira-cube-face kira-cube-face-right" />
-                  <span className="kira-cube-face kira-cube-face-bottom" />
-                </span>
-              </span>
-            </h1>
-
-            <p
-              className="mt-6 max-w-3xl text-3xl leading-tight md:text-5xl animate-fade-in-up"
-              style={{ animationDelay: "800ms" }}
-            >
-              From catalog to dispatch, <span className="text-kira-brown">simplified.</span>
-            </p>
-            <p
-              className="mt-6 max-w-2xl text-kira-darkgray md:text-lg animate-fade-in-up"
-              style={{ animationDelay: "1000ms" }}
-            >
-              Grada gives Indian fashion brands one system for catalog, PO review, and dispatch.
-            </p>
-
-            <div className="mt-10 flex flex-wrap items-center gap-3 md:mt-auto md:pt-8">
-              <Button
-                asChild
-                className="rounded-full bg-kira-brown px-6 text-kira-offwhite hover:bg-kira-brown/90 dark:bg-kira-brown dark:text-kira-offwhite dark:hover:bg-kira-brown/90"
-                size="lg"
-              >
-                <Link href="/dashboard" prefetch={false}>
-                  See It in Action
-                </Link>
-              </Button>
-              <Button asChild className="rounded-full px-6" size="lg" variant="outline">
-                <Link href="/signup">Request Access</Link>
-              </Button>
-              <Button asChild className="rounded-full px-4" size="lg" variant="ghost">
-                <Link href="/login">Sign In</Link>
-              </Button>
+          <div className="relative z-10 w-full max-w-5xl mx-auto rounded-2xl md:rounded-[40px] overflow-hidden bg-white/30 backdrop-blur-3xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-2 md:p-4 hover:shadow-[0_8px_32px_rgba(0,0,0,0.2)] transition-shadow duration-700">
+            <div className="aspect-[16/10] relative group rounded-xl md:rounded-[32px] overflow-hidden bg-[#111] ring-1 ring-black/5 shadow-inner">
+              <iframe
+                src={smartCatalogAnimationSrc}
+                className="w-full h-full border-0 pointer-events-none"
+              />
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="relative z-10 md:col-span-5">
-            <Card
-              className="animate-enter kira-tint-warm h-full overflow-hidden border-kira-darkgray/15 p-6 md:p-7"
-              style={{ animationDelay: "120ms" }}
+      {/* Trusted By (Infinite Marquee) */}
+      <section className="border-t border-b border-black/5 py-12 bg-white relative z-10 overflow-hidden flex items-center">
+        <div className="px-6 md:px-12 pr-12 z-20 bg-white shadow-[20px_0_20px_-10px_rgba(255,255,255,1)]">
+          <p className="text-sm text-gray-400 font-medium shrink-0 uppercase tracking-widest">
+            Coverage
+          </p>
+        </div>
+        <div
+          className="flex w-full overflow-hidden relative"
+          style={{
+            maskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)",
+          }}
+        >
+          <div className="flex shrink-0 animate-marquee items-center justify-around gap-20 min-w-full">
+            {marketplaceCoverage.map((item, i) => (
+              <div key={`logo-1-${i}`} className="flex items-center justify-center">
+                <MarketplaceCoverageLogo marketplace={item} />
+              </div>
+            ))}
+          </div>
+          <div
+            className="flex shrink-0 animate-marquee items-center justify-around gap-20 min-w-full"
+            aria-hidden="true"
+          >
+            {marketplaceCoverage.map((item, i) => (
+              <div key={`logo-2-${i}`} className="flex items-center justify-center">
+                <MarketplaceCoverageLogo marketplace={item} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Operational Spine (Bento Box) */}
+      <section id="spine" className="py-24 md:py-40 px-6 md:px-12 max-w-7xl mx-auto relative">
+        {/* Ambient glow for glassmorphism */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[600px] bg-gradient-to-tr from-[#8C987A]/20 via-kira-brown/10 to-transparent rounded-full blur-[120px] pointer-events-none -z-10" />
+
+        <p className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-6 font-semibold">
+          Operational Spine
+        </p>
+        <h2 className="font-serif font-normal text-5xl md:text-7xl tracking-tight mb-6">
+          The handoff is already connected<span className="text-kira-brown text-[1.1em]">.</span>
+        </h2>
+        <p className="text-lg text-gray-500 font-light max-w-2xl mb-16 md:mb-24">
+          Catalog, PO review, and dispatch all live in one flow.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {modules.map((mod, i) => (
+            <div
+              key={i}
+              className="flex flex-col bg-white/50 backdrop-blur-2xl rounded-[32px] p-8 border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-500 ease-out cursor-default relative overflow-hidden group"
             >
-              <SectionEyebrow linePosition="after">Operational Spine</SectionEyebrow>
-              <h2 className="mt-4 text-3xl">The handoff is already connected.</h2>
-              <p className="mt-3 text-kira-darkgray">
-                Catalog, PO review, and dispatch all live in one flow.
+              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity duration-500 scale-150 origin-top-right mix-blend-multiply">
+                {mod.icon}
+              </div>
+              <div className="w-12 h-12 mb-8 rounded-full bg-[#FAFAFA] ring-1 ring-black/5 flex items-center justify-center shadow-inner text-[#111]">
+                {mod.icon}
+              </div>
+              <h3 className="font-semibold text-lg mb-3 relative z-10">{mod.title}</h3>
+              <p className="text-sm text-gray-500 font-light leading-relaxed mb-6 relative z-10">
+                {mod.detail}
               </p>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                {marketplaceCoverage.map((marketplace) => (
-                  <div className="group relative" key={marketplace.label}>
-                    <div className="relative">
-                      <button
-                        className="kira-focus-ring flex min-h-11 items-center justify-center rounded-full border border-kira-warmgray/45 bg-white/85 px-4 py-2 text-kira-darkgray transition-colors hover:border-kira-brown/45 hover:text-kira-black dark:border-white/10 dark:bg-kira-offwhite/95 dark:text-kira-black"
-                        type="button"
-                      >
-                        <MarketplaceCoverageLogo marketplace={marketplace} />
-                        <span className="sr-only">{marketplace.label}</span>
-                      </button>
-                      <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-3 w-72 -translate-x-1/2 translate-y-1 rounded-2xl border border-kira-warmgray/40 bg-kira-offwhite/95 p-4 text-sm text-kira-black opacity-0 shadow-xl transition duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100 dark:border-white/10 dark:bg-[rgba(24,31,27,0.98)]">
-                        <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                          Coverage
-                        </p>
-                        <p className="mt-2 text-base font-semibold text-kira-black">
-                          {marketplace.label}
-                        </p>
-                        <p className="mt-2 leading-6 text-kira-darkgray">{marketplace.detail}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="mt-auto pt-6 border-t border-black/5">
+                <p className="text-xs font-medium text-kira-brown">{mod.highlight}</p>
               </div>
-
-              <Separator className="my-6" />
-
-              <div className="space-y-4">
-                {coverageBlocks.map((block) => (
-                  <div key={block.title}>
-                    <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                      {block.title}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-kira-darkgray">{block.detail}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      <ModulesShowcase
-        barcodeAnimationSrc={barcodeAnimationSrc}
-        commercialInvoicesAnimationSrc={commercialInvoicesAnimationSrc}
-        marketplaceExportsAnimationSrc={marketplaceExportsAnimationSrc}
-        modulePrinciples={modulePrinciples}
-        modules={modules}
-        receivedPoProcessingAnimationSrc={receivedPoProcessingAnimationSrc}
-        smartCatalogAnimationSrc={smartCatalogAnimationSrc}
-      />
-
-      <section
-        className="surface-card kira-tint-sage animate-enter overflow-hidden p-5 md:p-7"
-        style={{ animationDelay: "240ms" }}
-      >
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <SectionEyebrow linePosition="before">Workflow</SectionEyebrow>
-            <h2 className="mt-3 text-3xl">See the connected flow, not just the feature list.</h2>
-          </div>
-          <p className="max-w-2xl text-sm leading-6 text-kira-darkgray">
-            One clean flow from catalog to dispatch.
-          </p>
-        </div>
-
-        <WorkflowTabs views={workflowViews} />
-      </section>
-
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-[1.2fr_0.8fr]">
-        <Card
-          className="animate-enter kira-tint-warm p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7"
-          style={{ animationDelay: "320ms" }}
-        >
-          <SectionEyebrow linePosition="before">Ops FAQ</SectionEyebrow>
-          <h2 className="mt-3 text-3xl">What Grada is actually replacing.</h2>
-
-          <div className="mt-5">
-            {playbookQuestions.map((question) => (
-              <details
-                className="group border-b border-kira-warmgray/30 last:border-b-0"
-                key={question.value}
-              >
-                <summary className="flex cursor-pointer list-none items-start justify-between gap-4 py-4 text-left text-sm font-semibold text-kira-black marker:content-none hover:text-kira-brown">
-                  <span>{question.title}</span>
-                  <span className="shrink-0 text-kira-midgray group-open:hidden">+</span>
-                  <span className="hidden shrink-0 text-kira-midgray group-open:inline">-</span>
-                </summary>
-                <div className="pb-4 text-sm leading-6 text-kira-darkgray">{question.detail}</div>
-              </details>
-            ))}
-          </div>
-        </Card>
-
-        <Card
-          className="animate-enter kira-tint-sage p-5 transition-transform duration-300 hover:-translate-y-1 md:p-7"
-          style={{ animationDelay: "380ms" }}
-        >
-          <SectionEyebrow linePosition="after">Get Started</SectionEyebrow>
-          <h2 className="mt-3 text-3xl">Start with the product, not a sales deck.</h2>
-          <p className="mt-3 text-kira-darkgray">
-            Open the workflow, request access, or reach out directly.
-          </p>
-
-          <div className="mt-6 space-y-3">
-            {contactChannels.map((channel) => (
-              <a
-                className="kira-surface-elevated kira-focus-ring flex items-center justify-between rounded-2xl border border-kira-warmgray/45 px-4 py-4 text-kira-black transition-colors hover:bg-kira-warmgray/20 dark:border-white/10 dark:text-kira-offwhite dark:hover:bg-white/8"
-                href={channel.href}
-                key={channel.label}
-                rel="noreferrer"
-                target={channel.href.startsWith("http") ? "_blank" : undefined}
-              >
-                <span className="text-sm font-semibold">{channel.label}</span>
-                <span className="text-xs uppercase tracking-[0.08em] text-kira-midgray">
-                  {channel.sublabel}
-                </span>
-              </a>
-            ))}
-          </div>
-        </Card>
-      </section>
-
-      <section
-        className="kira-tint-deep animate-enter overflow-hidden rounded-2xl border border-kira-warmgray/35"
-        style={{ animationDelay: "520ms" }}
-      >
-        <div className="kira-marquee flex min-w-max items-center gap-6 py-3">
-          {[...tickerItems, ...tickerItems].map((item, index) => (
-            <span
-              className="inline-flex items-center gap-4 text-sm uppercase tracking-[0.08em] text-kira-midgray"
-              key={`${item}-${index}`}
-            >
-              {item}
-              <span className="h-1.5 w-1.5 rounded-full bg-kira-brown/80" />
-            </span>
+            </div>
           ))}
         </div>
       </section>
 
-      <Card
-        className="animate-enter kira-tint-mixed p-5 md:p-7"
-        style={{ animationDelay: "560ms" }}
+      {/* Workflow (Interactive Tab Layout) */}
+      <section
+        id="workflow"
+        className="py-24 md:py-40 px-6 md:px-12 max-w-7xl mx-auto border-t border-black/5"
       >
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 md:gap-24 items-center">
           <div>
-            <SectionEyebrow linePosition="before">Ready to Scale</SectionEyebrow>
-            <h2 className="mt-3">Stop operating manually. Start operating at scale.</h2>
-            <p className="mt-2 max-w-2xl text-kira-darkgray">
-              Move from catalog to dispatch inside one workflow.
+            <h2 className="font-serif font-normal text-5xl md:text-7xl tracking-tight mb-6 leading-tight">
+              See the connected flow<span className="text-kira-brown text-[1.1em]">.</span>
+            </h2>
+            <p className="text-lg text-gray-500 font-light mb-12">
+              One clean flow from catalog to dispatch, not just a feature list.
             </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
+
+            <div className="space-y-4">
+              {workflowViews.map((view, i) => {
+                const isActive = activeWorkflow === i;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setActiveWorkflow(i)}
+                    className={`w-full text-left flex items-start gap-6 border border-black/5 p-6 transition-all duration-300 rounded-2xl ${isActive ? "bg-white shadow-md ring-1 ring-kira-brown/20" : "bg-transparent hover:bg-white/50 hover:shadow-sm"}`}
+                  >
+                    <span
+                      className={`text-sm font-medium mt-0.5 font-mono ${isActive ? "text-kira-brown" : "text-gray-400"}`}
+                    >
+                      0{i + 1}
+                    </span>
+                    <div>
+                      <h4
+                        className={`font-semibold mb-2 ${isActive ? "text-[#111]" : "text-gray-600"}`}
+                      >
+                        {view.label}
+                      </h4>
+                      <p
+                        className={`text-sm font-light leading-relaxed ${isActive ? "text-gray-700" : "text-gray-400"}`}
+                      >
+                        {view.title}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
             <Button
               asChild
-              className="rounded-full bg-kira-brown px-6 text-kira-offwhite hover:bg-kira-brown/90 dark:bg-kira-brown dark:text-kira-offwhite dark:hover:bg-kira-brown/90"
-              size="lg"
+              className="mt-12 bg-white ring-1 ring-black/5 text-[#111] hover:bg-gray-50 rounded-full px-8 py-6 shadow-sm hover:shadow-md transition-all duration-300"
             >
-              <Link href="/dashboard" prefetch={false}>
-                See It in Action
-              </Link>
-            </Button>
-            <Button asChild className="rounded-full px-6" size="lg" variant="outline">
-              <Link href="/signup">Request Access</Link>
+              <Link href="/dashboard">See It in Action</Link>
             </Button>
           </div>
+
+          <div className="relative z-10">
+            {/* Solid Background Tile */}
+            <div className="absolute top-[5%] bottom-[-5%] -left-4 -right-4 md:-left-8 md:-right-8 bg-[#8C987A] rounded-[32px] md:rounded-[64px] z-0 shadow-lg" />
+
+            <div className="aspect-[3/4] rounded-[32px] md:rounded-[48px] overflow-hidden bg-white/30 backdrop-blur-3xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-2 md:p-3 transition-transform duration-700 relative z-10">
+              <div className="w-full h-full rounded-[24px] md:rounded-[40px] overflow-hidden bg-[#111] ring-1 ring-black/5 relative shadow-inner">
+                {workflowViews.map((view, i) => (
+                  <iframe
+                    key={i}
+                    src={view.animationSrc}
+                    className={`absolute inset-0 w-full h-full border-0 pointer-events-none transition-opacity duration-700 ease-in-out ${activeWorkflow === i ? "opacity-100 z-10" : "opacity-0 z-0"}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-      </Card>
+      </section>
 
-      <FooterBrand />
+      {/* Ops FAQ (Accordion) */}
+      <section id="faq" className="py-24 md:py-40 px-6 md:px-12 max-w-4xl mx-auto text-center">
+        <p className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-6 font-semibold">
+          Ops FAQ
+        </p>
+        <h2 className="font-serif font-normal text-5xl md:text-7xl tracking-tight mb-6">
+          What Grada is actually replacing<span className="text-kira-brown text-[1.1em]">.</span>
+        </h2>
+        <p className="text-lg text-gray-500 font-light max-w-2xl mx-auto mb-16">
+          Stop operating manually. Start operating at scale.
+        </p>
 
-      <footer
-        className="surface-card animate-enter relative z-10 p-5 md:p-7"
-        style={{ animationDelay: "640ms" }}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="text-left bg-white/50 backdrop-blur-3xl border border-white/80 rounded-[32px] shadow-[0_8px_32px_rgba(0,0,0,0.04)] p-8 md:p-12 space-y-4">
+          {playbookQuestions.map((q, i) => {
+            const isOpen = openFaq === i;
+            return (
+              <div key={i} className="border-b border-black/5 last:border-0 pb-4 last:pb-0">
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : i)}
+                  className="w-full flex items-center justify-between text-left py-4 group"
+                >
+                  <h3
+                    className={`font-semibold text-lg transition-colors duration-300 ${isOpen ? "text-kira-brown" : "text-[#111] group-hover:text-kira-brown"}`}
+                  >
+                    {q.title}
+                  </h3>
+                  <span
+                    className={`w-8 h-8 rounded-full flex items-center justify-center bg-[#FAFAFA] ring-1 ring-black/5 transition-transform duration-300 ${isOpen ? "rotate-180 bg-kira-brown text-white ring-kira-brown" : ""}`}
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </span>
+                </button>
+                <div
+                  className={`overflow-hidden transition-all duration-500 ease-in-out ${isOpen ? "max-h-[200px] opacity-100 mb-4" : "max-h-0 opacity-0"}`}
+                >
+                  <p className="text-sm text-gray-500 font-light leading-relaxed pr-12">
+                    {q.detail}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Ready to Scale & Checklist */}
+      <section className="py-24 md:py-40 px-6 md:px-12 max-w-7xl mx-auto border-t border-black/5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 md:gap-24 items-center">
+          <div className="relative z-10">
+            {/* Solid Background Tile */}
+            <div className="absolute top-[5%] bottom-[-5%] -left-4 -right-4 md:-left-8 md:-right-8 bg-[#8C987A] rounded-[32px] md:rounded-[64px] z-0 shadow-lg" />
+
+            <div className="aspect-[4/3] rounded-[32px] md:rounded-[48px] overflow-hidden bg-white/30 backdrop-blur-3xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-2 md:p-3 hover:-translate-y-2 transition-transform duration-700 relative z-10">
+              <div className="w-full h-full rounded-[24px] md:rounded-[40px] overflow-hidden bg-white ring-1 ring-black/5 shadow-inner">
+                <iframe
+                  src={commercialInvoicesAnimationSrc}
+                  className="w-full h-full border-0 pointer-events-none"
+                />
+              </div>
+            </div>
+          </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.08em] text-kira-midgray">grada</p>
-            <p className="mt-1 text-kira-darkgray">
-              Fashion operations, automated. Built for Indian fashion brands.
+            <p className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-4 font-semibold">
+              Ready to Scale
             </p>
+            <h2 className="font-serif font-normal text-4xl md:text-5xl lg:text-[64px] leading-[1.05] tracking-tight mb-12">
+              Stop operating manually<span className="text-kira-brown text-[1.1em]">.</span> Start
+              operating at scale<span className="text-kira-brown text-[1.1em]">.</span>
+            </h2>
+            <div className="space-y-10">
+              {coverageBlocks.map((b, i) => (
+                <div key={i} className="flex gap-4">
+                  <div className="mt-1 w-6 h-6 rounded-full bg-[#111] text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="3"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-[#111]">{b.title}</p>
+                    <p className="text-sm text-gray-500 font-light mt-2 leading-relaxed">
+                      {b.detail}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <p className="text-sm text-kira-midgray">© 2026 grada. All rights reserved.</p>
         </div>
+      </section>
+
+      {/* Get Started CTA */}
+      <section className="py-32 md:py-48 px-6 md:px-12 max-w-4xl mx-auto text-center border-t border-black/5">
+        <h2 className="font-serif font-normal text-5xl md:text-7xl tracking-tight mb-6">
+          Start with the product, not a sales deck
+          <span className="text-kira-brown text-[1.1em]">.</span>
+        </h2>
+        <p className="text-lg text-gray-500 font-light mb-12">
+          Open the workflow, request access, or reach out directly.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <Button
+            asChild
+            className="bg-[#111] text-white hover:bg-black/80 rounded-full px-8 py-6 text-lg shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
+          >
+            <Link href="/dashboard">Open the workflow</Link>
+          </Button>
+          <Button
+            asChild
+            className="bg-white ring-1 ring-black/5 text-[#111] hover:bg-gray-50 rounded-full px-8 py-6 text-lg shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1"
+          >
+            <Link href="/signup">Request Access</Link>
+          </Button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-8 border-t border-black/5 bg-white text-center text-sm text-gray-400">
+        <p>© 2026 Grada Inc. All rights reserved.</p>
       </footer>
     </main>
   );

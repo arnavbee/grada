@@ -2,9 +2,18 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
+import { Instrument_Serif } from "next/font/google";
+
+const instrument = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-instrument",
+  display: "swap",
+});
 
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/src/components/theme-toggle";
+import { CustomCursor } from "@/src/components/custom-cursor";
 
 export const metadata: Metadata = {
   title: "grada",
@@ -33,10 +42,16 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn(GeistSans.variable, GeistMono.variable, "font-sans")}
+      className={cn(
+        GeistSans.variable,
+        GeistMono.variable,
+        instrument.variable,
+        "font-sans cursor-none",
+      )}
     >
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <CustomCursor />
         <ThemeToggle />
         {children}
       </body>
