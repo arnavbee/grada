@@ -399,7 +399,7 @@ export default function LandingPage() {
       {/* Operational Spine (Bento Box) */}
       <section id="spine" className="py-24 md:py-40 px-6 md:px-12 max-w-7xl mx-auto relative">
         {/* Ambient glow for glassmorphism */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[600px] bg-gradient-to-tr from-[#8C987A]/20 via-kira-brown/10 to-transparent rounded-full blur-[120px] pointer-events-none -z-10" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100%] h-[800px] bg-[radial-gradient(ellipse_at_center,rgba(140,152,122,0.15)_0%,rgba(175,138,104,0.05)_40%,transparent_70%)] pointer-events-none -z-10" />
 
         <p className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-6 font-semibold">
           Operational Spine
