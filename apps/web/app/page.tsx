@@ -436,43 +436,51 @@ export default function LandingPage() {
       </section>
 
       {/* The Impact (ROI Metrics) */}
-      <section className="py-12 md:py-24 px-6 md:px-12 max-w-7xl mx-auto">
-        <div className="bg-[#111] rounded-[32px] md:rounded-[64px] p-12 md:p-24 text-center md:text-left text-white shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-kira-brown/30 blur-[120px] rounded-full mix-blend-screen pointer-events-none -translate-y-1/2 translate-x-1/3" />
+      <section className="py-24 md:py-32 px-6 md:px-12 max-w-7xl mx-auto relative">
+        <p className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-6 font-semibold text-center">
+          The Impact
+        </p>
+        <h2 className="font-serif font-normal text-5xl md:text-7xl tracking-tight mb-16 text-center">
+          Protect your margins<span className="text-kira-brown">.</span>
+          <br className="hidden md:block" /> Scale without headcount
+          <span className="text-kira-brown">.</span>
+        </h2>
 
-          <p className="text-xs uppercase tracking-[0.2em] text-white/40 mb-6 font-semibold relative z-10">
-            The Impact
-          </p>
-          <h2 className="font-serif font-normal text-4xl md:text-6xl lg:text-[80px] leading-[0.95] tracking-tight mb-16 md:max-w-3xl relative z-10">
-            Protect your margins<span className="text-kira-brown">.</span> Scale without the
-            headcount<span className="text-kira-brown">.</span>
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 border-t border-white/10 pt-16 relative z-10">
-            <div>
-              <div className="font-serif text-7xl md:text-[100px] leading-none mb-6 tracking-tight">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6 mt-8">
+          <div className="relative z-10">
+            <div className="absolute top-[5%] bottom-[-5%] -left-3 -right-3 md:-left-4 md:-right-4 bg-[#8C987A] rounded-[32px] z-0 shadow-lg" />
+            <div className="flex flex-col items-center justify-center h-full text-center bg-white/40 backdrop-blur-3xl rounded-[32px] p-10 md:p-12 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:-translate-y-1 transition-all duration-500 relative z-10">
+              <div className="font-serif text-[100px] md:text-[120px] leading-none mb-4 tracking-tight text-[#111]">
                 0
               </div>
-              <h4 className="text-xl font-semibold mb-3 text-white/90">SLA Penalties</h4>
-              <p className="text-sm text-white/50 font-light leading-relaxed max-w-[260px]">
+              <h4 className="text-lg font-semibold mb-3 text-[#111]">SLA Penalties</h4>
+              <p className="text-sm text-gray-600 font-light leading-relaxed">
                 Automated PO processing ensures you never miss a marketplace dispatch window again.
               </p>
             </div>
-            <div>
-              <div className="font-serif text-7xl md:text-[100px] leading-none mb-6 tracking-tight">
+          </div>
+
+          <div className="relative z-10">
+            <div className="absolute top-[5%] bottom-[-5%] -left-3 -right-3 md:-left-4 md:-right-4 bg-[#8C987A] rounded-[32px] z-0 shadow-lg" />
+            <div className="flex flex-col items-center justify-center h-full text-center bg-white/40 backdrop-blur-3xl rounded-[32px] p-10 md:p-12 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:-translate-y-1 transition-all duration-500 relative z-10 group">
+              <div className="font-serif text-[100px] md:text-[120px] leading-none mb-4 tracking-tight text-[#111]">
                 3x
               </div>
-              <h4 className="text-xl font-semibold mb-3 text-white/90">Faster Dispatch</h4>
-              <p className="text-sm text-white/50 font-light leading-relaxed max-w-[260px]">
+              <h4 className="text-lg font-semibold mb-3 text-[#111]">Faster Dispatch</h4>
+              <p className="text-sm text-gray-600 font-light leading-relaxed">
                 Generate compliant barcodes, packing lists, and GST invoices instantly.
               </p>
             </div>
-            <div>
-              <div className="font-serif text-7xl md:text-[100px] leading-none mb-6 tracking-tight">
+          </div>
+
+          <div className="relative z-10">
+            <div className="absolute top-[5%] bottom-[-5%] -left-3 -right-3 md:-left-4 md:-right-4 bg-[#8C987A] rounded-[32px] z-0 shadow-lg" />
+            <div className="flex flex-col items-center justify-center h-full text-center bg-white/40 backdrop-blur-3xl rounded-[32px] p-10 md:p-12 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:-translate-y-1 transition-all duration-500 relative z-10">
+              <div className="font-serif text-[100px] md:text-[120px] leading-none mb-4 tracking-tight text-[#111]">
                 100<span className="text-kira-brown text-[0.8em]">%</span>
               </div>
-              <h4 className="text-xl font-semibold mb-3 text-white/90">Compliance</h4>
-              <p className="text-sm text-white/50 font-light leading-relaxed max-w-[260px]">
+              <h4 className="text-lg font-semibold mb-3 text-[#111]">Compliance</h4>
+              <p className="text-sm text-gray-600 font-light leading-relaxed">
                 Eliminate costly marketplace returns and rejections due to human formatting errors.
               </p>
             </div>
