@@ -536,7 +536,7 @@ export function SettingsView(): JSX.Element {
         ...current,
         name: "Sample Buyer Template",
         buyer_key: "sample_buyer",
-        document_type: "commercial_invoice",
+        document_type: "invoice",
         layout_key: "default_v1",
         defaults: {
           ...current.defaults,
