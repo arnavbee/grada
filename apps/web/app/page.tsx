@@ -354,9 +354,9 @@ export default function LandingPage() {
           <div className="absolute top-[15%] bottom-[-10%] -left-4 -right-4 md:-left-12 md:-right-12 bg-[#8C987A] rounded-[32px] md:rounded-[64px] z-0 shadow-lg" />
 
           <div className="relative z-10 w-full max-w-5xl mx-auto rounded-2xl md:rounded-[40px] overflow-hidden bg-white/30 backdrop-blur-3xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-2 md:p-4 hover:shadow-[0_8px_32px_rgba(0,0,0,0.2)] transition-shadow duration-700">
-            <div className="aspect-[16/10] relative group rounded-xl md:rounded-[32px] overflow-hidden bg-[#111] ring-1 ring-black/5 shadow-inner">
+            <div className="aspect-[21/9] md:aspect-[2/1] lg:aspect-[16/9] relative group rounded-xl md:rounded-[32px] overflow-hidden bg-[#111] ring-1 ring-black/5 shadow-inner">
               <iframe
-                src={smartCatalogAnimationSrc}
+                src={receivedPoProcessingAnimationSrc}
                 className="w-full h-full border-0 pointer-events-none"
               />
             </div>

@@ -12,7 +12,6 @@ const instrument = Instrument_Serif({
 });
 
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/src/components/theme-toggle";
 import { CustomCursor } from "@/src/components/custom-cursor";
 
 export const metadata: Metadata = {
@@ -52,7 +51,6 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <CustomCursor />
-        <ThemeToggle />
         {children}
       </body>
     </html>
