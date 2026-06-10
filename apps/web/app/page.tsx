@@ -345,8 +345,7 @@ export default function LandingPage() {
           to dispatch<span className="text-kira-brown text-[1.1em]">.</span>
         </h1>
         <p className="text-xl md:text-2xl text-gray-500 font-light mb-12 max-w-2xl mx-auto relative z-10">
-          Grada gives Indian fashion brands one system for catalog, PO review, and dispatch,
-          simplified.
+          Grada gives fashion brands one system for catalog, PO review, and dispatch, simplified.
         </p>
 
         <div className="relative mt-24 max-w-6xl mx-auto z-10">
@@ -433,6 +432,51 @@ export default function LandingPage() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* The Impact (ROI Metrics) */}
+      <section className="py-12 md:py-24 px-6 md:px-12 max-w-7xl mx-auto">
+        <div className="bg-[#111] rounded-[32px] md:rounded-[64px] p-12 md:p-24 text-center md:text-left text-white shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-kira-brown/30 blur-[120px] rounded-full mix-blend-screen pointer-events-none -translate-y-1/2 translate-x-1/3" />
+
+          <p className="text-xs uppercase tracking-[0.2em] text-white/40 mb-6 font-semibold relative z-10">
+            The Impact
+          </p>
+          <h2 className="font-serif font-normal text-4xl md:text-6xl lg:text-[80px] leading-[0.95] tracking-tight mb-16 md:max-w-3xl relative z-10">
+            Protect your margins<span className="text-kira-brown">.</span> Scale without the
+            headcount<span className="text-kira-brown">.</span>
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 border-t border-white/10 pt-16 relative z-10">
+            <div>
+              <div className="font-serif text-7xl md:text-[100px] leading-none mb-6 tracking-tight">
+                0
+              </div>
+              <h4 className="text-xl font-semibold mb-3 text-white/90">SLA Penalties</h4>
+              <p className="text-sm text-white/50 font-light leading-relaxed max-w-[260px]">
+                Automated PO processing ensures you never miss a marketplace dispatch window again.
+              </p>
+            </div>
+            <div>
+              <div className="font-serif text-7xl md:text-[100px] leading-none mb-6 tracking-tight">
+                3x
+              </div>
+              <h4 className="text-xl font-semibold mb-3 text-white/90">Faster Dispatch</h4>
+              <p className="text-sm text-white/50 font-light leading-relaxed max-w-[260px]">
+                Generate compliant barcodes, packing lists, and GST invoices instantly.
+              </p>
+            </div>
+            <div>
+              <div className="font-serif text-7xl md:text-[100px] leading-none mb-6 tracking-tight">
+                100<span className="text-kira-brown text-[0.8em]">%</span>
+              </div>
+              <h4 className="text-xl font-semibold mb-3 text-white/90">Compliance</h4>
+              <p className="text-sm text-white/50 font-light leading-relaxed max-w-[260px]">
+                Eliminate costly marketplace returns and rejections due to human formatting errors.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
