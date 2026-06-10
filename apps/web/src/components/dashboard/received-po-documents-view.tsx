@@ -1686,7 +1686,10 @@ export function ReceivedPODocumentsView({
             <DocumentCard
               actions={
                 <>
-                  <Button disabled={workingKey === "barcodes"} onClick={handleGenerateBarcodes}>
+                  <Button
+                    disabled={workingKey === "barcodes"}
+                    onClick={() => handleGenerateBarcodes()}
+                  >
                     {workingKey === "barcodes" ? "Generating..." : "Generate barcodes"}
                   </Button>
                   {barcodeJob?.file_url ? (
@@ -2017,7 +2020,7 @@ export function ReceivedPODocumentsView({
                   {invoice ? (
                     <Button
                       disabled={workingKey === "invoice-pdf"}
-                      onClick={handleGenerateInvoicePdf}
+                      onClick={() => handleGenerateInvoicePdf()}
                     >
                       {workingKey === "invoice-pdf" ? "Generating..." : "Generate invoice PDF"}
                     </Button>
@@ -2616,7 +2619,7 @@ export function ReceivedPODocumentsView({
                   {packingList ? (
                     <Button
                       disabled={workingKey === "packing-list-pdf"}
-                      onClick={handleGeneratePackingListPdf}
+                      onClick={() => handleGeneratePackingListPdf()}
                     >
                       {workingKey === "packing-list-pdf" ? "Generating..." : "Generate PDF"}
                     </Button>
