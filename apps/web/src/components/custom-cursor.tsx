@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 
 export function CustomCursor() {
   const [isVisible, setIsVisible] = useState(false);
+  const pathname = usePathname();
   const cursorX = useMotionValue(-100);
   const cursorY = useMotionValue(-100);
 
@@ -38,6 +40,7 @@ export function CustomCursor() {
     };
   }, [cursorX, cursorY, isVisible]);
 
+  if (pathname?.startsWith("/dashboard")) return null;
   if (!isVisible) return null;
 
   return (
