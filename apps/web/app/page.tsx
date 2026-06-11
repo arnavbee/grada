@@ -312,7 +312,7 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#111] font-sans selection:bg-black selection:text-white pb-12 overflow-hidden">
       {/* Header */}
-      <header className="relative flex items-center justify-between px-6 py-4 md:px-12 md:py-6 sticky top-0 bg-white/40 backdrop-blur-2xl z-50 border-b border-white/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
+      <header className="relative flex items-center justify-between px-6 py-4 md:px-12 md:py-6 sticky top-0 bg-white/40 backdrop-blur-md z-50 border-b border-white/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
         <div className="font-serif text-3xl font-normal tracking-tight pt-1">
           Grada<span className="text-kira-brown text-[1.1em]">.</span>
         </div>

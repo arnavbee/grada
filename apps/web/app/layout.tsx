@@ -12,7 +12,6 @@ const instrument = Instrument_Serif({
 });
 
 import { cn } from "@/lib/utils";
-import { CustomCursor } from "@/src/components/custom-cursor";
 
 export const metadata: Metadata = {
   title: "grada",
@@ -41,16 +40,10 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn(
-        GeistSans.variable,
-        GeistMono.variable,
-        instrument.variable,
-        "font-sans cursor-none",
-      )}
+      className={cn(GeistSans.variable, GeistMono.variable, instrument.variable, "font-sans")}
     >
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        <CustomCursor />
         {children}
       </body>
     </html>
