@@ -312,26 +312,38 @@ export default function LandingPage() {
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#111] font-sans selection:bg-black selection:text-white pb-12 overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 md:px-12 md:py-6 sticky top-0 bg-white/40 backdrop-blur-2xl z-50 border-b border-white/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
+      <header className="relative flex items-center justify-between px-6 py-4 md:px-12 md:py-6 sticky top-0 bg-white/40 backdrop-blur-2xl z-50 border-b border-white/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
         <div className="font-serif text-3xl font-normal tracking-tight pt-1">
           Grada<span className="text-kira-brown text-[1.1em]">.</span>
         </div>
-        <nav className="hidden md:flex gap-8 text-sm font-medium tracking-wide">
-          <Link href="#spine" className="hover:text-gray-500 transition-colors duration-300">
+        <nav className="hidden md:flex gap-8 text-sm font-medium tracking-wide absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <Link
+            href="#spine"
+            className="text-[#111] hover:text-black transition-colors duration-300"
+          >
             Operational Spine
           </Link>
-          <Link href="#workflow" className="hover:text-gray-500 transition-colors duration-300">
+          <Link
+            href="#workflow"
+            className="text-[#111] hover:text-black transition-colors duration-300"
+          >
             Workflow
           </Link>
-          <Link href="#faq" className="hover:text-gray-500 transition-colors duration-300">
+          <Link href="#faq" className="text-[#111] hover:text-black transition-colors duration-300">
             Ops FAQ
           </Link>
         </nav>
         <Button
+          variant="ghost"
           asChild
-          className="bg-[#111] text-white hover:bg-black/80 rounded-full px-6 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+          className="bg-[#756045] hover:bg-[#614e36] shadow-[0_2px_10px_rgba(139,115,85,0.2)] hover:shadow-[0_8px_25px_rgba(139,115,85,0.3)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-300 ease-out dark:bg-[#756045] dark:text-white text-white rounded-full px-6 group"
         >
-          <Link href="/dashboard">See It in Action ↗</Link>
+          <Link href="/dashboard">
+            See It in Action{" "}
+            <span className="inline-block transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ml-0.5">
+              ↗
+            </span>
+          </Link>
         </Button>
       </header>
 
@@ -533,10 +545,16 @@ export default function LandingPage() {
               })}
             </div>
             <Button
+              variant="ghost"
               asChild
-              className="mt-12 bg-white ring-1 ring-black/5 text-[#111] hover:bg-gray-50 rounded-full px-8 py-6 shadow-sm hover:shadow-md transition-all duration-300"
+              className="mt-12 bg-[#756045] hover:bg-[#614e36] shadow-[0_4px_15px_rgba(139,115,85,0.2)] hover:shadow-[0_12px_30px_rgba(139,115,85,0.3)] hover:-translate-y-1 active:translate-y-0 active:scale-[0.98] transition-all duration-300 ease-out dark:bg-[#756045] dark:text-white text-white rounded-full px-8 py-6 group"
             >
-              <Link href="/dashboard">See It in Action</Link>
+              <Link href="/dashboard">
+                See It in Action{" "}
+                <span className="inline-block transition-transform duration-300 group-hover:translate-x-1 opacity-60 ml-1">
+                  →
+                </span>
+              </Link>
             </Button>
           </div>
 
@@ -674,16 +692,28 @@ export default function LandingPage() {
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Button
+            variant="ghost"
             asChild
-            className="bg-[#111] text-white hover:bg-black/80 rounded-full px-8 py-6 text-lg shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
+            className="bg-white/90 backdrop-blur-md border border-black/[0.08] shadow-[0_4px_15px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.1)] hover:border-black/[0.15] hover:-translate-y-1 active:translate-y-0 active:scale-[0.98] transition-all duration-300 ease-out dark:bg-white dark:text-[#111] text-[#111] rounded-full px-8 py-6 text-lg font-medium group"
           >
-            <Link href="/dashboard">Open the workflow</Link>
+            <Link href="/dashboard">
+              Open the workflow{" "}
+              <span className="inline-block transition-transform duration-300 group-hover:translate-x-1 opacity-60 ml-1">
+                →
+              </span>
+            </Link>
           </Button>
           <Button
+            variant="ghost"
             asChild
-            className="bg-white ring-1 ring-black/5 text-[#111] hover:bg-gray-50 rounded-full px-8 py-6 text-lg shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1"
+            className="bg-white/90 backdrop-blur-md border border-black/[0.08] shadow-[0_4px_15px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.1)] hover:border-black/[0.15] hover:-translate-y-1 active:translate-y-0 active:scale-[0.98] transition-all duration-300 ease-out dark:bg-white dark:text-[#111] text-[#111] rounded-full px-8 py-6 text-lg font-medium group"
           >
-            <Link href="/signup">Request Access</Link>
+            <Link href="/signup">
+              Request Access{" "}
+              <span className="inline-block transition-transform duration-300 group-hover:translate-x-1 opacity-60 ml-1">
+                →
+              </span>
+            </Link>
           </Button>
         </div>
       </section>
