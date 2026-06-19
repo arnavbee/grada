@@ -467,12 +467,6 @@ html[data-theme="dark"] [class*="bg-kira-offwhite"] {
   }
 }
 
-@media (pointer: fine) {
-  * {
-    cursor: none !important;
-  }
-}
-
 @layer base {
   .theme {
     --font-heading: var(--font-geist-sans);

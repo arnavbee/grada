@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
@@ -157,9 +157,9 @@ function MarketplaceCoverageLogo({
 const modules = [
   {
     number: "01",
-    title: "Smart Catalog",
-    detail: "Extract clean product data from images and lock one reusable record.",
-    highlight: "One product record before export or ops work begins.",
+    title: "Catalog records",
+    detail: "Capture product attributes, measurements, images, and edits in a reusable SKU record.",
+    highlight: "One approved record for marketplace and ops teams.",
     icon: (
       <svg
         className="w-5 h-5 text-kira-brown"
@@ -174,9 +174,9 @@ const modules = [
   },
   {
     number: "02",
-    title: "Marketplace Exports",
-    detail: "Generate channel-ready exports from the same approved catalog.",
-    highlight: "Channel-specific files without spreadsheet drift.",
+    title: "Marketplace exports",
+    detail: "Create channel-specific catalog files from the same approved product data.",
+    highlight: "Format for each marketplace without rebuilding the sheet.",
     icon: (
       <svg
         className="w-5 h-5 text-kira-brown"
@@ -195,9 +195,9 @@ const modules = [
   },
   {
     number: "03",
-    title: "Received PO Processing",
-    detail: "Review the received PO once before downstream work starts.",
-    highlight: "One review step before barcode or invoice generation.",
+    title: "Received PO review",
+    detail: "Upload a buyer PO, verify parsed rows, and approve the version your team will fulfil.",
+    highlight: "A clean checkpoint before labels, invoices, and packing lists.",
     icon: (
       <svg
         className="w-5 h-5 text-kira-brown"
@@ -216,9 +216,10 @@ const modules = [
   },
   {
     number: "04",
-    title: "Dispatch Documents",
-    detail: "Generate barcodes, invoices, packing lists, and stickers from approved data.",
-    highlight: "Dispatch-ready outputs from one confirmed source.",
+    title: "Dispatch documents",
+    detail:
+      "Generate barcode labels, GST invoices, packing lists, and stickers from confirmed PO data.",
+    highlight: "Operational documents stay tied to the approved order.",
     icon: (
       <svg
         className="w-5 h-5 text-kira-brown"
@@ -239,43 +240,66 @@ const modules = [
 
 const coverageBlocks = [
   {
-    title: "One record, reused everywhere",
-    detail: "The same SKU-level record drives catalog fields, PO lines, and dispatch documents.",
+    title: "One source of truth for SKU data",
+    detail: "Catalog fields, PO rows, and dispatch documents reference the same product record.",
   },
   {
-    title: "Approve once, lock downstream docs",
+    title: "Approval before document generation",
     detail:
-      "After PO approval, barcodes, invoices, and stickers pull from that exact approved data.",
+      "Once a received PO is confirmed, labels, invoices, and packing lists use that approved data.",
   },
 ];
 
 const workflowViews = [
   {
     value: "catalog",
-    label: "Catalog AI",
+    label: "Catalog setup",
     eyebrow: "Phase 01",
-    title: "Lock the product record before the business starts improvising.",
+    title: "Create a clean SKU record before the order cycle begins.",
     detail:
-      "Turn product images and team knowledge into one reusable catalog record. Extract key attributes from product imagery. Keep merchandising and ops in one workspace.",
+      "Turn product images and team knowledge into one reusable catalog record. Capture key attributes, measurements, and corrections before exports or fulfilment work begins.",
     animationSrc: smartCatalogAnimationSrc,
   },
   {
     value: "po-review",
     label: "PO Review",
     eyebrow: "Phase 02",
-    title: "Review the received PO once, then stop reconciling downstream mistakes.",
+    title: "Review the buyer PO once before fulfilment work starts.",
     detail:
-      "Upload the PO, verify parsed rows, and confirm one operational version. Accept PDF, XLS, and XLSX files. Confirm line items before docs begin.",
+      "Upload the PO, verify parsed rows, and confirm one operational version. Accept PDF, XLS, and XLSX files, then use the approved rows for downstream documents.",
     animationSrc: receivedPoProcessingAnimationSrc,
   },
   {
     value: "dispatch",
     label: "Dispatch Docs",
     eyebrow: "Phase 03",
-    title: "Generate dispatch-ready outputs from approved data, not from memory.",
+    title: "Generate dispatch documents from confirmed order data.",
     detail:
       "Generate barcodes, invoices, packing lists, and stickers from the confirmed PO. Handle GST logic inside the flow. Store generated files with history.",
     animationSrc: commercialInvoicesAnimationSrc,
+  },
+];
+
+const proofPoints = [
+  {
+    value: "1",
+    unit: "record",
+    title: "For catalog data",
+    detail:
+      "Keep attributes, measurements, images, and corrections attached to the SKU your team already uses.",
+  },
+  {
+    value: "PO",
+    unit: "review",
+    title: "Before fulfilment",
+    detail: "Confirm buyer rows before barcode labels, invoices, and packing lists are generated.",
+  },
+  {
+    value: "GST",
+    unit: "docs",
+    title: "Generated from approvals",
+    detail:
+      "Create invoice and packing outputs from confirmed order data instead of copying between sheets.",
   },
 ];
 
@@ -283,7 +307,8 @@ const playbookQuestions = [
   {
     value: "manual-rebuilds",
     title: "What problem does Grada remove first?",
-    detail: "It stops teams from rebuilding the same product and order context in separate tools.",
+    detail:
+      "It reduces repeated data entry across catalog sheets, received POs, labels, invoices, and packing lists.",
   },
   {
     value: "marketplace-exports",
@@ -295,13 +320,13 @@ const playbookQuestions = [
     value: "po-confirmation",
     title: "Why make PO review a dedicated step?",
     detail:
-      "Because the received PO drives every downstream document and needs one clean approval step.",
+      "Because the received PO becomes the source for fulfilment documents, so it needs one clear approval step.",
   },
   {
     value: "dispatch-docs",
     title: "What happens after the PO is approved?",
     detail:
-      "The same confirmed data powers barcode generation, GST handling, packing outputs, and stored documents.",
+      "The same confirmed data is used to generate barcode labels, GST invoices, packing lists, and stored document history.",
   },
 ];
 
@@ -336,10 +361,10 @@ export default function LandingPage() {
         <Button
           variant="ghost"
           asChild
-          className="bg-[#756045] hover:bg-[#614e36] shadow-[0_2px_10px_rgba(139,115,85,0.2)] hover:shadow-[0_8px_25px_rgba(139,115,85,0.3)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-300 ease-out dark:bg-[#756045] dark:text-white text-white rounded-full px-6 group"
+          className="bg-[#756045] hover:bg-[#614e36] shadow-[0_2px_10px_rgba(139,115,85,0.18)] hover:shadow-[0_8px_20px_rgba(139,115,85,0.24)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-[background-color,box-shadow,transform] duration-150 ease-out dark:bg-[#756045] dark:text-white text-white rounded-full px-6 group"
         >
           <Link href="/dashboard">
-            See It in Action{" "}
+            Open product{" "}
             <span className="inline-block transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ml-0.5">
               ↗
             </span>
@@ -351,13 +376,18 @@ export default function LandingPage() {
       <section className="px-6 md:px-12 pt-20 pb-32 max-w-7xl mx-auto text-center relative">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,#000_70%,transparent_100%)] -z-10" />
 
-        <h1 className="font-serif font-normal text-6xl md:text-[100px] lg:text-[130px] leading-[0.9] tracking-tight mb-8 relative z-10">
-          From catalog
+        <p className="mb-6 text-xs font-semibold uppercase tracking-[0.24em] text-kira-brown">
+          Wholesale apparel operations
+        </p>
+        <h1 className="font-serif font-normal text-5xl md:text-[88px] lg:text-[112px] leading-[0.92] tracking-tight mb-8 relative z-10">
+          Catalog, PO review,
           <br />
-          to dispatch<span className="text-kira-brown text-[1.1em]">.</span>
+          dispatch docs<span className="text-kira-brown text-[1.1em]">.</span>
         </h1>
-        <p className="text-xl md:text-2xl text-gray-500 font-light mb-12 max-w-2xl mx-auto relative z-10">
-          Grada gives fashion brands one system for catalog, PO review, and dispatch, simplified.
+        <p className="text-lg md:text-xl text-gray-600 font-light mb-12 max-w-3xl mx-auto relative z-10 leading-relaxed">
+          Grada helps fashion teams turn product records and received marketplace POs into barcode
+          labels, GST invoices, and packing lists without rebuilding the same spreadsheet at every
+          step.
         </p>
 
         <div className="relative mt-24 max-w-6xl mx-auto z-10">
@@ -368,6 +398,7 @@ export default function LandingPage() {
             <div className="aspect-[21/9] md:aspect-[2/1] lg:aspect-[16/9] relative group rounded-xl md:rounded-[32px] overflow-hidden bg-[#111] ring-1 ring-black/5 shadow-inner">
               <iframe
                 src={receivedPoProcessingAnimationSrc}
+                title="Received PO processing preview"
                 className="w-full h-full border-0 pointer-events-none"
               />
             </div>
@@ -375,7 +406,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Trusted By (Infinite Marquee) */}
+      {/* Marketplace Coverage */}
       <section className="border-t border-b border-black/5 py-12 bg-white relative z-10 overflow-hidden flex items-center">
         <div className="px-6 md:px-12 pr-12 z-20 bg-white shadow-[20px_0_20px_-10px_rgba(255,255,255,1)]">
           <p className="text-sm text-gray-400 font-medium shrink-0 uppercase tracking-widest">
@@ -408,16 +439,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Operational Spine (Bento Box) */}
+      {/* Operational Spine */}
       <section id="spine" className="py-24 md:py-40 px-6 md:px-12 max-w-7xl mx-auto relative">
-        {/* Ambient glow for glassmorphism */}
+        {/* Ambient glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100%] h-[800px] bg-[radial-gradient(ellipse_at_center,rgba(140,152,122,0.15)_0%,rgba(175,138,104,0.05)_40%,transparent_70%)] pointer-events-none -z-10" />
 
         <p className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-6 font-semibold">
           Operational Spine
         </p>
         <h2 className="font-serif font-normal text-5xl md:text-7xl tracking-tight mb-6">
-          The handoff is already connected<span className="text-kira-brown text-[1.1em]">.</span>
+          One workflow for the handoff<span className="text-kira-brown text-[1.1em]">.</span>
         </h2>
         <p className="text-lg text-gray-500 font-light max-w-2xl mb-16 md:mb-24">
           Catalog, PO review, and dispatch all live in one flow.
@@ -427,7 +458,7 @@ export default function LandingPage() {
           {modules.map((mod, i) => (
             <div
               key={i}
-              className="flex flex-col bg-white/50 backdrop-blur-2xl rounded-[32px] p-8 border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-500 ease-out cursor-default relative overflow-hidden group"
+              className="flex flex-col bg-white/50 backdrop-blur-2xl rounded-[32px] p-8 border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] hover:-translate-y-0.5 transition-[box-shadow,transform] duration-150 ease-out cursor-default relative overflow-hidden group"
             >
               <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity duration-500 scale-150 origin-top-right mix-blend-multiply">
                 {mod.icon}
@@ -447,56 +478,36 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* The Impact (ROI Metrics) */}
+      {/* Proof Points */}
       <section className="py-24 md:py-32 px-6 md:px-12 max-w-7xl mx-auto relative">
         <p className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-6 font-semibold text-center">
-          The Impact
+          Where Grada Fits
         </p>
         <h2 className="font-serif font-normal text-5xl md:text-7xl tracking-tight mb-16 text-center">
-          Protect your margins<span className="text-kira-brown">.</span>
-          <br className="hidden md:block" /> Scale without headcount
+          Built around the handoffs your team already manages
           <span className="text-kira-brown">.</span>
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6 mt-8">
-          <div className="relative z-10">
-            <div className="absolute top-[5%] bottom-[-5%] -left-3 -right-3 md:-left-4 md:-right-4 bg-[#8C987A] rounded-[32px] z-0 shadow-lg" />
-            <div className="flex flex-col items-center justify-center h-full text-center bg-white/40 backdrop-blur-3xl rounded-[32px] p-10 md:p-12 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:-translate-y-1 transition-all duration-500 relative z-10">
-              <div className="font-serif text-[100px] md:text-[120px] leading-none mb-4 tracking-tight text-[#111]">
-                0
+          {proofPoints.map((point) => (
+            <div key={point.title} className="relative z-10">
+              <div className="absolute top-[5%] bottom-[-5%] -left-3 -right-3 md:-left-4 md:-right-4 bg-[#8C987A] rounded-[32px] z-0 shadow-lg" />
+              <div className="flex h-full flex-col justify-between bg-white/55 backdrop-blur-3xl rounded-[32px] p-8 md:p-10 border border-white/70 shadow-[0_8px_28px_rgba(0,0,0,0.08)] hover:shadow-[0_10px_30px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 transition-[box-shadow,transform] duration-150 relative z-10">
+                <div className="mb-10 flex items-baseline gap-3">
+                  <span className="font-serif text-[76px] md:text-[88px] leading-none tracking-tight text-[#111]">
+                    {point.value}
+                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em] text-kira-brown">
+                    {point.unit}
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold mb-3 text-[#111]">{point.title}</h4>
+                  <p className="text-sm text-gray-600 font-light leading-relaxed">{point.detail}</p>
+                </div>
               </div>
-              <h4 className="text-lg font-semibold mb-3 text-[#111]">SLA Penalties</h4>
-              <p className="text-sm text-gray-600 font-light leading-relaxed">
-                Automated PO processing ensures you never miss a marketplace dispatch window again.
-              </p>
             </div>
-          </div>
-
-          <div className="relative z-10">
-            <div className="absolute top-[5%] bottom-[-5%] -left-3 -right-3 md:-left-4 md:-right-4 bg-[#8C987A] rounded-[32px] z-0 shadow-lg" />
-            <div className="flex flex-col items-center justify-center h-full text-center bg-white/40 backdrop-blur-3xl rounded-[32px] p-10 md:p-12 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:-translate-y-1 transition-all duration-500 relative z-10 group">
-              <div className="font-serif text-[100px] md:text-[120px] leading-none mb-4 tracking-tight text-[#111]">
-                3x
-              </div>
-              <h4 className="text-lg font-semibold mb-3 text-[#111]">Faster Dispatch</h4>
-              <p className="text-sm text-gray-600 font-light leading-relaxed">
-                Generate compliant barcodes, packing lists, and GST invoices instantly.
-              </p>
-            </div>
-          </div>
-
-          <div className="relative z-10">
-            <div className="absolute top-[5%] bottom-[-5%] -left-3 -right-3 md:-left-4 md:-right-4 bg-[#8C987A] rounded-[32px] z-0 shadow-lg" />
-            <div className="flex flex-col items-center justify-center h-full text-center bg-white/40 backdrop-blur-3xl rounded-[32px] p-10 md:p-12 border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.2)] hover:-translate-y-1 transition-all duration-500 relative z-10">
-              <div className="font-serif text-[100px] md:text-[120px] leading-none mb-4 tracking-tight text-[#111]">
-                100<span className="text-kira-brown text-[0.8em]">%</span>
-              </div>
-              <h4 className="text-lg font-semibold mb-3 text-[#111]">Compliance</h4>
-              <p className="text-sm text-gray-600 font-light leading-relaxed">
-                Eliminate costly marketplace returns and rejections due to human formatting errors.
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
@@ -511,7 +522,7 @@ export default function LandingPage() {
               See the connected flow<span className="text-kira-brown text-[1.1em]">.</span>
             </h2>
             <p className="text-lg text-gray-500 font-light mb-12">
-              One clean flow from catalog to dispatch, not just a feature list.
+              A practical sequence for catalog, received PO approval, and dispatch documents.
             </p>
 
             <div className="space-y-4">
@@ -520,8 +531,9 @@ export default function LandingPage() {
                 return (
                   <button
                     key={i}
+                    type="button"
                     onClick={() => setActiveWorkflow(i)}
-                    className={`w-full text-left flex items-start gap-6 border border-black/5 p-6 transition-all duration-300 rounded-2xl ${isActive ? "bg-white shadow-md ring-1 ring-kira-brown/20" : "bg-transparent hover:bg-white/50 hover:shadow-sm"}`}
+                    className={`w-full text-left flex items-start gap-6 border border-black/5 p-6 transition-[background-color,box-shadow,transform] duration-150 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kira-brown/35 focus-visible:ring-offset-2 focus-visible:ring-offset-kira-offwhite ${isActive ? "bg-white shadow-md ring-1 ring-kira-brown/20" : "bg-transparent hover:bg-white/50 hover:shadow-sm"}`}
                   >
                     <span
                       className={`text-sm font-medium mt-0.5 font-mono ${isActive ? "text-kira-brown" : "text-gray-400"}`}
@@ -547,10 +559,10 @@ export default function LandingPage() {
             <Button
               variant="ghost"
               asChild
-              className="mt-12 bg-[#756045] hover:bg-[#614e36] shadow-[0_4px_15px_rgba(139,115,85,0.2)] hover:shadow-[0_12px_30px_rgba(139,115,85,0.3)] hover:-translate-y-1 active:translate-y-0 active:scale-[0.98] transition-all duration-300 ease-out dark:bg-[#756045] dark:text-white text-white rounded-full px-8 py-6 group"
+              className="mt-12 bg-[#756045] hover:bg-[#614e36] shadow-[0_4px_15px_rgba(139,115,85,0.18)] hover:shadow-[0_10px_24px_rgba(139,115,85,0.24)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-[background-color,box-shadow,transform] duration-150 ease-out dark:bg-[#756045] dark:text-white text-white rounded-full px-8 py-6 group"
             >
               <Link href="/dashboard">
-                See It in Action{" "}
+                Open product{" "}
                 <span className="inline-block transition-transform duration-300 group-hover:translate-x-1 opacity-60 ml-1">
                   →
                 </span>
@@ -568,6 +580,7 @@ export default function LandingPage() {
                   <iframe
                     key={i}
                     src={view.animationSrc}
+                    title={`${view.label} preview`}
                     className={`absolute inset-0 w-full h-full border-0 pointer-events-none transition-opacity duration-700 ease-in-out ${activeWorkflow === i ? "opacity-100 z-10" : "opacity-0 z-0"}`}
                   />
                 ))}
@@ -586,7 +599,7 @@ export default function LandingPage() {
           What Grada is actually replacing<span className="text-kira-brown text-[1.1em]">.</span>
         </h2>
         <p className="text-lg text-gray-500 font-light max-w-2xl mx-auto mb-16">
-          Stop operating manually. Start operating at scale.
+          Clear answers for the operational handoffs.
         </p>
 
         <div className="text-left bg-white/50 backdrop-blur-3xl border border-white/80 rounded-[32px] shadow-[0_8px_32px_rgba(0,0,0,0.04)] p-8 md:p-12 space-y-4">
@@ -595,8 +608,9 @@ export default function LandingPage() {
             return (
               <div key={i} className="border-b border-black/5 last:border-0 pb-4 last:pb-0">
                 <button
+                  type="button"
                   onClick={() => setOpenFaq(isOpen ? null : i)}
-                  className="w-full flex items-center justify-between text-left py-4 group"
+                  className="w-full flex items-center justify-between text-left py-4 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kira-brown/35 focus-visible:ring-offset-2 focus-visible:ring-offset-kira-offwhite rounded-xl"
                 >
                   <h3
                     className={`font-semibold text-lg transition-colors duration-300 ${isOpen ? "text-kira-brown" : "text-[#111] group-hover:text-kira-brown"}`}
@@ -630,17 +644,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Ready to Scale & Checklist */}
+      {/* Document Control */}
       <section className="py-24 md:py-40 px-6 md:px-12 max-w-7xl mx-auto border-t border-black/5">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 md:gap-24 items-center">
           <div className="relative z-10">
             {/* Solid Background Tile */}
             <div className="absolute top-[5%] bottom-[-5%] -left-4 -right-4 md:-left-8 md:-right-8 bg-[#8C987A] rounded-[32px] md:rounded-[64px] z-0 shadow-lg" />
 
-            <div className="aspect-[4/3] rounded-[32px] md:rounded-[48px] overflow-hidden bg-white/30 backdrop-blur-3xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-2 md:p-3 hover:-translate-y-2 transition-transform duration-700 relative z-10">
+            <div className="aspect-[4/3] rounded-[32px] md:rounded-[48px] overflow-hidden bg-white/30 backdrop-blur-3xl border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.1)] p-2 md:p-3 hover:-translate-y-0.5 transition-transform duration-150 relative z-10">
               <div className="w-full h-full rounded-[24px] md:rounded-[40px] overflow-hidden bg-white ring-1 ring-black/5 shadow-inner">
                 <iframe
                   src={commercialInvoicesAnimationSrc}
+                  title="Commercial invoice generation preview"
                   className="w-full h-full border-0 pointer-events-none"
                 />
               </div>
@@ -648,11 +663,11 @@ export default function LandingPage() {
           </div>
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-4 font-semibold">
-              Ready to Scale
+              Document Control
             </p>
             <h2 className="font-serif font-normal text-4xl md:text-5xl lg:text-[64px] leading-[1.05] tracking-tight mb-12">
-              Stop operating manually<span className="text-kira-brown text-[1.1em]">.</span> Start
-              operating at scale<span className="text-kira-brown text-[1.1em]">.</span>
+              Keep the order record clean before documents leave the building
+              <span className="text-kira-brown text-[1.1em]">.</span>
             </h2>
             <div className="space-y-10">
               {coverageBlocks.map((b, i) => (
@@ -684,17 +699,17 @@ export default function LandingPage() {
       {/* Get Started CTA */}
       <section className="py-32 md:py-48 px-6 md:px-12 max-w-4xl mx-auto text-center border-t border-black/5">
         <h2 className="font-serif font-normal text-5xl md:text-7xl tracking-tight mb-6">
-          Start with the product, not a sales deck
+          See the workflow with your own edge cases
           <span className="text-kira-brown text-[1.1em]">.</span>
         </h2>
         <p className="text-lg text-gray-500 font-light mb-12">
-          Open the workflow, request access, or reach out directly.
+          Open the product, review the flow, or request access for a more focused walkthrough.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Button
             variant="ghost"
             asChild
-            className="bg-white/90 backdrop-blur-md border border-black/[0.08] shadow-[0_4px_15px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.1)] hover:border-black/[0.15] hover:-translate-y-1 active:translate-y-0 active:scale-[0.98] transition-all duration-300 ease-out dark:bg-white dark:text-[#111] text-[#111] rounded-full px-8 py-6 text-lg font-medium group"
+            className="bg-white/90 backdrop-blur-md border border-black/[0.08] shadow-[0_4px_15px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] hover:border-black/[0.15] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-[border-color,box-shadow,transform] duration-150 ease-out dark:bg-white dark:text-[#111] text-[#111] rounded-full px-8 py-6 text-lg font-medium group"
           >
             <Link href="/dashboard">
               Open the workflow{" "}
@@ -706,10 +721,10 @@ export default function LandingPage() {
           <Button
             variant="ghost"
             asChild
-            className="bg-white/90 backdrop-blur-md border border-black/[0.08] shadow-[0_4px_15px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_30px_rgba(0,0,0,0.1)] hover:border-black/[0.15] hover:-translate-y-1 active:translate-y-0 active:scale-[0.98] transition-all duration-300 ease-out dark:bg-white dark:text-[#111] text-[#111] rounded-full px-8 py-6 text-lg font-medium group"
+            className="bg-white/90 backdrop-blur-md border border-black/[0.08] shadow-[0_4px_15px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] hover:border-black/[0.15] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-[border-color,box-shadow,transform] duration-150 ease-out dark:bg-white dark:text-[#111] text-[#111] rounded-full px-8 py-6 text-lg font-medium group"
           >
             <Link href="/signup">
-              Request Access{" "}
+              Request access{" "}
               <span className="inline-block transition-transform duration-300 group-hover:translate-x-1 opacity-60 ml-1">
                 →
               </span>
