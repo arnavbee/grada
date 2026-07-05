@@ -238,7 +238,7 @@ export function DashboardView(): JSX.Element {
         detail: "Approved styles and review queues that feed every downstream workflow.",
         href: "/dashboard/catalog",
         metrics: [`${stats.catalogReady} ready styles`, `${stats.catalogNeedsReview} need review`],
-        cta: "Open catalog",
+        cta: "Explore catalog",
       },
       {
         title: "PO Format Builder",

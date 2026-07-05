@@ -364,7 +364,7 @@ export default function LandingPage() {
           className="bg-[#756045] hover:bg-[#614e36] shadow-[0_2px_10px_rgba(139,115,85,0.18)] hover:shadow-[0_8px_20px_rgba(139,115,85,0.24)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-[background-color,box-shadow,transform] duration-150 ease-out dark:bg-[#756045] dark:text-white text-white rounded-full px-6 group"
         >
           <Link href="/dashboard">
-            Open product{" "}
+            Explore{" "}
             <span className="inline-block transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ml-0.5">
               ↗
             </span>
@@ -519,7 +519,7 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 md:gap-24 items-center">
           <div>
             <h2 className="font-serif font-normal text-5xl md:text-7xl tracking-tight mb-6 leading-tight">
-              See the connected flow<span className="text-kira-brown text-[1.1em]">.</span>
+              Connected Flow<span className="text-kira-brown text-[1.1em]">.</span>
             </h2>
             <p className="text-lg text-gray-500 font-light mb-12">
               A practical sequence for catalog, received PO approval, and dispatch documents.
@@ -562,7 +562,7 @@ export default function LandingPage() {
               className="mt-12 bg-[#756045] hover:bg-[#614e36] shadow-[0_4px_15px_rgba(139,115,85,0.18)] hover:shadow-[0_10px_24px_rgba(139,115,85,0.24)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-[background-color,box-shadow,transform] duration-150 ease-out dark:bg-[#756045] dark:text-white text-white rounded-full px-8 py-6 group"
             >
               <Link href="/dashboard">
-                Open product{" "}
+                Explore{" "}
                 <span className="inline-block transition-transform duration-300 group-hover:translate-x-1 opacity-60 ml-1">
                   →
                 </span>
@@ -703,7 +703,7 @@ export default function LandingPage() {
           <span className="text-kira-brown text-[1.1em]">.</span>
         </h2>
         <p className="text-lg text-gray-500 font-light mb-12">
-          Open the product, review the flow, or request access for a more focused walkthrough.
+          Explore the product, review the flow, or request access for a more focused walkthrough.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Button
