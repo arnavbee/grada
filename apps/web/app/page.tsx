@@ -82,6 +82,14 @@ const marketplaceCoverage: MarketplaceCoverageItem[] = [
     },
   },
   {
+    label: "Styli",
+    detail: "Automated attribute formatting for fast-fashion channels.",
+    logo: {
+      kind: "text",
+      text: "STYLI",
+    },
+  },
+  {
     label: "Generic Exports",
     detail: "Support custom retailer and internal templates.",
     logo: {
@@ -712,7 +720,7 @@ export default function LandingPage() {
             className="bg-white/90 backdrop-blur-md border border-black/[0.08] shadow-[0_4px_15px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] hover:border-black/[0.15] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-[border-color,box-shadow,transform] duration-150 ease-out dark:bg-white dark:text-[#111] text-[#111] rounded-full px-8 py-6 text-lg font-medium group"
           >
             <Link href="/dashboard">
-              Open the workflow{" "}
+              Explore{" "}
               <span className="inline-block transition-transform duration-300 group-hover:translate-x-1 opacity-60 ml-1">
                 →
               </span>
