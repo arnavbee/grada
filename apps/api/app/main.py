@@ -43,6 +43,7 @@ app = FastAPI(title='grada', version='0.1.0', lifespan=lifespan)
 
 origins = [origin.strip() for origin in settings.frontend_origins.split(',') if origin.strip()]
 logger.info('Configured CORS origins: %s', origins)
+logger.info('Loaded OPENAI_API_KEY: %s...', settings.OPENAI_API_KEY[:12] if settings.OPENAI_API_KEY else 'None')
 
 app.add_middleware(
     CORSMiddleware,

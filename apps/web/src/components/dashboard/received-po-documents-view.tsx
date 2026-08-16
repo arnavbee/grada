@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { CartonBreakdown } from "@/src/components/received-po/CartonBreakdown";
 import { DocumentCard } from "@/src/components/received-po/DocumentCard";
+import { DocumentGenerationLoader } from "@/src/components/documents/document-generation-loader";
+import { PdfPreviewDialog } from "@/src/components/documents/pdf-preview-dialog";
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
 import { PackingRulesPanel } from "@/src/components/dashboard/packing-rules-panel";
 import { Button } from "@/src/components/ui/button";
@@ -664,6 +666,7 @@ export function ReceivedPODocumentsView({
   const [loading, setLoading] = useState(true);
   const [savingCartonId, setSavingCartonId] = useState<string | null>(null);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<{ fileUrl: string; title: string } | null>(null);
 
   const totalPieces = useMemo(
     () => packingList?.cartons.reduce((sum, carton) => sum + carton.total_pieces, 0) ?? 0,
@@ -982,6 +985,23 @@ export function ReceivedPODocumentsView({
     }
     window.open(resolved, "_blank", "noopener,noreferrer");
   };
+
+  const previewFile = (title: string, fileUrl: string | null): void => {
+    const resolved = resolveFileUrl(fileUrl);
+    if (resolved) {
+      setPdfPreview({ title, fileUrl: resolved });
+    }
+  };
+
+  const generationLabel = useMemo(() => {
+    if (workingKey === "generate-all") return "Generating all documents";
+    if (workingKey === "barcodes") return "Generating barcode sheet";
+    if (workingKey === "invoice-create") return "Creating invoice draft";
+    if (workingKey === "invoice-pdf") return "Generating invoice PDF";
+    if (workingKey === "packing-list-create") return "Creating packing list draft";
+    if (workingKey === "packing-list-pdf") return "Generating packing list PDF";
+    return null;
+  }, [workingKey]);
 
   const updateInvoiceDetailsField = (field: keyof InvoiceDetails, value: string): void => {
     setInvoiceDetailsDraft((current) => ({
@@ -1665,6 +1685,7 @@ export function ReceivedPODocumentsView({
             {statusLine}
           </Card>
         ) : null}
+        {generationLabel ? <DocumentGenerationLoader label={generationLabel} /> : null}
 
         <div className="rounded-[28px] border border-kira-warmgray/20 bg-kira-offwhite/35 p-3 shadow-[0_24px_70px_-55px_rgba(76,56,37,0.45)] dark:border-white/10 dark:bg-white/5">
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
@@ -1693,9 +1714,17 @@ export function ReceivedPODocumentsView({
                     {workingKey === "barcodes" ? "Generating..." : "Generate barcodes"}
                   </Button>
                   {barcodeJob?.file_url ? (
-                    <Button onClick={() => openFile(barcodeJob.file_url)} variant="secondary">
-                      Download PDF
-                    </Button>
+                    <>
+                      <Button
+                        onClick={() => previewFile("Barcode sheet", barcodeJob.file_url)}
+                        variant="secondary"
+                      >
+                        Preview PDF
+                      </Button>
+                      <Button onClick={() => openFile(barcodeJob.file_url)} variant="secondary">
+                        Download PDF
+                      </Button>
+                    </>
                   ) : null}
                 </>
               }
@@ -2026,9 +2055,17 @@ export function ReceivedPODocumentsView({
                     </Button>
                   ) : null}
                   {invoice?.file_url ? (
-                    <Button onClick={() => openFile(invoice.file_url)} variant="secondary">
-                      Download PDF
-                    </Button>
+                    <>
+                      <Button
+                        onClick={() => previewFile("Commercial invoice", invoice.file_url)}
+                        variant="secondary"
+                      >
+                        Preview PDF
+                      </Button>
+                      <Button onClick={() => openFile(invoice.file_url)} variant="secondary">
+                        Download PDF
+                      </Button>
+                    </>
                   ) : null}
                 </>
               }
@@ -2625,9 +2662,17 @@ export function ReceivedPODocumentsView({
                     </Button>
                   ) : null}
                   {packingList?.file_url ? (
-                    <Button onClick={() => openFile(packingList.file_url)} variant="secondary">
-                      Download PDF
-                    </Button>
+                    <>
+                      <Button
+                        onClick={() => previewFile("Packing list", packingList.file_url)}
+                        variant="secondary"
+                      >
+                        Preview PDF
+                      </Button>
+                      <Button onClick={() => openFile(packingList.file_url)} variant="secondary">
+                        Download PDF
+                      </Button>
+                    </>
                   ) : null}
                 </>
               }
@@ -3226,6 +3271,13 @@ export function ReceivedPODocumentsView({
             </div>
           </div>
         </div>
+      ) : null}
+      {pdfPreview ? (
+        <PdfPreviewDialog
+          fileUrl={pdfPreview.fileUrl}
+          onClose={() => setPdfPreview(null)}
+          title={pdfPreview.title}
+        />
       ) : null}
       {invoiceDetailsDialogOpen ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-kira-black/40 px-4 py-8">

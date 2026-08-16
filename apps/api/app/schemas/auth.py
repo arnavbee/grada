@@ -43,6 +43,13 @@ class AuthTokens(BaseModel):
     user: UserResponse
 
 
+class DemoSessionResponse(AuthTokens):
+    """A disposable, isolated workspace for the public product walkthrough."""
+
+    demo_company_name: str
+    is_demo: bool = True
+
+
 class MessageResponse(BaseModel):
     message: str
 

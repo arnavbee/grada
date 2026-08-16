@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { LogoutButton } from "@/src/components/auth/logout-button";
+import { DemoWorkspaceBanner } from "@/src/components/demo/demo-workspace-banner";
 import { Card } from "@/src/components/ui/card";
 import { cn } from "@/src/lib/cn";
 import { apiRequest } from "@/src/lib/api-client";
@@ -154,6 +155,7 @@ export function DashboardShell({
         </aside>
 
         <main className="space-y-6 md:col-span-9 lg:col-span-10">
+          <DemoWorkspaceBanner />
           {!hideHeader ? (
             <Card className="animate-enter p-5 md:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">

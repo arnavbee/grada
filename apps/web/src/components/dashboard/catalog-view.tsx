@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
+import { DemoWalkthrough } from "@/src/components/demo/demo-walkthrough";
 import { Button } from "@/src/components/ui/button";
 import { apiRequest } from "@/src/lib/api-client";
 import { resolveAssetUrl } from "@/src/lib/asset-url";
@@ -72,27 +73,39 @@ const COLOR_OPTIONS = [
   "Blue",
   "Bottle Green",
   "Brown",
+  "Coral",
   "Green",
   "Grey",
+  "Lavender",
   "Lilac",
   "Maroon",
+  "Mauve",
   "Mustard",
   "Navy",
+  "Olive",
+  "Orange",
+  "Peach",
   "Pink",
   "Purple",
+  "Red",
+  "Rust",
   "Silver",
+  "Teal",
   "White",
   "Wine",
+  "Yellow",
 ] as const;
 const FABRIC_OPTIONS = [
   "Cotton Poplin",
+  "Linen",
   "Pleated Knitted Fabric",
   "Poly Georgette",
   "Poly Weightless Ggt",
   "Polymoss",
+  "Satin",
   "polycrepe",
 ] as const;
-const COMPOSITION_OPTIONS = ["100% Cotton", "100% Polyester"] as const;
+const COMPOSITION_OPTIONS = ["100% Cotton", "100% Linen", "100% Polyester"] as const;
 const WOVEN_KNITS_OPTIONS = ["Knits", "Woven"] as const;
 const TOTAL_UNITS_OPTIONS = ["24", "26"] as const;
 const PO_PRICE_OPTIONS = ["550", "575", "600", "625", "650", "675", "700", "750"] as const;
@@ -447,9 +460,35 @@ const defaultCatalogTemplateDraft: {
   },
   allowed_categories: ["DRESSES", "CORD SETS"],
   allowed_style_names: ["Maxi Dress", "Midi Dress", "Knee Length", "Knot Cord Set"],
-  allowed_colors: ["Black", "Bottle Green", "Brown", "Navy"],
-  allowed_fabrics: ["Poly Georgette", "Polymoss", "polycrepe"],
-  allowed_compositions: ["100% Cotton", "100% Polyester"],
+  allowed_colors: [
+    "Beige",
+    "Black",
+    "Bottle Green",
+    "Brown",
+    "Coral",
+    "Green",
+    "Grey",
+    "Lavender",
+    "Lilac",
+    "Maroon",
+    "Mauve",
+    "Mustard",
+    "Navy",
+    "Olive",
+    "Orange",
+    "Peach",
+    "Pink",
+    "Purple",
+    "Red",
+    "Rust",
+    "Silver",
+    "Teal",
+    "White",
+    "Wine",
+    "Yellow",
+  ],
+  allowed_fabrics: ["Cotton Poplin", "Linen", "Poly Georgette", "Polymoss", "Satin", "polycrepe"],
+  allowed_compositions: ["100% Cotton", "100% Linen", "100% Polyester"],
   allowed_woven_knits: ["Knits", "Woven"],
   style_code_pattern: "",
   is_active: true,
@@ -559,23 +598,39 @@ function colorDot(color: string): string {
   if (token === "blue") return "#1D4ED8";
   if (token === "bottle green") return "#166534";
   if (token === "brown") return "#8B5E3C";
+  if (token === "coral") return "#F08080";
   if (token === "green") return "#16A34A";
   if (token === "grey") return "#6B7280";
+  if (token === "lavender") return "#B4A7D6";
   if (token === "lilac") return "#C4A2D3";
   if (token === "maroon") return "#7F1D1D";
+  if (token === "mauve") return "#9C7DA0";
   if (token === "mustard") return "#D4A017";
   if (token === "navy") return "#1E3A8A";
+  if (token === "olive") return "#6B7C3E";
+  if (token === "orange") return "#EA580C";
+  if (token === "peach") return "#FDBBA0";
   if (token === "pink") return "#EC4899";
   if (token === "purple") return "#7C3AED";
+  if (token === "red") return "#DC2626";
+  if (token === "rust") return "#B7410E";
   if (token === "silver") return "#B8C2CC";
+  if (token === "teal") return "#0D9488";
   if (token === "white") return "#F8FAFC";
   if (token === "wine") return "#6B2136";
+  if (token === "yellow") return "#EAB308";
   return "#7A7C88";
 }
 
 function colorDotBorder(color: string): string {
   const token = color.toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
-  if (token === "white" || token === "silver" || token === "beige") {
+  if (
+    token === "white" ||
+    token === "silver" ||
+    token === "beige" ||
+    token === "peach" ||
+    token === "yellow"
+  ) {
     return "#9CA3AF";
   }
   return "transparent";
@@ -2843,6 +2898,13 @@ export function CatalogView(): JSX.Element {
     setIsAddModalOpen(true);
   }
 
+  async function handleTryAiOnRow(row: CatalogRow): Promise<void> {
+    await handleEditRow(row);
+    setTimeout(() => {
+      void handleAnalyzeImage();
+    }, 150);
+  }
+
   async function handleDeleteRow(row: CatalogRow): Promise<void> {
     if (!row.persisted) {
       setCatalogRows((rows) => rows.filter((item) => item.id !== row.id));
@@ -5089,7 +5151,16 @@ export function CatalogView(): JSX.Element {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-kira-black ">{row.styleNo}</td>
-                    <td className="px-4 py-4 text-kira-black ">{row.name}</td>
+                    <td className="px-4 py-4 text-kira-black ">
+                      <button
+                        className="kira-focus-ring text-left hover:underline hover:text-kira-accent cursor-pointer transition-colors"
+                        onClick={() => handleEditRow(row)}
+                        type="button"
+                        title="Click to edit"
+                      >
+                        {row.name}
+                      </button>
+                    </td>
                     <td className="px-4 py-4">
                       <span className="inline-flex bg-kira-warmgray/20 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-kira-darkgray ">
                         {normalizeCategory(row.category)}
@@ -5128,7 +5199,18 @@ export function CatalogView(): JSX.Element {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex items-center gap-3 text-kira-midgray">
+                      <div className="flex items-center gap-2 text-kira-midgray">
+                        <button
+                          className="kira-focus-ring inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-400/10 dark:text-amber-300 hover:bg-amber-500/20 transition-colors"
+                          onClick={() => void handleTryAiOnRow(row)}
+                          title="Run AI vision analysis on this garment"
+                          type="button"
+                        >
+                          <span aria-hidden="true" className="text-amber-500">
+                            ✦
+                          </span>
+                          <span>Try AI</span>
+                        </button>
                         <button
                           className="kira-focus-ring inline-flex h-7 w-7 items-center justify-center hover:text-kira-black "
                           onClick={() => handleEditRow(row)}
@@ -7173,6 +7255,7 @@ export function CatalogView(): JSX.Element {
           </div>
         </div>
       ) : null}
+      <DemoWalkthrough />
     </>
   );
 }

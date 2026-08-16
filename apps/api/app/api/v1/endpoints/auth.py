@@ -1,8 +1,9 @@
+import json
 import secrets
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -19,11 +20,18 @@ from app.core.security import (
 )
 from app.core.super_admin import is_super_admin_email, is_super_admin_user
 from app.db.session import get_db
+from app.models.carton_capacity_rule import CartonCapacityRule
 from app.models.company import Company
 from app.models.company_settings import CompanySettings
+from app.models.po_request import PORequest, PORequestItem
+from app.models.po_request_row import PORequestRow
+from app.models.product import Product
+from app.models.product_image import ProductImage
+from app.models.received_po import ReceivedPO, ReceivedPOLineItem
 from app.models.user import User
 from app.schemas.auth import (
     AuthTokens,
+    DemoSessionResponse,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     LoginRequest,
@@ -36,6 +44,271 @@ from app.schemas.user import UserResponse
 
 router = APIRouter(prefix='/auth', tags=['auth'])
 settings = get_settings()
+
+
+def _demo_asset_base_url(request: Request) -> str:
+    """Serve the sample apparel images from the configured frontend origin."""
+    origins = [origin.strip().rstrip('/') for origin in settings.frontend_origins.split(',') if origin.strip()]
+    request_origin = request.headers.get('origin', '').strip().rstrip('/')
+    if request_origin in origins:
+        return request_origin
+    return origins[0] if origins else 'http://localhost:3000'
+
+
+def _seed_demo_workspace(*, db: Session, company_id: str, user_id: str, asset_base_url: str) -> None:
+    """Create a compact but complete apparel-operations story for a new demo visitor."""
+    products = (
+        {
+            'sku': 'NV-DR-104',
+            'title': 'Nivara Floral Midi Dress',
+            'category': 'Dresses',
+            'color': 'Orange',
+            'image': 'midi-dress.png',
+            'price': 720,
+            'osp': 115,
+            'fabric': 'Poly Georgette',
+            'composition': '100% Polyester',
+        },
+        {
+            'sku': 'NV-DR-105',
+            'title': 'Nivara Satin Maxi Dress',
+            'category': 'Dresses',
+            'color': 'Mauve',
+            'image': 'maxi-dress.png',
+            'price': 840,
+            'osp': 132,
+            'fabric': 'Satin',
+            'composition': '100% Polyester',
+        },
+        {
+            'sku': 'NV-CS-204',
+            'title': 'Nivara Linen Cord Set',
+            'category': 'Co-ords',
+            'color': 'Beige',
+            'image': 'cord-set.png',
+            'price': 960,
+            'osp': 149,
+            'fabric': 'Linen',
+            'composition': '100% Linen',
+        },
+    )
+    product_records: list[Product] = []
+    for item in products:
+        product = Product(
+            id=str(uuid4()),
+            company_id=company_id,
+            sku=item['sku'],
+            title=item['title'],
+            description=f"Sample {item['category'].lower()} record for the Grada portfolio demo.",
+            brand='Nivara Studio',
+            category=item['category'],
+            color=item['color'],
+            size='M',
+            status='ready',
+            confidence_score=0.96,
+            ai_attributes_json=json.dumps(
+                {
+                    'fabric': item['fabric'],
+                    'composition': item['composition'],
+                    'woven_knits': 'Woven',
+                    'units': 24,
+                    'po_price': item['price'],
+                    'osp': item['osp'],
+                }
+            ),
+            created_by_user_id=user_id,
+        )
+        db.add(product)
+        product_records.append(product)
+        db.add(
+            ProductImage(
+                id=str(uuid4()),
+                company_id=company_id,
+                product_id=product.id,
+                file_name=item['image'],
+                file_url=f"{asset_base_url}/images/apparel/{item['image']}",
+                mime_type='image/png',
+                processing_status='completed',
+                analysis_json=json.dumps({'source': 'portfolio_demo'}),
+            )
+        )
+
+    po_request = PORequest(
+        id=str(uuid4()), company_id=company_id, status='draft', created_by_user_id=user_id
+    )
+    db.add(po_request)
+    for row_index, product in enumerate(product_records[:2]):
+        item = products[row_index]
+        request_item = PORequestItem(
+            id=str(uuid4()),
+            po_request_id=po_request.id,
+            product_id=product.id,
+            po_price=item['price'],
+            osp_inside_price=item['osp'],
+            fabric_composition='100% Polyester',
+            size_ratio={'S': 6, 'M': 10, 'L': 8},
+            extracted_attributes={'source': 'portfolio_demo'},
+        )
+        db.add(request_item)
+        db.add(
+            PORequestRow(
+                id=str(uuid4()),
+                po_request_id=po_request.id,
+                po_request_item_id=request_item.id,
+                product_id=product.id,
+                row_index=row_index,
+                sku_id=product.sku,
+                brand_name='Nivara Studio',
+                category_type=product.category,
+                color=product.color,
+                size='M',
+                l1='Women',
+                fibre_composition='100% Polyester',
+                coo='India',
+                po_price=item['price'],
+                osp_in_sar=item['osp'],
+                po_qty=24,
+                knitted_woven='Woven',
+                product_name=product.title,
+            )
+        )
+
+    parsed_po = ReceivedPO(
+        id=str(uuid4()),
+        company_id=company_id,
+        file_url=f'{asset_base_url}/marketing/grada-received-po-processing-animated.html',
+        po_number='STYLI-DEMO-2408',
+        distributor='Styli',
+        status='parsed',
+        raw_extracted_json=json.dumps({'source': 'portfolio_demo'}),
+        auto_resolve_rate=92,
+        exception_count=1,
+        review_required_count=1,
+    )
+    confirmed_po = ReceivedPO(
+        id=str(uuid4()),
+        company_id=company_id,
+        file_url=f'{asset_base_url}/marketing/grada-received-po-processing-animated.html',
+        po_number='STYLI-DEMO-2407',
+        distributor='Styli',
+        status='confirmed',
+        raw_extracted_json=json.dumps({'source': 'portfolio_demo'}),
+        auto_resolve_rate=100,
+        exception_count=0,
+        review_required_count=0,
+    )
+    db.add_all((parsed_po, confirmed_po))
+    for index, product in enumerate(product_records[:3]):
+        item = products[index]
+        db.add(
+            ReceivedPOLineItem(
+                received_po_id=parsed_po.id,
+                brand_style_code=product.sku,
+                styli_style_id=f'STY-{104 + index}',
+                model_number=product.sku,
+                option_id=f'OPT-{104 + index}',
+                sku_id=f'{product.sku}-{index + 1:02d}',
+                color=product.color,
+                knitted_woven='Woven',
+                size='M',
+                quantity=24,
+                po_price=item['price'],
+                confidence_score=0.74 if index == 1 else 0.98,
+                resolution_status='needs_review' if index == 1 else 'auto_resolved',
+                exception_reason='Confirm colour mapping' if index == 1 else None,
+                suggested_fix_json=json.dumps({'color': product.color}),
+            )
+        )
+    for index, product in enumerate(product_records[:2]):
+        item = products[index]
+        db.add(
+            ReceivedPOLineItem(
+                received_po_id=confirmed_po.id,
+                brand_style_code=product.sku,
+                styli_style_id=f'STY-{204 + index}',
+                model_number=product.sku,
+                option_id=f'OPT-{204 + index}',
+                sku_id=f'{product.sku}-C{index + 1}',
+                color=product.color,
+                knitted_woven='Woven',
+                size='M',
+                quantity=18,
+                po_price=item['price'],
+                confidence_score=0.99,
+                resolution_status='auto_resolved',
+                suggested_fix_json='{}',
+            )
+        )
+
+    db.add(
+        CartonCapacityRule(
+            company_id=company_id,
+            category='Dresses',
+            pieces_per_carton=24,
+            is_default=True,
+        )
+    )
+
+
+@router.post('/demo', response_model=DemoSessionResponse, status_code=status.HTTP_201_CREATED)
+def create_demo_session(request: Request, db: Session = Depends(get_db)) -> DemoSessionResponse:
+    """Create an isolated sample workspace without collecting visitor details."""
+    company_id = str(uuid4())
+    user_id = str(uuid4())
+    demo_suffix = uuid4().hex[:12]
+    company = Company(id=company_id, name='Nivara Studio — Demo')
+    user = User(
+        id=user_id,
+        email=f'demo-{demo_suffix}@grada-demo.example.com',
+        password_hash=hash_password(secrets.token_urlsafe(24)),
+        full_name='Demo Visitor',
+        role='admin',
+        company_id=company_id,
+        signup_source='portfolio_demo',
+        verification_status='internal',
+        verified_at=datetime.now(timezone.utc),
+        last_seen_at=datetime.now(timezone.utc),
+    )
+    settings_record = CompanySettings(
+        id=str(uuid4()),
+        company_id=company_id,
+        invoice_prefix='NV',
+        settings_json=json.dumps(
+            {
+                'brand_profile': {
+                    'supplier_name': 'Nivara Studio',
+                    'address': '47 Apparel Park, Jaipur, Rajasthan 302017',
+                    'gst_number': '08ABCDE1234F1Z5',
+                    'pan_number': 'ABCDE1234F',
+                    'bill_to_address': 'Styli Marketplace, Dubai',
+                    'ship_to_address': 'Styli Distribution Centre, Dubai',
+                    'invoice_prefix': 'NV',
+                },
+                'po_builder_defaults': {'po_price': 720, 'osp_in_sar': 115},
+            }
+        ),
+    )
+    db.add_all((company, user, settings_record))
+    _seed_demo_workspace(
+        db=db,
+        company_id=company_id,
+        user_id=user_id,
+        asset_base_url=_demo_asset_base_url(request),
+    )
+    log_audit(
+        db,
+        action='auth.demo_session_created',
+        user_id=user.id,
+        company_id=company.id,
+        metadata={'source': 'portfolio_demo'},
+    )
+    db.commit()
+    db.refresh(user)
+    token_response = _token_response(db, user)
+    return DemoSessionResponse(
+        **token_response.model_dump(),
+        demo_company_name=company.name,
+    )
 
 
 def _build_user_response(db: Session, user: User) -> UserResponse:

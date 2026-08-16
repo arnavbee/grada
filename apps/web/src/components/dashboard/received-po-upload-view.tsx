@@ -61,6 +61,23 @@ export function ReceivedPOUploadView(): JSX.Element {
     }
   };
 
+  const handleTrySamplePO = async (): Promise<void> => {
+    try {
+      setError(null);
+      setStatusText("Loading sample PO file...");
+      const res = await fetch("/files/sample-po.xlsx");
+      if (!res.ok) throw new Error("Could not find sample PO file.");
+      const blob = await res.blob();
+      const sampleFile = new File([blob], "STYLI-DEMO-2408-sample.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      await handleUpload(sampleFile);
+    } catch (err) {
+      setBusy(false);
+      setError(err instanceof Error ? err.message : "Failed to load sample PO.");
+    }
+  };
+
   return (
     <DashboardShell
       subtitle="Upload the official marketplace purchase order to begin barcode, invoice, and packing generation."
@@ -74,6 +91,35 @@ export function ReceivedPOUploadView(): JSX.Element {
           onSelectFile={handleUpload}
         />
 
+        <Card className="flex flex-wrap items-center justify-between gap-4 p-5 bg-amber-500/5 border-amber-500/30">
+          <div>
+            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">
+              <span>✦</span>
+              <span>No PO file on hand?</span>
+            </div>
+            <p className="mt-1 text-sm text-kira-darkgray">
+              Test parsing & verification instantly with our bundled sample marketplace PO.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <a
+              className="kira-focus-ring inline-flex items-center gap-1 text-xs text-kira-midgray hover:text-kira-black underline"
+              download="sample-po.xlsx"
+              href="/files/sample-po.xlsx"
+            >
+              Download .xlsx
+            </a>
+            <button
+              className="kira-focus-ring rounded-lg bg-amber-500 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-amber-600 disabled:opacity-50 transition-colors"
+              disabled={busy}
+              onClick={() => void handleTrySamplePO()}
+              type="button"
+            >
+              {busy ? "Processing..." : "Try with Sample PO →"}
+            </button>
+          </div>
+        </Card>
+
         <Card className="p-5">
           <p className="text-sm uppercase tracking-[0.16em] text-kira-midgray">Processing status</p>
           <h2 className="mt-2 text-xl font-semibold text-kira-black">{statusText}</h2>
@@ -82,7 +128,7 @@ export function ReceivedPOUploadView(): JSX.Element {
               <div className="h-full w-1/2 animate-pulse rounded-full bg-kira-brown" />
             </div>
           ) : null}
-          {error ? <p className="mt-4 text-sm text-kira-warmgray">{error}</p> : null}
+          {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
         </Card>
       </div>
     </DashboardShell>

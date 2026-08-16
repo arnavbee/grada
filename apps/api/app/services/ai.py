@@ -57,6 +57,9 @@ class AIService:
         base_url = None
         if settings.OPENAI_API_KEY.startswith("sk-or-v1"):
             base_url = "https://openrouter.ai/api/v1"
+        
+        logger.info("[AIService] Initializing with key prefix=%s, base_url=%s", 
+                    settings.OPENAI_API_KEY[:12] if settings.OPENAI_API_KEY else 'None', base_url)
             
         self.client = OpenAI(
             api_key=settings.OPENAI_API_KEY,

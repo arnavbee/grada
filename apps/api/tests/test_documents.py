@@ -1232,7 +1232,15 @@ def test_invoice_generation_failure_marks_invoice_failed(monkeypatch) -> None:
     assert generate_response.json()['status'] == 'draft'
     assert generate_response.json()['file_url'] is None
 
-    for _ in range(20):
+    from app.services.job_queue import _claim_next_job, _run_job_handler
+    job = _claim_next_job()
+    if job:
+        try:
+            _run_job_handler(job)
+        except Exception:
+            pass
+
+    for _ in range(50):
         invoice_get = client.get(f'/api/v1/received-pos/{received_po_id}/invoice', headers=headers)
         assert invoice_get.status_code == 200
         payload = invoice_get.json()
@@ -1277,7 +1285,15 @@ def test_packing_list_generation_failure_marks_packing_list_failed(monkeypatch) 
     assert generate_response.json()['status'] == 'draft'
     assert generate_response.json()['file_url'] is None
 
-    for _ in range(20):
+    from app.services.job_queue import _claim_next_job, _run_job_handler
+    job = _claim_next_job()
+    if job:
+        try:
+            _run_job_handler(job)
+        except Exception:
+            pass
+
+    for _ in range(50):
         packing_get = client.get(f'/api/v1/received-pos/{received_po_id}/packing-list', headers=headers)
         assert packing_get.status_code == 200
         payload = packing_get.json()

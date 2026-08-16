@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
+import { PdfPreviewDialog } from "@/src/components/documents/pdf-preview-dialog";
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { cn } from "@/src/lib/cn";
@@ -29,6 +30,7 @@ export function PackingListsListView(): JSX.Element {
   const [items, setItems] = useState<PackingListListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -121,6 +123,16 @@ export function PackingListsListView(): JSX.Element {
                           disabled={!pl.file_url}
                           onClick={() => {
                             const resolved = resolveFileUrl(pl.file_url);
+                            if (resolved) setPdfPreview(resolved);
+                          }}
+                          variant="secondary"
+                        >
+                          Preview PDF
+                        </Button>
+                        <Button
+                          disabled={!pl.file_url}
+                          onClick={() => {
+                            const resolved = resolveFileUrl(pl.file_url);
                             if (resolved) {
                               window.open(resolved, "_blank", "noopener,noreferrer");
                             }
@@ -146,6 +158,11 @@ export function PackingListsListView(): JSX.Element {
             </table>
           </div>
         </Card>
+        <PdfPreviewDialog
+          fileUrl={pdfPreview}
+          onClose={() => setPdfPreview(null)}
+          title="Packing list"
+        />
       </div>
     </DashboardShell>
   );

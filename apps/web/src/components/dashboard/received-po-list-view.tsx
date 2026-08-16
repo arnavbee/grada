@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
-import { type ReceivedPOListItem, listReceivedPOs } from "@/src/lib/received-po";
+import { type ReceivedPOListItem, listReceivedPOs, uploadReceivedPO } from "@/src/lib/received-po";
 import { formatReceivedPODate, getReceivedPOStatusTone } from "@/src/lib/received-po-ui";
 
 export function ReceivedPOListView(): JSX.Element {
@@ -40,21 +41,57 @@ export function ReceivedPOListView(): JSX.Element {
     };
   }, []);
 
+  const [uploadingSample, setUploadingSample] = useState(false);
+  const router = useRouter();
+
+  const handleTrySamplePO = async (): Promise<void> => {
+    try {
+      setUploadingSample(true);
+      setError(null);
+      const res = await fetch("/files/sample-po.xlsx");
+      if (!res.ok) throw new Error("Could not find sample PO file.");
+      const blob = await res.blob();
+      const sampleFile = new File([blob], "STYLI-DEMO-2408-sample.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const response = await uploadReceivedPO(sampleFile);
+      router.push(`/dashboard/received-pos/${response.received_po_id}`);
+    } catch (err) {
+      setUploadingSample(false);
+      setError(err instanceof Error ? err.message : "Failed to load sample PO.");
+    }
+  };
+
   return (
     <DashboardShell
       subtitle="Review uploaded marketplace POs and move into barcode, invoice, and packing workflows."
       title="Received POs"
     >
       <div className="space-y-6">
-        <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
+        <Card className="flex flex-wrap items-center justify-between gap-4 p-5 bg-amber-500/5 border-amber-500/30">
           <div>
-            <p className="text-sm text-kira-darkgray">
-              Upload once, then review, confirm, and generate all downstream documents.
+            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">
+              <span>✦</span>
+              <span>Test AI PO Parsing</span>
+            </div>
+            <p className="mt-1 text-sm text-kira-darkgray">
+              Upload an official marketplace PO, or test instant parsing with our preloaded sample
+              PO.
             </p>
           </div>
-          <Link href="/dashboard/received-pos/upload">
-            <Button>Upload PO</Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              className="kira-focus-ring rounded-lg bg-amber-500 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-amber-600 disabled:opacity-50 transition-colors"
+              disabled={uploadingSample}
+              onClick={() => void handleTrySamplePO()}
+              type="button"
+            >
+              {uploadingSample ? "Parsing Sample PO..." : "Try with Sample PO →"}
+            </button>
+            <Link href="/dashboard/received-pos/upload">
+              <Button variant="secondary">Upload PO</Button>
+            </Link>
+          </div>
         </Card>
 
         {error ? <Card className="p-4 text-sm text-kira-warmgray">{error}</Card> : null}

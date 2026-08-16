@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
+import { PdfPreviewDialog } from "@/src/components/documents/pdf-preview-dialog";
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { cn } from "@/src/lib/cn";
@@ -32,6 +33,7 @@ export function BarcodesListView(): JSX.Element {
   const [items, setItems] = useState<BarcodeListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -124,6 +126,16 @@ export function BarcodesListView(): JSX.Element {
                           disabled={!barcode.file_url}
                           onClick={() => {
                             const resolved = resolveFileUrl(barcode.file_url);
+                            if (resolved) setPdfPreview(resolved);
+                          }}
+                          variant="secondary"
+                        >
+                          Preview PDF
+                        </Button>
+                        <Button
+                          disabled={!barcode.file_url}
+                          onClick={() => {
+                            const resolved = resolveFileUrl(barcode.file_url);
                             if (resolved) {
                               window.open(resolved, "_blank", "noopener,noreferrer");
                             }
@@ -149,6 +161,11 @@ export function BarcodesListView(): JSX.Element {
             </table>
           </div>
         </Card>
+        <PdfPreviewDialog
+          fileUrl={pdfPreview}
+          onClose={() => setPdfPreview(null)}
+          title="Barcode sheet"
+        />
       </div>
     </DashboardShell>
   );

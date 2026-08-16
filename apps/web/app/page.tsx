@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ExploreDemoButton } from "@/src/components/demo/explore-demo-button";
 
 const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
 const marketplaceExportsAnimationSrc = "/marketing/grada-marketplace-exports-animated.html";
@@ -366,18 +367,10 @@ export default function LandingPage() {
             Ops FAQ
           </Link>
         </nav>
-        <Button
-          variant="ghost"
-          asChild
-          className="bg-[#756045] hover:bg-[#614e36] shadow-[0_2px_10px_rgba(139,115,85,0.18)] hover:shadow-[0_8px_20px_rgba(139,115,85,0.24)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-[background-color,box-shadow,transform] duration-150 ease-out dark:bg-[#756045] dark:text-white text-white rounded-full px-6 group"
-        >
-          <Link href="/dashboard">
-            Explore{" "}
-            <span className="inline-block transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ml-0.5">
-              ↗
-            </span>
-          </Link>
-        </Button>
+        <ExploreDemoButton
+          className="bg-[#756045] px-6 text-white shadow-[0_2px_10px_rgba(139,115,85,0.18)] transition-[background-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:bg-[#614e36] hover:shadow-[0_8px_20px_rgba(139,115,85,0.24)] active:translate-y-0 active:scale-[0.98] dark:bg-[#756045] dark:text-white rounded-full"
+          label="Explore demo"
+        />
       </header>
 
       {/* Hero */}
@@ -564,18 +557,10 @@ export default function LandingPage() {
                 );
               })}
             </div>
-            <Button
-              variant="ghost"
-              asChild
-              className="mt-12 bg-[#756045] hover:bg-[#614e36] shadow-[0_4px_15px_rgba(139,115,85,0.18)] hover:shadow-[0_10px_24px_rgba(139,115,85,0.24)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-[background-color,box-shadow,transform] duration-150 ease-out dark:bg-[#756045] dark:text-white text-white rounded-full px-8 py-6 group"
-            >
-              <Link href="/dashboard">
-                Explore{" "}
-                <span className="inline-block transition-transform duration-300 group-hover:translate-x-1 opacity-60 ml-1">
-                  →
-                </span>
-              </Link>
-            </Button>
+            <ExploreDemoButton
+              className="mt-12 rounded-full bg-[#756045] px-8 py-6 text-white shadow-[0_4px_15px_rgba(139,115,85,0.18)] transition-[background-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:bg-[#614e36] hover:shadow-[0_10px_24px_rgba(139,115,85,0.24)] active:translate-y-0 active:scale-[0.98] dark:bg-[#756045] dark:text-white"
+              label="Explore interactive demo"
+            />
           </div>
 
           <div className="relative z-10">
@@ -714,18 +699,10 @@ export default function LandingPage() {
           Explore the product, review the flow, or request access for a more focused walkthrough.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <Button
-            variant="ghost"
-            asChild
-            className="bg-white/90 backdrop-blur-md border border-black/[0.08] shadow-[0_4px_15px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] hover:border-black/[0.15] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-[border-color,box-shadow,transform] duration-150 ease-out dark:bg-white dark:text-[#111] text-[#111] rounded-full px-8 py-6 text-lg font-medium group"
-          >
-            <Link href="/dashboard">
-              Explore{" "}
-              <span className="inline-block transition-transform duration-300 group-hover:translate-x-1 opacity-60 ml-1">
-                →
-              </span>
-            </Link>
-          </Button>
+          <ExploreDemoButton
+            className="rounded-full border border-black/[0.08] bg-white/90 px-8 py-6 text-lg font-medium text-[#111] shadow-[0_4px_15px_rgba(0,0,0,0.05)] transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:border-black/[0.15] hover:bg-white hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] active:translate-y-0 active:scale-[0.98] dark:bg-white dark:text-[#111]"
+            label="Explore interactive demo"
+          />
           <Button
             variant="ghost"
             asChild

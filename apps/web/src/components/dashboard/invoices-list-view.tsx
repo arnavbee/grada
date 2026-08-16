@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { DashboardShell } from "@/src/components/dashboard/dashboard-shell";
+import { PdfPreviewDialog } from "@/src/components/documents/pdf-preview-dialog";
 import { Button } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/card";
 import { cn } from "@/src/lib/cn";
@@ -26,6 +27,7 @@ export function InvoicesListView(): JSX.Element {
   const [items, setItems] = useState<InvoiceListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfPreview, setPdfPreview] = useState<{ fileUrl: string; title: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -118,6 +120,17 @@ export function InvoicesListView(): JSX.Element {
                           disabled={!invoice.file_url}
                           onClick={() => {
                             const resolved = resolveFileUrl(invoice.file_url);
+                            if (resolved)
+                              setPdfPreview({ fileUrl: resolved, title: invoice.invoice_number });
+                          }}
+                          variant="secondary"
+                        >
+                          Preview PDF
+                        </Button>
+                        <Button
+                          disabled={!invoice.file_url}
+                          onClick={() => {
+                            const resolved = resolveFileUrl(invoice.file_url);
                             if (resolved) {
                               window.open(resolved, "_blank", "noopener,noreferrer");
                             }
@@ -143,6 +156,13 @@ export function InvoicesListView(): JSX.Element {
             </table>
           </div>
         </Card>
+        {pdfPreview ? (
+          <PdfPreviewDialog
+            fileUrl={pdfPreview.fileUrl}
+            onClose={() => setPdfPreview(null)}
+            title={`Invoice ${pdfPreview.title}`}
+          />
+        ) : null}
       </div>
     </DashboardShell>
   );

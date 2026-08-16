@@ -1,4 +1,9 @@
 from functools import lru_cache
+from pathlib import Path
+from dotenv import load_dotenv
+
+env_path = Path(__file__).resolve().parents[2] / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

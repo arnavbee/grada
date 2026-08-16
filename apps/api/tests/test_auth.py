@@ -79,3 +79,24 @@ def test_me_accepts_access_token_cookie() -> None:
 
     assert me_response.status_code == 200
     assert me_response.json()['email'] == email
+
+
+def test_demo_session_creates_an_isolated_seeded_workspace() -> None:
+    response = client.post('/api/v1/auth/demo', headers={'Origin': 'http://127.0.0.1:3000'})
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body['is_demo'] is True
+    assert body['demo_company_name'] == 'Nivara Studio — Demo'
+    assert body['access_token']
+
+    headers = {'Authorization': f"Bearer {body['access_token']}"}
+    catalog = client.get('/api/v1/catalog/products?limit=20', headers=headers)
+    received_pos = client.get('/api/v1/received-pos?limit=20', headers=headers)
+
+    assert catalog.status_code == 200
+    assert catalog.json()['total'] == 3
+    assert catalog.json()['items'][0]['primary_image_url'].startswith('http://127.0.0.1:3000/images/apparel/')
+    assert received_pos.status_code == 200
+    assert received_pos.json()['total'] == 2
+    assert {item['status'] for item in received_pos.json()['items']} == {'parsed', 'confirmed'}
