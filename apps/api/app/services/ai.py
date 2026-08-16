@@ -54,17 +54,25 @@ ANALYSIS_FIELD_LABELS = {
 
 class AIService:
     def __init__(self):
-        base_url = None
-        if settings.OPENAI_API_KEY.startswith("sk-or-v1"):
-            base_url = "https://openrouter.ai/api/v1"
-        
-        logger.info("[AIService] Initializing with key prefix=%s, base_url=%s", 
-                    settings.OPENAI_API_KEY[:12] if settings.OPENAI_API_KEY else 'None', base_url)
-            
-        self.client = OpenAI(
-            api_key=settings.OPENAI_API_KEY,
-            base_url=base_url
-        )
+        self._client: OpenAI | None = None
+        self.model = settings.ai_model
+
+    @property
+    def enabled(self) -> bool:
+        return bool(settings.OPENAI_API_KEY)
+
+    @property
+    def client(self) -> OpenAI:
+        if self._client is None:
+            if not self.enabled:
+                raise RuntimeError('AI is not configured: set OPENAI_API_KEY (and optionally AI_BASE_URL / AI_MODEL).')
+            base_url = settings.ai_base_url
+            if base_url is None and settings.OPENAI_API_KEY.startswith('sk-or-'):
+                # OpenRouter keys default to the OpenRouter endpoint unless overridden.
+                base_url = 'https://openrouter.ai/api/v1'
+            logger.info('[AIService] Initializing client (model=%s, base_url=%s)', self.model, base_url or 'default')
+            self._client = OpenAI(api_key=settings.OPENAI_API_KEY, base_url=base_url, timeout=60.0)
+        return self._client
 
     @staticmethod
     def _compact_prompt_value(value: str, *, max_length: int = 80) -> str:
@@ -285,7 +293,7 @@ Format strictly as:
             has_more_attempts = attempt_config != attempt_configs[-1]
             try:
                 response = self.client.chat.completions.create(
-                    model="gpt-4o",
+                    model=self.model,
                     messages=[
                         {
                             "role": "user",
@@ -350,7 +358,7 @@ Format strictly as:
             )
             try:
                 response = self.client.chat.completions.create(
-                    model="gpt-4o",
+                    model=self.model,
                     messages=request_messages,
                     max_tokens=attempt_config['max_tokens'],
                     response_format={"type": "json_object"}

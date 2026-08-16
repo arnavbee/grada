@@ -89,12 +89,3 @@ def require_super_admin(current_user: Annotated[User, Depends(get_current_user)]
     return current_user
 
 
-def optional_user_from_state(request: Request, db: DbSession) -> User | None:
-    auth_payload: dict[str, Any] | None = getattr(request.state, 'auth_payload', None)
-    if auth_payload is None:
-        return None
-    user_id = auth_payload.get('sub')
-    company_id = auth_payload.get('company_id')
-    if not user_id or not company_id:
-        return None
-    return db.query(User).filter(User.id == user_id, User.company_id == company_id, User.is_active.is_(True)).first()

@@ -1,7 +1,9 @@
 import csv
 import hashlib
 import io
+import ipaddress
 import json
+import logging
 import re
 from base64 import b64decode, b64encode
 from datetime import datetime, timezone
@@ -89,9 +91,14 @@ DbSession = Annotated[Session, Depends(get_db)]
 ReadUser = Annotated[User, Depends(get_current_user)]
 WriteUser = Annotated[User, Depends(require_roles('admin', 'manager', 'operator'))]
 
+logger = logging.getLogger(__name__)
+
+API_ROOT_DIR = Path(__file__).resolve().parents[4]
+API_STATIC_DIR = API_ROOT_DIR / 'static'
+
 ALLOWED_EXPORT_STATUSES = {'queued', 'processing', 'completed', 'failed'}
 ALLOWED_PRODUCT_STATUSES = {'draft', 'processing', 'needs_review', 'ready', 'archived'}
-EXPORT_DIR = Path('static/exports')
+EXPORT_DIR = API_STATIC_DIR / 'exports'
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 MAX_EXPORT_VALIDATION_ERRORS = 20
 AI_ANALYSIS_FIELDS = ('category', 'style_name', 'color', 'fabric', 'composition', 'woven_knits')
@@ -105,8 +112,6 @@ ANALYZE_ALLOWED_FIELD_MAP = {
 }
 MAX_AI_ALLOWED_OPTIONS_PER_FIELD = 40
 MAX_AI_CORRECTION_HINTS = 36
-API_ROOT_DIR = Path(__file__).resolve().parents[4]
-API_STATIC_DIR = API_ROOT_DIR / 'static'
 
 MARKETPLACE_ALIASES = {
     'myntra': 'myntra',
@@ -437,13 +442,23 @@ def _compute_image_hash(image_url: str) -> str:
     return hashlib.sha256(image_bytes).hexdigest()
 
 
+def _safe_static_path(relative: str) -> Path | None:
+    """Resolve a /static-relative path, rejecting anything that escapes the static root."""
+    try:
+        candidate = (API_STATIC_DIR / relative).resolve()
+    except (OSError, ValueError):
+        return None
+    if not candidate.is_relative_to(API_STATIC_DIR.resolve()):
+        return None
+    return candidate if candidate.is_file() else None
+
+
 def _coerce_local_image_url_to_data_url(image_url: str) -> str:
     normalized = image_url.strip()
     if not normalized or normalized.startswith('data:'):
         return normalized
 
     parsed = urlparse(normalized)
-    local_static_paths: list[Path] = []
 
     # Handle both absolute URLs (/static/...) and full URLs (.../static/...).
     static_relative = ''
@@ -453,28 +468,12 @@ def _coerce_local_image_url_to_data_url(image_url: str) -> str:
         static_relative = parsed.path.removeprefix('/static/')
 
     if static_relative:
-        local_static_paths.append(API_STATIC_DIR / static_relative)
-        local_static_paths.append(Path('static') / static_relative)
-
-    for local_path in local_static_paths:
-        if local_path.exists():
+        local_path = _safe_static_path(static_relative)
+        if local_path is not None:
             image_bytes = local_path.read_bytes()
             mime_type = guess_type(local_path.name)[0] or 'image/jpeg'
             encoded = b64encode(image_bytes).decode('ascii')
             return f'data:{mime_type};base64,{encoded}'
-
-    # If image is referenced via localhost, fetch it server-side and convert.
-    if parsed.scheme in {'http', 'https'} and parsed.hostname in {'127.0.0.1', 'localhost'}:
-        try:
-            request = Request(normalized, headers={'User-Agent': 'kira-ai-analyzer/1.0'})
-            with urlopen(request, timeout=6) as response:
-                image_bytes = response.read()
-                mime_type = response.headers.get_content_type() or 'image/jpeg'
-            if image_bytes:
-                encoded = b64encode(image_bytes).decode('ascii')
-                return f'data:{mime_type};base64,{encoded}'
-        except Exception:
-            return normalized
 
     return normalized
 
@@ -761,15 +760,11 @@ def _resolve_export_image_path(image_url: str) -> Path | None:
 
     for prefix in ('/api/v1/static/', 'api/v1/static/'):
         if normalized.startswith(prefix):
-            suffix = normalized.split('/static/', 1)[-1]
-            candidate = API_STATIC_DIR / suffix
-            return candidate if candidate.exists() else None
+            return _safe_static_path(normalized.split('/static/', 1)[-1])
 
     for prefix in ('/static/', 'static/'):
         if normalized.startswith(prefix):
-            suffix = normalized.split('static/', 1)[-1]
-            candidate = API_STATIC_DIR / suffix
-            return candidate if candidate.exists() else None
+            return _safe_static_path(normalized.split('static/', 1)[-1])
 
     return None
 
@@ -800,7 +795,7 @@ def _load_export_image_bytes(image_url: str) -> bytes | None:
             return None
 
     parsed = urlparse(normalized)
-    if parsed.scheme in {'http', 'https'}:
+    if parsed.scheme in {'http', 'https'} and _is_public_hostname(parsed.hostname):
         try:
             request = Request(normalized, headers={'User-Agent': 'kira-export/1.0'})
             with urlopen(request, timeout=10) as response:
@@ -809,6 +804,18 @@ def _load_export_image_bytes(image_url: str) -> bytes | None:
             return None
 
     return None
+
+
+def _is_public_hostname(hostname: str | None) -> bool:
+    """Reject loopback/private/link-local targets to keep export fetches from reaching internal services."""
+    if not hostname:
+        return False
+    try:
+        ip = ipaddress.ip_address(hostname)
+    except ValueError:
+        lowered = hostname.lower()
+        return lowered not in {'localhost', 'metadata.google.internal'} and not lowered.endswith('.internal')
+    return not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast)
 
 
 def _build_export_workbook_image(image_url: str) -> OpenpyxlImage | None:
@@ -1602,8 +1609,19 @@ def analyze_image_direct(
     db: DbSession,
     current_user: WriteUser,
 ) -> AnalyzeImageResponse:
-    # Import locally or at module level (already imported ai_service at module if we check ai.py, but actually catalog imports process_image_analysis_job not ai_service)
+    from app.core import rate_limit
     from app.services.ai import ai_service
+
+    if not ai_service.enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='AI analysis is not configured on this server.',
+        )
+    if not rate_limit.allow('ai', current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail='Too many AI analyses. Please wait a minute and try again.',
+        )
 
     analysis_image_url = _coerce_local_image_url_to_data_url(payload.image_url)
     image_hash = _compute_image_hash(analysis_image_url)
@@ -1616,9 +1634,10 @@ def analyze_image_direct(
         correction_hints=correction_hints if correction_hints else None,
     )
     if isinstance(result, dict) and isinstance(result.get('error'), str):
+        logger.warning('AI analysis failed: %s', result['error'])
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f'AI analysis failed: {result["error"]}',
+            detail='AI analysis failed. Please try again shortly.',
         )
     return _normalize_analysis_result(result, image_hash)
 

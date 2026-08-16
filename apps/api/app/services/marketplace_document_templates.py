@@ -174,7 +174,7 @@ HEADER_ALIASES = {
     },
 }
 
-SAMPLE_UPLOAD_DIR = Path('static/uploads/marketplace-templates')
+SAMPLE_UPLOAD_DIR = Path(__file__).resolve().parents[2] / 'static' / 'uploads' / 'marketplace-templates'
 SAMPLE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 object_storage = get_object_storage_service()
 

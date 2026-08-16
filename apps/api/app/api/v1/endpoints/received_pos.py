@@ -93,8 +93,10 @@ from app.utils.amount_words import convert_to_words
 router = APIRouter(prefix='/received-pos', tags=['received_pos'])
 object_storage = get_object_storage_service()
 
-UPLOAD_DIR = Path('static/uploads/received-pos')
+UPLOAD_DIR = Path(__file__).resolve().parents[4] / 'static' / 'uploads' / 'received-pos'
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+MAX_PO_UPLOAD_BYTES = 25 * 1024 * 1024
 ALLOWED_UPLOAD_CONTENT_TYPES = {
     'application/pdf',
     'application/vnd.ms-excel',
@@ -913,16 +915,23 @@ async def upload_received_po(
 
     unique_name = f'{datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")}-{uuid4().hex}{suffix or ".pdf"}'
     key = f'received-pos/{current_user.company_id}/{unique_name}'
-    content = await file.read()
+    content = await file.read(MAX_PO_UPLOAD_BYTES + 1)
+    if len(content) > MAX_PO_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f'File too large. Maximum size is {MAX_PO_UPLOAD_BYTES // (1024 * 1024)} MB.',
+        )
 
     if object_storage.enabled:
         stored_url = object_storage.upload_bytes(key=key, content=content, content_type=content_type)
         if not stored_url:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail='Failed to store uploaded PO file.')
     else:
-        file_path = UPLOAD_DIR / unique_name
+        company_dir = UPLOAD_DIR / current_user.company_id
+        company_dir.mkdir(parents=True, exist_ok=True)
+        file_path = company_dir / unique_name
         file_path.write_bytes(content)
-        stored_url = f'/static/uploads/received-pos/{unique_name}'
+        stored_url = f'/static/uploads/received-pos/{current_user.company_id}/{unique_name}'
 
     record = ReceivedPO(
         id=str(uuid4()),

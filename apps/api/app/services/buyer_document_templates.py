@@ -17,7 +17,7 @@ SUPPORTED_INVOICE_LAYOUT_KEYS = {
     LANDMARK_INVOICE_LAYOUT_KEY,
 }
 _NORMALIZE_PATTERN = re.compile(r'[^a-z0-9]+')
-SAMPLE_UPLOAD_DIR = Path('static/uploads/buyer-document-templates')
+SAMPLE_UPLOAD_DIR = Path(__file__).resolve().parents[2] / 'static' / 'uploads' / 'buyer-document-templates'
 SAMPLE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 object_storage = get_object_storage_service()
 

@@ -41,8 +41,8 @@ from app.services.object_storage import get_object_storage_service
 from app.utils.amount_words import convert_to_words
 
 object_storage = get_object_storage_service()
-GENERATED_DIR = Path('static/generated')
-STATIC_DIR = Path('static')
+STATIC_DIR = Path(__file__).resolve().parents[2] / 'static'
+GENERATED_DIR = STATIC_DIR / 'generated'
 STYLI_LOGO_PATH = Path(__file__).resolve().parents[2] / 'assets' / 'styli_logo.png'
 PINK_BORDER = colors.Color(220 / 255, 80 / 255, 150 / 255)
 STYLI_SIZE_CODE_MAP = {
