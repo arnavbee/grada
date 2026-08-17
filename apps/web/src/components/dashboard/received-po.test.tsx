@@ -457,7 +457,8 @@ function buildPackingList(
 }
 
 async function openDocumentsTab(name: "Invoice" | "Packing List"): Promise<void> {
-  const tabLabel = screen.getByText(name);
+  const label = name === "Invoice" ? "Step 2: Invoice" : "Step 3: Packing List";
+  const tabLabel = screen.getByText(label);
   const tabButton = tabLabel.closest("button");
   expect(tabButton).not.toBeNull();
   fireEvent.click(tabButton as HTMLElement);
@@ -960,7 +961,11 @@ describe("received PO dashboard flows", () => {
 
     render(<ReceivedPODocumentsView receivedPoId="po_1" />);
 
-    await userEvent.setup().click(screen.getByRole("button", { name: "Sticker template" }));
+    // The sticker design picker opens from the "1. Sticker Design" trigger button
+    // (labelled with the current selection plus a "Choose" hint).
+    const pickerTrigger = (await screen.findByText("Choose")).closest("button");
+    expect(pickerTrigger).not.toBeNull();
+    await userEvent.setup().click(pickerTrigger as HTMLElement);
     const templateLabel = await screen.findByText("kita");
     const templateButton = templateLabel.closest("button");
     expect(templateButton).not.toBeNull();
@@ -1081,7 +1086,7 @@ describe("received PO dashboard flows", () => {
     render(<ReceivedPODocumentsView receivedPoId="po_1" />);
 
     await act(async () => {});
-    await userEvent.setup().click(screen.getByRole("button", { name: "Save template" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "Import / Create Template" }));
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     expect(fileInput).not.toBeNull();
@@ -1118,11 +1123,9 @@ describe("received PO dashboard flows", () => {
       .mockResolvedValueOnce(buildInvoice("draft"))
       .mockResolvedValueOnce(buildInvoice("failed"));
     getOptionalPackingListMock.mockResolvedValue(null);
-    generateInvoicePdfMock.mockResolvedValue({
-      invoice_id: "inv_1",
-      status: "draft",
-      file_url: null,
-    });
+    // Keep the generate request in flight: the component clears workingKey in the
+    // handler's finally block, so status polling only runs while the request is pending.
+    generateInvoicePdfMock.mockReturnValue(new Promise(() => {}));
 
     render(<ReceivedPODocumentsView receivedPoId="po_1" />);
 
@@ -1158,14 +1161,9 @@ describe("received PO dashboard flows", () => {
       template_name: null,
       layout_key: "default_v1",
     });
-    generatePackingListPdfMock.mockResolvedValue({
-      packing_list_id: "pl_1",
-      status: "draft",
-      file_url: null,
-      template_id: null,
-      template_name: null,
-      layout_key: "default_v1",
-    });
+    // Keep the generate request in flight: the component clears workingKey in the
+    // handler's finally block, so status polling only runs while the request is pending.
+    generatePackingListPdfMock.mockReturnValue(new Promise(() => {}));
 
     render(<ReceivedPODocumentsView receivedPoId="po_1" />);
 

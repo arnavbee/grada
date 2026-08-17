@@ -1316,15 +1316,25 @@ export function ReceivedPODocumentsView({
           : current,
       );
       setStatusLine("Invoice PDF generation started.");
+      // Generation is queued server-side and usually returns "draft"; the
+      // polling effect owns workingKey until the PDF lands or fails. Only
+      // clear it here when the response is already terminal.
+      if (generation.status === "final") {
+        if (!isBatch) {
+          setWorkingKey(null);
+        }
+      } else if (generation.status === "failed") {
+        if (!isBatch) {
+          setWorkingKey(null);
+        }
+        setStatusLine(null);
+        setError("Invoice PDF generation failed. Please try again.");
+      }
     } catch (nextError) {
       if (!isBatch) {
         setWorkingKey(null);
       }
       setError(nextError instanceof Error ? nextError.message : "Failed to generate invoice PDF.");
-    } finally {
-      if (!isBatch) {
-        setWorkingKey(null);
-      }
     }
   };
 
@@ -1453,6 +1463,20 @@ export function ReceivedPODocumentsView({
           : current,
       );
       setStatusLine("Packing list PDF generation started.");
+      // Generation is queued server-side and usually returns "draft"; the
+      // polling effect owns workingKey until the PDF lands or fails. Only
+      // clear it here when the response is already terminal.
+      if (generation.status === "final") {
+        if (!isBatch) {
+          setWorkingKey(null);
+        }
+      } else if (generation.status === "failed") {
+        if (!isBatch) {
+          setWorkingKey(null);
+        }
+        setStatusLine(null);
+        setError("Packing list PDF generation failed. Please try again.");
+      }
     } catch (nextError) {
       if (!isBatch) {
         setWorkingKey(null);
@@ -1460,10 +1484,6 @@ export function ReceivedPODocumentsView({
       setError(
         nextError instanceof Error ? nextError.message : "Failed to generate packing list PDF.",
       );
-    } finally {
-      if (!isBatch) {
-        setWorkingKey(null);
-      }
     }
   };
 
