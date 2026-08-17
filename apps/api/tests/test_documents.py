@@ -18,6 +18,9 @@ from app.services.received_po_documents import (
     build_styli_sheet_pdf,
 )
 
+# Static root anchored to apps/api regardless of the pytest cwd.
+STATIC_DIR = Path(__file__).resolve().parents[1] / 'static'
+
 init_db()
 client_manager = TestClient(app)
 client = client_manager.__enter__()
@@ -198,7 +201,7 @@ def test_invoice_creation_and_update() -> None:
     assert invoice_after_pdf_body['status'] == 'final'
     assert invoice_after_pdf_body['file_url'].startswith('/static/generated/invoices/')
 
-    invoice_path = Path('static') / Path(invoice_after_pdf_body['file_url'].removeprefix('/static/'))
+    invoice_path = STATIC_DIR / Path(invoice_after_pdf_body['file_url'].removeprefix('/static/'))
     assert invoice_path.exists()
     assert invoice_path.read_bytes().startswith(b'%PDF-')
 
@@ -493,7 +496,7 @@ def test_packing_list_creation_assignment_and_carton_update() -> None:
     assert detail_after_pdf_body['status'] == 'final'
     assert detail_after_pdf_body['file_url'].startswith('/static/generated/packing-lists/')
 
-    packing_list_path = Path('static') / Path(detail_after_pdf_body['file_url'].removeprefix('/static/'))
+    packing_list_path = STATIC_DIR / Path(detail_after_pdf_body['file_url'].removeprefix('/static/'))
     assert packing_list_path.exists()
     pdf_bytes = packing_list_path.read_bytes()
     assert pdf_bytes.startswith(b'%PDF-')
@@ -569,7 +572,7 @@ def test_packing_list_can_use_marketplace_template_layout_override() -> None:
     detail_after_pdf_body = _wait_for_packing_list(headers, received_po_id)
     assert detail_after_pdf_body['status'] == 'final'
 
-    packing_list_path = Path('static') / Path(detail_after_pdf_body['file_url'].removeprefix('/static/'))
+    packing_list_path = STATIC_DIR / Path(detail_after_pdf_body['file_url'].removeprefix('/static/'))
     pdf_bytes = packing_list_path.read_bytes()
     assert b'STYLI PACKING LIST' in pdf_bytes
     assert b'STYLI PO NUMBER' in pdf_bytes
@@ -613,7 +616,7 @@ def test_barcode_job_generation_updates_status_and_writes_pdf() -> None:
     assert payload['total_pages'] >= 1
     assert payload['file_url'].startswith('/static/generated/barcodes/')
 
-    barcode_path = Path('static') / Path(payload['file_url'].removeprefix('/static/'))
+    barcode_path = STATIC_DIR / Path(payload['file_url'].removeprefix('/static/'))
     assert barcode_path.exists()
     barcode_bytes = barcode_path.read_bytes()
     assert barcode_bytes.startswith(b'%PDF-')
@@ -746,7 +749,7 @@ def test_parse_buyer_document_template_sample_for_invoice_pdf() -> None:
     pdf_response = client.post(f'/api/v1/received-pos/{received_po_id}/invoice/generate-pdf', headers=headers)
     assert pdf_response.status_code == 200
     invoice_payload = _wait_for_invoice(headers, received_po_id)
-    invoice_path = Path('static') / Path(invoice_payload['file_url'].removeprefix('/static/'))
+    invoice_path = STATIC_DIR / Path(invoice_payload['file_url'].removeprefix('/static/'))
 
     with invoice_path.open('rb') as sample_file:
         parsed = client.post(
@@ -782,7 +785,7 @@ def test_parse_marketplace_template_sample_for_packing_list_pdf() -> None:
     )
     assert pdf_response.status_code == 200
     packing_payload = _wait_for_packing_list(headers, received_po_id)
-    packing_path = Path('static') / Path(packing_payload['file_url'].removeprefix('/static/'))
+    packing_path = STATIC_DIR / Path(packing_payload['file_url'].removeprefix('/static/'))
 
     with packing_path.open('rb') as sample_file:
         parsed = client.post(
@@ -931,7 +934,7 @@ def test_custom_sticker_template_preview_and_sheet_generation() -> None:
     assert body['total_pages'] == 1
     assert body['file_url'].startswith('/static/generated/barcodes/')
 
-    custom_sheet_path = Path('static') / Path(body['file_url'].removeprefix('/static/'))
+    custom_sheet_path = STATIC_DIR / Path(body['file_url'].removeprefix('/static/'))
     assert custom_sheet_path.exists()
     assert custom_sheet_path.read_bytes().startswith(b'%PDF-')
 
@@ -1179,9 +1182,9 @@ def test_document_flow_happy_path() -> None:
     assert barcode_final['file_url'].startswith('/static/generated/barcodes/')
     assert barcode_final['template_kind'] == 'styli'
 
-    invoice_path = Path('static') / Path(invoice_final['file_url'].removeprefix('/static/'))
-    packing_list_path = Path('static') / Path(packing_list_final['file_url'].removeprefix('/static/'))
-    barcode_path = Path('static') / Path(barcode_final['file_url'].removeprefix('/static/'))
+    invoice_path = STATIC_DIR / Path(invoice_final['file_url'].removeprefix('/static/'))
+    packing_list_path = STATIC_DIR / Path(packing_list_final['file_url'].removeprefix('/static/'))
+    barcode_path = STATIC_DIR / Path(barcode_final['file_url'].removeprefix('/static/'))
 
     assert invoice_path.exists()
     assert packing_list_path.exists()

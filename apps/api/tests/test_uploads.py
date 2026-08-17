@@ -6,6 +6,9 @@ from fastapi.testclient import TestClient
 from app.api.v1.endpoints import uploads as uploads_endpoint
 from app.main import app
 
+# Static root anchored to apps/api regardless of the pytest cwd.
+STATIC_DIR = Path(__file__).resolve().parents[1] / 'static'
+
 client = TestClient(app)
 
 
@@ -48,7 +51,7 @@ def test_image_upload_falls_back_to_local_storage() -> None:
     saved_path = Path('apps/api/static') / relative_static_path
     if not saved_path.exists():
         # Tests run from apps/api; keep relative fallback explicit.
-        saved_path = Path('static') / relative_static_path
+        saved_path = STATIC_DIR / relative_static_path
     assert saved_path.exists()
 
 

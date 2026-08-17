@@ -11,6 +11,9 @@ from PIL import Image
 from app.db.session import init_db
 from app.main import app
 
+# Static root anchored to apps/api regardless of the pytest cwd.
+STATIC_DIR = Path(__file__).resolve().parents[1] / 'static'
+
 init_db()
 client = TestClient(app)
 
@@ -102,7 +105,7 @@ def test_catalog_product_export_and_job_flow() -> None:
     assert export_body['file_url'].endswith('.csv')
     assert export_body['completed_at'] is not None
 
-    csv_path = Path('static') / export_body['file_url'].removeprefix('/static/')
+    csv_path = STATIC_DIR / export_body['file_url'].removeprefix('/static/')
     assert csv_path.exists()
     csv_contents = csv_path.read_text(encoding='utf-8')
     assert 'image-preview' in csv_contents
@@ -119,7 +122,7 @@ def test_catalog_product_export_and_job_flow() -> None:
     assert xlsx_body['file_url']
     assert xlsx_body['file_url'].endswith('.xlsx')
 
-    xlsx_path = Path('static') / xlsx_body['file_url'].removeprefix('/static/')
+    xlsx_path = STATIC_DIR / xlsx_body['file_url'].removeprefix('/static/')
     assert xlsx_path.exists()
 
     failed_export = client.post(
@@ -180,7 +183,7 @@ def test_catalog_product_export_and_job_flow() -> None:
 def test_catalog_xlsx_export_embeds_images() -> None:
     headers = _auth_headers()
 
-    image_dir = Path('static/uploads/test-catalog-export')
+    image_dir = STATIC_DIR / 'uploads/test-catalog-export'
     image_dir.mkdir(parents=True, exist_ok=True)
     image_path = image_dir / f'{uuid4().hex}.png'
     Image.new('RGB', (24, 24), color=(12, 34, 56)).save(image_path)
@@ -221,7 +224,7 @@ def test_catalog_xlsx_export_embeds_images() -> None:
     assert payload['status'] == 'completed'
     assert payload['file_url']
 
-    xlsx_path = Path('static') / payload['file_url'].removeprefix('/static/')
+    xlsx_path = STATIC_DIR / payload['file_url'].removeprefix('/static/')
     assert xlsx_path.exists()
     workbook = load_workbook(xlsx_path)
     sheet = workbook.active
@@ -258,7 +261,7 @@ def test_marketplace_export_uses_defaults_for_missing_optional_fields() -> None:
     assert export_body['row_count'] >= 1
     assert export_body['file_url']
 
-    csv_path = Path('static') / export_body['file_url'].removeprefix('/static/')
+    csv_path = STATIC_DIR / export_body['file_url'].removeprefix('/static/')
     assert csv_path.exists()
 
 
@@ -289,7 +292,7 @@ def test_generic_export_has_catalog_shape() -> None:
     assert export_body['status'] == 'completed'
     assert export_body['file_url']
 
-    csv_path = Path('static') / export_body['file_url'].removeprefix('/static/')
+    csv_path = STATIC_DIR / export_body['file_url'].removeprefix('/static/')
     assert csv_path.exists()
     csv_contents = csv_path.read_text(encoding='utf-8')
     assert 'S. No,Style-No,Image Preview,Name,Category,Color,Fabric,Composition,Woven/Knits,Units,PO Price,OSP,Status' in csv_contents
@@ -374,7 +377,7 @@ def test_marketplace_template_parse_and_custom_catalog_export() -> None:
     assert export_body['template_id'] == template_body['id']
     assert export_body['template_name'] == 'Amazon custom catalog'
 
-    csv_path = Path('static') / export_body['file_url'].removeprefix('/static/')
+    csv_path = STATIC_DIR / export_body['file_url'].removeprefix('/static/')
     assert csv_path.exists()
     csv_contents = csv_path.read_text(encoding='utf-8')
     assert 'seller-sku,item-name,brand-name,color-name,size-name,standard-price,image-preview' in csv_contents

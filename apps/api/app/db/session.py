@@ -42,7 +42,10 @@ def init_db() -> None:
 
 
 def run_migrations() -> None:
-    alembic_ini_path = Path(__file__).resolve().parents[2] / 'alembic.ini'
-    config = Config(str(alembic_ini_path))
+    api_root = Path(__file__).resolve().parents[2]
+    config = Config(str(api_root / 'alembic.ini'))
+    # The ini's script_location is relative to the process cwd, which is not
+    # necessarily apps/api (CI and some hosts run from the repo root).
+    config.set_main_option('script_location', str(api_root / 'alembic'))
     config.set_main_option('sqlalchemy.url', database_url)
     command.upgrade(config, 'head')

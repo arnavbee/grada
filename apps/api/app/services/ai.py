@@ -429,6 +429,11 @@ def _read_techpack_bytes(input_ref: str | None) -> bytes:
         return b''
 
     if not local_path.exists():
+        # cwd-relative miss: fall back to the apps/api root, since the server
+        # is not always started from that directory.
+        api_root_local_path = Path(__file__).resolve().parents[2] / local_path
+        if api_root_local_path.exists():
+            return api_root_local_path.read_bytes()
         return b''
     return local_path.read_bytes()
 
