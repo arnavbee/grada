@@ -115,8 +115,10 @@ export default function DemoPage(): JSX.Element {
             <div className="flex items-start gap-3 rounded-xl bg-white/80 dark:bg-zinc-800/80 p-4 border border-kira-warmgray/30">
               <span className="text-xl">👗</span>
               <div>
-                <h4 className="font-semibold text-sm text-kira-black">3 Apparel Products</h4>
-                <p className="text-xs text-kira-darkgray">Midi Dress, Maxi Dress, Linen Cord Set</p>
+                <h4 className="font-semibold text-sm text-kira-black">14 Apparel Products</h4>
+                <p className="text-xs text-kira-darkgray">
+                  Real catalog dresses and cord sets with product imagery
+                </p>
               </div>
             </div>
 
