@@ -8,7 +8,7 @@ import { LogoutButton } from "@/src/components/auth/logout-button";
 import { DemoWorkspaceBanner } from "@/src/components/demo/demo-workspace-banner";
 import { Card } from "@/src/components/ui/card";
 import { cn } from "@/src/lib/cn";
-import { apiRequest } from "@/src/lib/api-client";
+import { getCachedProfile } from "@/src/lib/use-profile";
 
 const navigation = [
   { label: "Dashboard", href: "/dashboard" },
@@ -36,38 +36,6 @@ interface DashboardShellProps {
   subtitle?: string;
   hideHeader?: boolean;
   children: ReactNode;
-}
-
-interface AuthMeResponse {
-  company_name?: string | null;
-  is_super_admin?: boolean;
-}
-
-const PROFILE_CACHE_TTL_MS = 60_000;
-let profileCache: AuthMeResponse | null = null;
-let profileCacheTimestampMs = 0;
-let profileRequestInFlight: Promise<AuthMeResponse> | null = null;
-
-function getCachedProfile(): Promise<AuthMeResponse> {
-  const nowMs = Date.now();
-  if (profileCache && nowMs - profileCacheTimestampMs < PROFILE_CACHE_TTL_MS) {
-    return Promise.resolve(profileCache);
-  }
-  if (profileRequestInFlight) {
-    return profileRequestInFlight;
-  }
-
-  profileRequestInFlight = apiRequest<AuthMeResponse>("/auth/me")
-    .then((profile) => {
-      profileCache = profile;
-      profileCacheTimestampMs = Date.now();
-      return profile;
-    })
-    .finally(() => {
-      profileRequestInFlight = null;
-    });
-
-  return profileRequestInFlight;
 }
 
 export function DashboardShell({
@@ -172,12 +140,6 @@ export function DashboardShell({
                     href="/"
                   >
                     Home
-                  </Link>
-                  <Link
-                    className="kira-focus-ring rounded-md px-3 py-2 text-sm text-kira-darkgray hover:bg-kira-warmgray/20"
-                    href="/design-system"
-                  >
-                    Design System
                   </Link>
                   <LogoutButton />
                 </div>

@@ -550,3 +550,9 @@ html[data-theme="dark"] [class*="bg-kira-offwhite"] {
     font-family: var(--font-geist-sans), "Geist", "Inter", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
   }
 }
+
+/* Hide the intro splash instantly for visitors who already saw it this
+   session — the attribute is set by an inline script before first paint. */
+html[data-intro-seen] [data-intro-overlay] {
+  display: none;
+}

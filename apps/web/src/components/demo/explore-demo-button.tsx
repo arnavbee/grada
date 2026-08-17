@@ -25,11 +25,14 @@ export function ExploreDemoButton({
 }: ExploreDemoButtonProps): JSX.Element {
   const router = useRouter();
   const [isStarting, setIsStarting] = useState(false);
+  const [slowStart, setSlowStart] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function startDemo(): Promise<void> {
     setIsStarting(true);
     setError(null);
+    // If the free-tier server is cold-starting, reassure instead of looking hung.
+    const slowTimer = window.setTimeout(() => setSlowStart(true), 4000);
     try {
       const session = await apiRequest<DemoSessionResponse>("/auth/demo", { method: "POST" });
       setAuthCookies(session, true);
@@ -39,6 +42,9 @@ export function ExploreDemoButton({
     } catch (startError) {
       setError(startError instanceof Error ? startError.message : "Could not start the demo.");
       setIsStarting(false);
+    } finally {
+      window.clearTimeout(slowTimer);
+      setSlowStart(false);
     }
   }
 
@@ -58,6 +64,11 @@ export function ExploreDemoButton({
           </span>
         ) : null}
       </Button>
+      {isStarting && slowStart ? (
+        <span aria-live="polite" className="text-center text-xs text-kira-midgray">
+          Waking the server and seeding your sample workspace — a few more seconds…
+        </span>
+      ) : null}
       {error ? (
         <span
           className="text-center text-sm text-red-700 dark:text-red-300"

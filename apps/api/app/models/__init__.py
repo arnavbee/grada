@@ -2,8 +2,8 @@ from app.models.ai_correction import AICorrection
 from app.models.audit_log import AuditLog
 from app.models.barcode_job import BarcodeJob
 from app.models.buyer_document_template import BuyerDocumentTemplate
-from app.models.catalog_template import CatalogTemplate
 from app.models.carton_capacity_rule import CartonCapacityRule
+from app.models.catalog_template import CatalogTemplate
 from app.models.company import Company
 from app.models.company_settings import CompanySettings
 from app.models.image_label import ImageLabel
@@ -26,8 +26,8 @@ __all__ = [
     'AuditLog',
     'BarcodeJob',
     'BuyerDocumentTemplate',
-    'CatalogTemplate',
     'CartonCapacityRule',
+    'CatalogTemplate',
     'Company',
     'CompanySettings',
     'ImageLabel',
@@ -35,13 +35,13 @@ __all__ = [
     'InvoiceLineItem',
     'MarketplaceDocumentTemplate',
     'MarketplaceExport',
+    'PORequest',
+    'PORequestColorway',
+    'PORequestItem',
+    'PORequestRow',
     'PackingList',
     'PackingListCarton',
     'PackingListCartonItem',
-    'PORequest',
-    'PORequestItem',
-    'PORequestColorway',
-    'PORequestRow',
     'ProcessingJob',
     'Product',
     'ProductImage',

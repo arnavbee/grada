@@ -8,7 +8,6 @@ from app.models.buyer_document_template import BuyerDocumentTemplate
 from app.schemas.invoice import InvoiceDetails
 from app.services.object_storage import get_object_storage_service
 
-
 BUYER_DOCUMENT_TYPE_INVOICE = 'invoice'
 DEFAULT_INVOICE_LAYOUT_KEY = 'default_v1'
 LANDMARK_INVOICE_LAYOUT_KEY = 'landmark_v1'

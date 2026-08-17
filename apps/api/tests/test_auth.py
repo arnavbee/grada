@@ -87,7 +87,7 @@ def test_demo_session_creates_an_isolated_seeded_workspace() -> None:
     assert response.status_code == 201
     body = response.json()
     assert body['is_demo'] is True
-    assert body['demo_company_name'] == 'Nivara Studio — Demo'
+    assert body['demo_company_name'] == 'Apex Retail Solutions — Demo'
     assert body['access_token']
 
     headers = {'Authorization': f"Bearer {body['access_token']}"}
@@ -95,7 +95,7 @@ def test_demo_session_creates_an_isolated_seeded_workspace() -> None:
     received_pos = client.get('/api/v1/received-pos?limit=20', headers=headers)
 
     assert catalog.status_code == 200
-    assert catalog.json()['total'] == 3
+    assert catalog.json()['total'] == 14
     assert catalog.json()['items'][0]['primary_image_url'].startswith('http://127.0.0.1:3000/images/apparel/')
     assert received_pos.status_code == 200
     assert received_pos.json()['total'] == 2

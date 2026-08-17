@@ -17,6 +17,7 @@ class UserResponse(BaseModel):
     company_id: str
     company_name: str | None = None
     is_super_admin: bool = False
+    is_demo: bool = False
     is_active: bool
     signup_source: str = 'self_serve'
     verification_status: VerificationStatus = 'unreviewed'

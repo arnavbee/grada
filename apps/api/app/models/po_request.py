@@ -1,10 +1,13 @@
 import uuid
-from typing import List
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, utcnow
+
+if TYPE_CHECKING:
+    from app.models.po_request_row import PORequestColorway, PORequestRow
 
 
 class PORequest(Base):
@@ -19,8 +22,8 @@ class PORequest(Base):
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
     )
 
-    items: Mapped[List["PORequestItem"]] = relationship("PORequestItem", back_populates="po_request", cascade="all, delete-orphan")
-    rows: Mapped[List['PORequestRow']] = relationship(
+    items: Mapped[list["PORequestItem"]] = relationship("PORequestItem", back_populates="po_request", cascade="all, delete-orphan")
+    rows: Mapped[list['PORequestRow']] = relationship(
         'PORequestRow',
         back_populates='po_request',
         cascade='all, delete-orphan',
@@ -47,12 +50,12 @@ class PORequestItem(Base):
     )
 
     po_request: Mapped["PORequest"] = relationship("PORequest", back_populates="items")
-    colorways: Mapped[List['PORequestColorway']] = relationship(
+    colorways: Mapped[list['PORequestColorway']] = relationship(
         'PORequestColorway',
         back_populates='item',
         cascade='all, delete-orphan',
     )
-    rows: Mapped[List['PORequestRow']] = relationship(
+    rows: Mapped[list['PORequestRow']] = relationship(
         'PORequestRow',
         back_populates='item',
         cascade='all, delete-orphan',

@@ -12,7 +12,11 @@ from app.main import app
 from app.models.carton_capacity_rule import CartonCapacityRule
 from app.models.company_settings import CompanySettings
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
-from app.services.received_po_documents import _load_image_reader, _resolve_model_display_value, build_styli_sheet_pdf
+from app.services.received_po_documents import (
+    _load_image_reader,
+    _resolve_model_display_value,
+    build_styli_sheet_pdf,
+)
 
 init_db()
 client_manager = TestClient(app)

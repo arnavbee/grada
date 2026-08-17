@@ -36,8 +36,9 @@ export default function DemoPage(): JSX.Element {
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-kira-darkgray">
-          Launch a fully pre-populated Nivara Studio workspace. Test live AI vision analysis, review
-          parsed marketplace purchase orders, and generate compliance documents instantly.
+          Launch a fully pre-populated Apex Retail Solutions workspace. Test live AI vision
+          analysis, review parsed marketplace purchase orders, and generate compliance documents
+          instantly.
         </p>
 
         <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -153,7 +154,7 @@ export default function DemoPage(): JSX.Element {
           <div className="mt-8">
             <ExploreDemoButton
               className="h-12 rounded-full px-8 text-base"
-              label="Explore Nivara Studio Demo →"
+              label="Explore Apex Retail Demo →"
             />
           </div>
         </div>

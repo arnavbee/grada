@@ -1,14 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+
+import { useDemoMode } from "@/src/lib/use-profile";
 
 export function DemoWorkspaceBanner(): JSX.Element | null {
-  const [isDemo, setIsDemo] = useState(false);
-
-  useEffect(() => {
-    setIsDemo(window.sessionStorage.getItem("grada_demo_mode") === "true");
-  }, []);
+  const isDemo = useDemoMode();
 
   if (!isDemo) return null;
 

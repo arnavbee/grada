@@ -15,10 +15,10 @@ from app.core.config import get_settings
 from app.db.base import utcnow
 from app.db.session import SessionLocal
 from app.models.ai_correction import AICorrection
+from app.models.po_request import PORequest
 from app.models.processing_job import ProcessingJob
 from app.models.product_image import ProductImage
 from app.models.product_measurement import ProductMeasurement
-from app.models.po_request import PORequest, PORequestItem
 from app.services.po_builder import normalize_ai_attributes, rebuild_po_request_rows
 
 settings = get_settings()
@@ -754,7 +754,8 @@ def _resolve_image_url_for_po(image_url: str) -> str:
     # For localhost/127.0.0.1 URLs without /static/ prefix, try an HTTP fetch
     if parsed.hostname in {'localhost', '127.0.0.1'}:
         try:
-            from urllib.request import urlopen, Request as UrlRequest
+            from urllib.request import Request as UrlRequest
+            from urllib.request import urlopen
             req = UrlRequest(url, headers={'User-Agent': 'kira-po-extractor/1.0'})
             with urlopen(req, timeout=8) as resp:
                 raw = resp.read()
@@ -828,7 +829,7 @@ def process_po_ai_extraction_job(po_request_id: str):
                     len(item.extracted_attributes.get('fields', {})),
                     product.id,
                 )
-            except Exception as item_err:
+            except Exception:
                 logger.exception('[PO Extraction] Error extracting product %s', product.id)
                 item.extracted_attributes = normalize_ai_attributes(None)
 
@@ -836,7 +837,7 @@ def process_po_ai_extraction_job(po_request_id: str):
         po_request.status = 'ready' if extracted_item_count > 0 else 'failed'
         db.commit()
         logger.info('[PO Extraction] Done. PO %s marked %s.', po_request_id, po_request.status)
-    except Exception as e:
+    except Exception:
         logger.exception('[PO Extraction] Fatal error for PO %s', po_request_id)
         if po_request:
             po_request.status = 'failed'

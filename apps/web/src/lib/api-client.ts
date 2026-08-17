@@ -6,6 +6,25 @@ import {
   type AuthTokens,
 } from "@/src/lib/auth-cookie";
 
+/**
+ * Error thrown for failed API requests. Extends Error so existing
+ * `err.message` handling keeps working, while exposing the HTTP status
+ * (0 for network failures) so callers can branch on it.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+export function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError;
+}
+
 let refreshTokenRequestInFlight: Promise<string | null> | null = null;
 
 function looksLikeJwt(value: string): boolean {
@@ -158,11 +177,23 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
       headers,
       cache: "no-store",
     });
-  } catch (err) {
-    console.error("API Request Error:", err);
-    throw new Error(
-      `Cannot reach API at ${resolvedBase}. Verify NEXT_PUBLIC_API_URL and that the API server is running.`,
-    );
+  } catch {
+    // Free-tier hosts cold-start; give the server one chance to wake before failing.
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      const retryHeaders = await applyHeaders();
+      response = await fetch(`${resolvedBase}${path}`, {
+        ...init,
+        headers: retryHeaders,
+        cache: "no-store",
+      });
+    } catch (err) {
+      console.error("API Request Error:", err);
+      throw new ApiError(
+        "Can't reach the server right now. It may be waking up — try again in a few seconds.",
+        0,
+      );
+    }
   }
 
   if (response.status === 401) {
@@ -192,7 +223,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
     } catch {
       // Ignore body parse errors and fallback to generic message.
     }
-    throw new Error(message);
+    throw new ApiError(message, response.status);
   }
 
   // Handle 204 No Content responses (DELETE endpoints)

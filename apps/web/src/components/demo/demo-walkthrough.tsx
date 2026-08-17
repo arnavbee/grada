@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { Button } from "@/src/components/ui/button";
+import { useDemoMode } from "@/src/lib/use-profile";
 
 interface Step {
   title: string;
@@ -15,7 +17,7 @@ const STEPS: Step[] = [
     badge: "Step 1 of 4 • Welcome",
     title: "Isolated Demo Workspace Ready",
     description:
-      "Welcome to Nivara Studio! Your workspace is preloaded with sample apparel catalog items, draft purchase orders, and parsed distributor data.",
+      "Welcome to Apex Retail Solutions! Your workspace is preloaded with real-format apparel catalog items, draft purchase orders, and parsed distributor data.",
     tip: "No account creation or file uploads needed — everything is ready to explore.",
   },
   {
@@ -41,16 +43,14 @@ const STEPS: Step[] = [
 ];
 
 export function DemoWalkthrough(): JSX.Element | null {
+  const isDemo = useDemoMode();
   const [isVisible, setIsVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    const isDemo = window.sessionStorage.getItem("grada_demo_mode") === "true";
     const isDone = window.sessionStorage.getItem("grada_demo_walkthrough_done") === "true";
-    if (isDemo && !isDone) {
-      setIsVisible(true);
-    }
-  }, []);
+    setIsVisible(isDemo && !isDone);
+  }, [isDemo]);
 
   function handleDismiss(): void {
     setIsVisible(false);

@@ -1,9 +1,13 @@
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, utcnow
+
+if TYPE_CHECKING:
+    from app.models.po_request import PORequest, PORequestItem
 
 
 class PORequestColorway(Base):

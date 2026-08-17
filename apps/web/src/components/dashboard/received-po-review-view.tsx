@@ -114,6 +114,36 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
     };
   }, [receivedPoId]);
 
+  // The parse job runs in the background after upload, so this page can load
+  // while the PO is still "uploaded"/"parsing". Poll until it settles.
+  useEffect(() => {
+    if (record?.status !== "uploaded" && record?.status !== "parsing") {
+      return;
+    }
+    let active = true;
+    const timer = window.setInterval(() => {
+      getReceivedPO(receivedPoId)
+        .then((response) => {
+          if (!active || response.status === "uploaded" || response.status === "parsing") {
+            return;
+          }
+          setRecord(response);
+          setHeaderDraft(toHeaderDraft(response));
+          setItemDrafts(toEditableLineItems(response));
+          if (response.status === "failed") {
+            setError("Parsing failed. No line items could be extracted from this PO file.");
+          }
+        })
+        .catch(() => {
+          // Keep polling; transient errors resolve on the next tick.
+        });
+    }, 1500);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [receivedPoId, record?.status]);
+
   const totalQuantity = useMemo(() => getTotalQuantity(itemDrafts), [itemDrafts]);
   const editable = record?.status !== "confirmed";
   const exceptionItems = exceptionsState?.items ?? [];
@@ -534,7 +564,9 @@ export function ReceivedPOReviewView({ receivedPoId }: ReceivedPOReviewViewProps
                     Line items
                   </p>
                   <h2 className="mt-2 text-xl font-semibold text-kira-black">
-                    {itemDrafts.length} extracted rows
+                    {record?.status === "uploaded" || record?.status === "parsing"
+                      ? "Parsing PO file..."
+                      : `${itemDrafts.length} extracted rows`}
                   </h2>
                 </div>
                 {editable ? (

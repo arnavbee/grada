@@ -1,13 +1,14 @@
 from functools import lru_cache
 from pathlib import Path
+
 from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Never override real environment variables: platform-injected config (Render,
 # Docker, CI) must win over the on-disk .env used for local development.
+# This runs at import time, before any Settings instance reads the env.
 env_path = Path(__file__).resolve().parents[2] / '.env'
 load_dotenv(dotenv_path=env_path, override=False)
-
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _INSECURE_JWT_DEFAULTS = {'change-me', 'change-me-too', ''}
 

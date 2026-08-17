@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ExploreDemoButton } from "@/src/components/demo/explore-demo-button";
+import { IntroSplash } from "@/src/components/intro-splash";
 
 const smartCatalogAnimationSrc = "/marketing/grada-smart-catalog-animated.html";
 const marketplaceExportsAnimationSrc = "/marketing/grada-marketplace-exports-animated.html";
@@ -35,22 +36,16 @@ const marketplaceCoverage: MarketplaceCoverageItem[] = [
     label: "Myntra",
     detail: "Structured exports tied to the same SKU logic.",
     logo: {
-      className: "h-[18px] w-auto object-contain",
-      height: 28,
-      kind: "image",
-      src: "https://upload.wikimedia.org/wikipedia/commons/b/bc/Myntra_Logo.png",
-      width: 90,
+      kind: "text",
+      text: "Myntra",
     },
   },
   {
     label: "Ajio",
     detail: "Channel-ready exports without manual remapping.",
     logo: {
-      className: "h-7 w-auto object-contain",
-      height: 26,
-      kind: "image",
-      src: "https://images.seeklogo.com/logo-png/34/1/ajio-logo-png_seeklogo-348946.png",
-      width: 100,
+      kind: "text",
+      text: "AJIO",
     },
   },
   {
@@ -64,22 +59,16 @@ const marketplaceCoverage: MarketplaceCoverageItem[] = [
     label: "Flipkart",
     detail: "Marketplace-specific formats from one source.",
     logo: {
-      className: "h-10 w-auto origin-center scale-[1.5] object-contain",
-      height: 26,
-      kind: "image",
-      src: "https://upload.wikimedia.org/wikipedia/commons/e/e5/Flipkart_logo_%282026%29.svg",
-      width: 90,
+      kind: "text",
+      text: "Flipkart",
     },
   },
   {
     label: "Nykaa",
     detail: "Keep rich attribute structure intact across teams.",
     logo: {
-      className: "h-[18px] w-auto object-contain",
-      height: 26,
-      kind: "image",
-      src: "https://upload.wikimedia.org/wikipedia/commons/0/00/Nykaa_New_Logo.svg",
-      width: 85,
+      kind: "text",
+      text: "NYKAA",
     },
   },
   {
@@ -345,6 +334,7 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#111] font-sans selection:bg-black selection:text-white pb-12 overflow-hidden">
+      <IntroSplash />
       {/* Header */}
       <header className="relative flex items-center justify-between px-6 py-4 md:px-12 md:py-6 sticky top-0 bg-white/40 backdrop-blur-md z-50 border-b border-white/60 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
         <div className="font-serif text-3xl font-normal tracking-tight pt-1">

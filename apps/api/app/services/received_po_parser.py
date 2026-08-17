@@ -177,7 +177,10 @@ def _extract_xlsx_rows_fallback(content: bytes) -> list[list[str]]:
 
 
 def _normalize_header(value: str) -> str:
-    return re.sub(r'\s+', ' ', value.strip().lower())
+    normalized = re.sub(r'\s+', ' ', value.strip().lower())
+    # Drop trailing parentheticals like "PO Price (SAR)" so currency/unit
+    # suffixes still match the plain alias.
+    return re.sub(r'\s*\([^)]*\)$', '', normalized)
 
 
 def _find_header_mapping(rows: list[list[str]]) -> tuple[int, dict[str, int]] | tuple[None, dict[str, int]]:
@@ -235,7 +238,7 @@ def _extract_line_items_from_rows(rows: list[list[str]]) -> list[dict[str, objec
         if len(row) <= max(header_map.values()):
             continue
 
-        def _value(field_name: str) -> str:
+        def _value(field_name: str, row: list[str] = row) -> str:
             column_index = header_map.get(field_name)
             if column_index is None or column_index >= len(row):
                 return ''
@@ -262,6 +265,21 @@ def _extract_line_items_from_rows(rows: list[list[str]]) -> list[dict[str, objec
             }
         )
     return items
+
+
+_PO_NUMBER_HEADERS = {'po number', 'po no', 'po no.', 'po #', 'po'}
+
+
+def _extract_po_number_from_rows(rows: list[list[str]]) -> str | None:
+    """Fallback for tabular POs where the PO number is a per-row column."""
+    for row_index, row in enumerate(rows):
+        for column_index, cell in enumerate(row):
+            if _normalize_header(cell) not in _PO_NUMBER_HEADERS:
+                continue
+            for data_row in rows[row_index + 1 :]:
+                if column_index < len(data_row) and data_row[column_index].strip():
+                    return data_row[column_index].strip()
+    return None
 
 
 def _extract_po_number(raw_text: str) -> str | None:
@@ -327,7 +345,7 @@ def parse_received_po_file(file_url: str) -> dict[str, object]:
 
     items = _extract_line_items_from_rows(rows)
     parsed_payload = {
-        'po_number': _extract_po_number(raw_text),
+        'po_number': _extract_po_number(raw_text) or _extract_po_number_from_rows(rows),
         'po_date': _extract_po_date(raw_text).isoformat() if _extract_po_date(raw_text) else None,
         'distributor': _guess_distributor(raw_text),
         'line_items': _sort_line_items(items),

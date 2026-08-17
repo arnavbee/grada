@@ -18,8 +18,15 @@ from app.config.styli_attributes import (
     PO_EXPORT_HEADERS,
     SIZE_ORDER,
 )
-from app.models import Company, PORequest, PORequestColorway, PORequestItem, PORequestRow, Product, ProductImage
-
+from app.models import (
+    Company,
+    PORequest,
+    PORequestColorway,
+    PORequestItem,
+    PORequestRow,
+    Product,
+    ProductImage,
+)
 
 DEFAULT_PO_ITEM_ATTRIBUTES = {
     'fields': {},
@@ -597,7 +604,9 @@ def build_po_export_row_values_from_template(row: PORequestRow, columns: list[di
 
 
 def _apply_header_styles(sheet) -> None:
-    for column_index, (group_label, header_label) in enumerate(zip(PO_EXPORT_GROUP_ROW, PO_EXPORT_HEADERS), start=1):
+    for column_index, (group_label, _header_label) in enumerate(
+        zip(PO_EXPORT_GROUP_ROW, PO_EXPORT_HEADERS, strict=False), start=1
+    ):
         fill = PatternFill('solid', fgColor=HEADER_FILL_COLORS.get(group_label, 'E5E7EB'))
         group_cell = sheet.cell(row=1, column=column_index)
         header_cell = sheet.cell(row=2, column=column_index)

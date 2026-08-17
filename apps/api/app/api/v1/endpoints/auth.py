@@ -57,40 +57,37 @@ def _demo_asset_base_url(request: Request) -> str:
 
 def _seed_demo_workspace(*, db: Session, company_id: str, user_id: str, asset_base_url: str) -> None:
     """Create a compact but complete apparel-operations story for a new demo visitor."""
+    # Real catalog rows exported from the brand's workspace (catalog 1.xlsx),
+    # images extracted from the same workbook into /images/apparel/.
+    def _item(sku, title, category, color, fabric, composition, knit, image):
+        return {
+            'sku': sku,
+            'title': title,
+            'category': category,
+            'color': color,
+            'image': image,
+            'price': 600,
+            'osp': 95,
+            'fabric': fabric,
+            'composition': composition,
+            'knit': knit,
+        }
+
     products = (
-        {
-            'sku': 'NV-DR-104',
-            'title': 'Nivara Floral Midi Dress',
-            'category': 'Dresses',
-            'color': 'Orange',
-            'image': 'midi-dress.png',
-            'price': 720,
-            'osp': 115,
-            'fabric': 'Poly Georgette',
-            'composition': '100% Polyester',
-        },
-        {
-            'sku': 'NV-DR-105',
-            'title': 'Nivara Satin Maxi Dress',
-            'category': 'Dresses',
-            'color': 'Mauve',
-            'image': 'maxi-dress.png',
-            'price': 840,
-            'osp': 132,
-            'fabric': 'Satin',
-            'composition': '100% Polyester',
-        },
-        {
-            'sku': 'NV-CS-204',
-            'title': 'Nivara Linen Cord Set',
-            'category': 'Co-ords',
-            'color': 'Beige',
-            'image': 'cord-set.png',
-            'price': 960,
-            'osp': 149,
-            'fabric': 'Linen',
-            'composition': '100% Linen',
-        },
+        _item('HRD-DRESSES-26-JINX', 'Bodycon', 'DRESSES', 'Black', 'Poly Georgette', '100% Polyester', 'Woven', 'hrd-dresses-26-jinx.jpg'),
+        _item('JIDS26001', 'Maxi Dress', 'DRESSES', 'Brown', 'Poly Georgette', '100% Polyester', 'Woven', 'jids26001.jpg'),
+        _item('GEN-DRESSES-NA-OS-11', 'Midi Dress', 'DRESSES', 'Pink', 'Poly Georgette', '100% Polyester', 'Woven', 'gen-dresses-na-os-11.jpg'),
+        _item('GEN-DRESSES-NA-OS-10', 'Midi Dress', 'DRESSES', 'Black', 'Polycrepe', '100% Polyester', 'Woven', 'gen-dresses-na-os-10.jpg'),
+        _item('GEN-DRESSES-NA-OS-09', 'Maxi Dress', 'DRESSES', 'Navy', 'Polycrepe', '100% Polyester', 'Woven', 'gen-dresses-na-os-09.jpg'),
+        _item('GEN-DRESSES-NA-OS-08', 'Maxi Dress', 'DRESSES', 'Blue', 'Poly Georgette', '100% Polyester', 'Woven', 'gen-dresses-na-os-08.jpg'),
+        _item('GEN-CORD-SETS-NA-OS', 'Knot Cord Set', 'CORD SETS', 'Brown', 'Pleated Knitted Fabric', '100% Polyester', 'Knitted', 'gen-cord-sets-na-os.jpg'),
+        _item('GEN-DRESSES-NA-OS-07', 'Maxi Dress', 'DRESSES', 'Lilac', 'Poly Georgette', '100% Polyester', 'Woven', 'gen-dresses-na-os-07.jpg'),
+        _item('GEN-DRESSES-NA-OS-06', 'Knee Length', 'DRESSES', 'Brown', 'Poly Georgette', '100% Polyester', 'Woven', 'gen-dresses-na-os-06.jpg'),
+        _item('GEN-DRESSES-NA-OS-05', 'Maxi Dress', 'DRESSES', 'Lilac', 'Poly Georgette', '100% Polyester', 'Woven', 'gen-dresses-na-os-05.jpg'),
+        _item('GEN-DRESSES-NA-OS-04', 'Knee Length', 'DRESSES', 'Brown', 'Poly Georgette', '100% Polyester', 'Woven', 'gen-dresses-na-os-04.jpg'),
+        _item('GEN-DRESSES-NA-OS-03', 'Knee Length', 'DRESSES', 'Brown', 'Poly Georgette', '100% Polyester', 'Woven', 'gen-dresses-na-os-03.jpg'),
+        _item('GEN-DRESSES-NA-OS-02', 'Maxi Dress', 'DRESSES', 'Lilac', 'Poly Georgette', '100% Polyester', 'Woven', 'gen-dresses-na-os-02.jpg'),
+        _item('GEN-DRESSES-NA-OS', 'Maxi Dress', 'DRESSES', 'Black', 'Poly Georgette', '100% Polyester', 'Woven', 'gen-dresses-na-os.jpg'),
     )
     product_records: list[Product] = []
     for item in products:
@@ -100,7 +97,7 @@ def _seed_demo_workspace(*, db: Session, company_id: str, user_id: str, asset_ba
             sku=item['sku'],
             title=item['title'],
             description=f"Sample {item['category'].lower()} record for the Grada portfolio demo.",
-            brand='Nivara Studio',
+            brand='House of Raeli',
             category=item['category'],
             color=item['color'],
             size='M',
@@ -110,7 +107,7 @@ def _seed_demo_workspace(*, db: Session, company_id: str, user_id: str, asset_ba
                 {
                     'fabric': item['fabric'],
                     'composition': item['composition'],
-                    'woven_knits': 'Woven',
+                    'woven_knits': item['knit'],
                     'units': 24,
                     'po_price': item['price'],
                     'osp': item['osp'],
@@ -127,7 +124,7 @@ def _seed_demo_workspace(*, db: Session, company_id: str, user_id: str, asset_ba
                 product_id=product.id,
                 file_name=item['image'],
                 file_url=f"{asset_base_url}/images/apparel/{item['image']}",
-                mime_type='image/png',
+                mime_type='image/jpeg',
                 processing_status='completed',
                 analysis_json=json.dumps({'source': 'portfolio_demo'}),
             )
@@ -158,7 +155,7 @@ def _seed_demo_workspace(*, db: Session, company_id: str, user_id: str, asset_ba
                 product_id=product.id,
                 row_index=row_index,
                 sku_id=product.sku,
-                brand_name='Nivara Studio',
+                brand_name='House of Raeli',
                 category_type=product.category,
                 color=product.color,
                 size='M',
@@ -177,7 +174,7 @@ def _seed_demo_workspace(*, db: Session, company_id: str, user_id: str, asset_ba
         id=str(uuid4()),
         company_id=company_id,
         file_url=f'{asset_base_url}/marketing/grada-received-po-processing-animated.html',
-        po_number='STYLI-DEMO-2408',
+        po_number='70058611',
         distributor='Styli',
         status='parsed',
         raw_extracted_json=json.dumps({'source': 'portfolio_demo'}),
@@ -189,7 +186,7 @@ def _seed_demo_workspace(*, db: Session, company_id: str, user_id: str, asset_ba
         id=str(uuid4()),
         company_id=company_id,
         file_url=f'{asset_base_url}/marketing/grada-received-po-processing-animated.html',
-        po_number='STYLI-DEMO-2407',
+        po_number='70058596',
         distributor='Styli',
         status='confirmed',
         raw_extracted_json=json.dumps({'source': 'portfolio_demo'}),
@@ -204,10 +201,10 @@ def _seed_demo_workspace(*, db: Session, company_id: str, user_id: str, asset_ba
             ReceivedPOLineItem(
                 received_po_id=parsed_po.id,
                 brand_style_code=product.sku,
-                styli_style_id=f'STY-{104 + index}',
+                styli_style_id=f'{70329104 + index}',
                 model_number=product.sku,
-                option_id=f'OPT-{104 + index}',
-                sku_id=f'{product.sku}-{index + 1:02d}',
+                option_id=f'{70329104 + index}02',
+                sku_id=f'{70329104 + index}0202',
                 color=product.color,
                 knitted_woven='Woven',
                 size='M',
@@ -225,10 +222,10 @@ def _seed_demo_workspace(*, db: Session, company_id: str, user_id: str, asset_ba
             ReceivedPOLineItem(
                 received_po_id=confirmed_po.id,
                 brand_style_code=product.sku,
-                styli_style_id=f'STY-{204 + index}',
+                styli_style_id=f'{70329204 + index}',
                 model_number=product.sku,
-                option_id=f'OPT-{204 + index}',
-                sku_id=f'{product.sku}-C{index + 1}',
+                option_id=f'{70329204 + index}02',
+                sku_id=f'{70329204 + index}0202',
                 color=product.color,
                 knitted_woven='Woven',
                 size='M',
@@ -243,7 +240,7 @@ def _seed_demo_workspace(*, db: Session, company_id: str, user_id: str, asset_ba
     db.add(
         CartonCapacityRule(
             company_id=company_id,
-            category='Dresses',
+            category='DRESSES',
             pieces_per_carton=24,
             is_default=True,
         )
@@ -256,7 +253,7 @@ def create_demo_session(request: Request, db: Session = Depends(get_db)) -> Demo
     company_id = str(uuid4())
     user_id = str(uuid4())
     demo_suffix = uuid4().hex[:12]
-    company = Company(id=company_id, name='Nivara Studio — Demo')
+    company = Company(id=company_id, name='Apex Retail Solutions — Demo')
     user = User(
         id=user_id,
         email=f'demo-{demo_suffix}@grada-demo.example.com',
@@ -272,19 +269,22 @@ def create_demo_session(request: Request, db: Session = Depends(get_db)) -> Demo
     settings_record = CompanySettings(
         id=str(uuid4()),
         company_id=company_id,
-        invoice_prefix='NV',
+        invoice_prefix='ARS',
         settings_json=json.dumps(
             {
                 'brand_profile': {
-                    'supplier_name': 'Nivara Studio',
-                    'address': '47 Apparel Park, Jaipur, Rajasthan 302017',
-                    'gst_number': '08ABCDE1234F1Z5',
-                    'pan_number': 'ABCDE1234F',
+                    'supplier_name': 'Apex Retail Solutions Pvt Ltd',
+                    'brand_name': 'House of Raeli',
+                    'fbs_name': 'FBS-House of Raeli Modern Sanskriti',
+                    'address': 'Plot No. 45, Udyog Vihar Phase-II, Gurgaon - 122015',
+                    'gst_number': '06AAECA7890K1ZP',
+                    'pan_number': 'AAECA7890K',
                     'bill_to_address': 'Styli Marketplace, Dubai',
                     'ship_to_address': 'Styli Distribution Centre, Dubai',
-                    'invoice_prefix': 'NV',
+                    'invoice_prefix': 'ARS',
+                    'stamp_image_url': '/static/branding/stamp.png',
                 },
-                'po_builder_defaults': {'po_price': 720, 'osp_in_sar': 115},
+                'po_builder_defaults': {'po_price': 600, 'osp_in_sar': 95},
             }
         ),
     )
@@ -316,6 +316,7 @@ def _build_user_response(db: Session, user: User) -> UserResponse:
     user_payload = UserResponse.model_validate(user).model_dump()
     user_payload['company_name'] = company_name
     user_payload['is_super_admin'] = is_super_admin_user(user)
+    user_payload['is_demo'] = user.signup_source == 'portfolio_demo'
     return UserResponse(**user_payload)
 
 

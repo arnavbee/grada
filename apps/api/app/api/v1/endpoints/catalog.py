@@ -80,6 +80,8 @@ from app.services.ai import (
 )
 from app.services.marketplace_document_templates import (
     loads_json as loads_marketplace_json,
+)
+from app.services.marketplace_document_templates import (
     marketplace_label,
     normalize_marketplace_key,
     normalize_template_columns,
@@ -950,10 +952,14 @@ def _get_category_abbr(category: str | None, fallback: str = 'XX') -> str:
     if not category:
         return (fallback_clean + 'XX')[:2]
     clean = re.sub(r'[^A-Za-z0-9]+', '', category).upper()
-    if 'DRESS' in clean: return 'DS'
-    if 'CORD' in clean or 'SET' in clean: return 'CS'
-    if 'TOP' in clean: return 'TP'
-    if len(clean) >= 2: return clean[:2]
+    if 'DRESS' in clean:
+        return 'DS'
+    if 'CORD' in clean or 'SET' in clean:
+        return 'CS'
+    if 'TOP' in clean:
+        return 'TP'
+    if len(clean) >= 2:
+        return clean[:2]
     return (clean + fallback_clean)[:2]
 
 def _find_formatted_unique_sku(db: Session, company_id: str, base_sku: str, current_product_id: str | None = None) -> str:
@@ -1848,7 +1854,7 @@ def get_learning_stats(
 
     # Conservative estimate for AI-assisted workflow:
     # ~2 min saved per analyzed item + ~30 sec per logged correction.
-    time_saved_minutes = int(round((items_processed * 2.0) + (corrections_received * 0.5)))
+    time_saved_minutes = round((items_processed * 2.0) + (corrections_received * 0.5))
     insights = _build_learning_insights(items_processed, field_accuracy)
 
     return LearningStatsResponse(

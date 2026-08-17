@@ -51,7 +51,7 @@ export function ReceivedPOListView(): JSX.Element {
       const res = await fetch("/files/sample-po.xlsx");
       if (!res.ok) throw new Error("Could not find sample PO file.");
       const blob = await res.blob();
-      const sampleFile = new File([blob], "STYLI-DEMO-2408-sample.xlsx", {
+      const sampleFile = new File([blob], "70058628_HOR_PO-sample.xlsx", {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
       const response = await uploadReceivedPO(sampleFile);

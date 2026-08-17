@@ -3,27 +3,24 @@ import logging
 import math
 import re
 from collections import OrderedDict
-from dataclasses import dataclass
-
-logger = logging.getLogger(__name__)
-
-from datetime import timezone
 from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import timezone
 from io import BytesIO
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import urlopen
 from xml.sax.saxutils import escape
 
-from barcode import Code128, Code39, EAN13
+from barcode import EAN13, Code39, Code128
 from barcode.writer import ImageWriter
 from PIL import Image
+from reportlab import rl_config
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
-from reportlab import rl_config
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Image as PlatypusImage
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
@@ -36,9 +33,14 @@ from app.models.invoice import Invoice, InvoiceLineItem
 from app.models.packing_list import PackingList
 from app.models.received_po import ReceivedPO, ReceivedPOLineItem
 from app.models.sticker_template import StickerElement, StickerTemplate
-from app.services.buyer_document_templates import DEFAULT_INVOICE_LAYOUT_KEY, LANDMARK_INVOICE_LAYOUT_KEY
+from app.services.buyer_document_templates import (
+    DEFAULT_INVOICE_LAYOUT_KEY,
+    LANDMARK_INVOICE_LAYOUT_KEY,
+)
 from app.services.object_storage import get_object_storage_service
 from app.utils.amount_words import convert_to_words
+
+logger = logging.getLogger(__name__)
 
 object_storage = get_object_storage_service()
 STATIC_DIR = Path(__file__).resolve().parents[2] / 'static'
@@ -283,7 +285,7 @@ def _load_image_reader(asset_url: str | None) -> ImageReader | None:
             return _reader_from_bytes(file_path.read_bytes())
 
         if asset_url.startswith(('http://', 'https://')):
-            with urlopen(asset_url, timeout=5) as response:  # noqa: S310
+            with urlopen(asset_url, timeout=5) as response:
                 return _reader_from_bytes(response.read())
     except Exception:
         return None
@@ -341,7 +343,7 @@ def _amount_to_words(value: float) -> str:
         return ' '.join(part for part in parts if part)
 
     whole = int(value)
-    paise = int(round((value - whole) * 100))
+    paise = round((value - whole) * 100)
     if whole == 0:
         words = 'zero'
     else:
@@ -1576,8 +1578,8 @@ def _build_packing_list_pdf(
     sorted_cartons = sorted(packing_list.cartons, key=lambda c: c.carton_number)
     for carton in sorted_cartons:
         sorted_items = sorted(carton.items, key=lambda ci: (
-            str(line_items_by_id.get(ci.line_item_id, None) and line_items_by_id[ci.line_item_id].option_id or ''),
-            str(line_items_by_id.get(ci.line_item_id, None) and line_items_by_id[ci.line_item_id].size or ''),
+            str((line_items_by_id.get(ci.line_item_id, None) and line_items_by_id[ci.line_item_id].option_id) or ''),
+            str((line_items_by_id.get(ci.line_item_id, None) and line_items_by_id[ci.line_item_id].size) or ''),
         ))
         is_first_in_carton = True
         for carton_item in sorted_items:
@@ -1863,7 +1865,7 @@ def _stamp_flowable(stamp_image_url: str) -> PlatypusImage | Paragraph:
 
     if stamp_image_url.startswith(('http://', 'https://')):
         try:
-            with urlopen(stamp_image_url, timeout=5) as response:  # noqa: S310
+            with urlopen(stamp_image_url, timeout=5) as response:
                 return PlatypusImage(BytesIO(response.read()), width=34 * mm, height=16 * mm)
         except Exception:
             return Paragraph('&nbsp;', _invoice_styles()['small'])

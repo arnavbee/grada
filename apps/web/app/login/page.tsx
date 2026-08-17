@@ -107,17 +107,6 @@ export default function LoginPage(): JSX.Element {
           </Link>
           .
         </p>
-
-        <p className="text-center text-sm text-kira-midgray">
-          Need design references?{" "}
-          <Link
-            className="kira-focus-ring text-kira-darkgray hover:text-kira-black"
-            href="/design-system"
-          >
-            View design system
-          </Link>
-          .
-        </p>
       </form>
     </AuthShell>
   );

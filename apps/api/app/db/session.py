@@ -1,12 +1,11 @@
+from collections.abc import Generator
 from pathlib import Path
 
-from alembic import command
 from alembic.config import Config
-from collections.abc import Generator
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from alembic import command
 from app.core.config import get_settings
 from app.db.base import Base
 

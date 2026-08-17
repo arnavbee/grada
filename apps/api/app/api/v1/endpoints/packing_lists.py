@@ -1,7 +1,6 @@
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-
-from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import get_current_user
 from app.db.session import get_db

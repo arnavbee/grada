@@ -6,7 +6,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
-from app.models import MarketplaceDocumentTemplate, PORequest, PORequestColorway, PORequestItem, Product, User
+from app.models import (
+    MarketplaceDocumentTemplate,
+    PORequest,
+    PORequestColorway,
+    PORequestItem,
+    Product,
+    User,
+)
 from app.schemas.po_request import (
     PORequestBatchUpdateItems,
     PORequestCreate,
@@ -15,6 +22,7 @@ from app.schemas.po_request import (
     PORequestResponse,
     PORequestStatus,
 )
+from app.services.marketplace_document_templates import loads_json, normalize_template_columns
 from app.services.po_builder import (
     apply_item_updates,
     build_po_export_csv,
@@ -25,7 +33,6 @@ from app.services.po_builder import (
     rebuild_po_request_rows,
     serialize_po_request,
 )
-from app.services.marketplace_document_templates import loads_json, normalize_template_columns
 
 router = APIRouter()
 
@@ -209,7 +216,7 @@ def _build_csv_export(po_request: PORequest, template_config: dict[str, Any] | N
 @router.get('/{po_request_id}/export')
 def export_po_request(
     po_request_id: str,
-    format: PORequestExportFormat = Query(default='xlsx'),
+    export_format: PORequestExportFormat = Query(default='xlsx', alias='format'),
     template_id: str | None = Query(default=None, max_length=36),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -223,7 +230,7 @@ def export_po_request(
         template_record = _get_po_export_template_or_404(db, current_user.company_id, template_id)
         template_config = _po_template_config_from_record(template_record)
 
-    if format == 'csv':
+    if export_format == 'csv':
         return _build_csv_export(po_request, template_config)
 
     workbook_bytes = build_po_export_xlsx(po_request, template_config)

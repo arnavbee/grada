@@ -53,7 +53,10 @@ export function resolveAssetUrl(assetUrl: string | null | undefined): string | n
       }
       const normalizedPath = normalizeStaticAssetPath(parsed.pathname);
       if (isApiOriginUrl && normalizedPath.startsWith("/static/")) {
-        return `${normalizedApiOrigin}${normalizedPath}${parsed.search}${parsed.hash}`;
+        // Same-origin proxy path: the API's static guard needs the auth
+        // cookie, which the browser only sends same-origin. The
+        // /static/[...path] route forwards it upstream.
+        return `${normalizedPath}${parsed.search}${parsed.hash}`;
       }
       if (normalizedPath !== parsed.pathname) {
         return `${parsed.origin}${normalizedPath}${parsed.search}${parsed.hash}`;
@@ -64,9 +67,5 @@ export function resolveAssetUrl(assetUrl: string | null | undefined): string | n
     }
   }
 
-  const normalizedPath = normalizeStaticAssetPath(raw);
-  if (normalizedPath.startsWith("/static/") && hasAbsoluteApiOrigin) {
-    return `${normalizedApiOrigin}${normalizedPath}`;
-  }
-  return normalizedPath;
+  return normalizeStaticAssetPath(raw);
 }
