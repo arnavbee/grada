@@ -402,6 +402,11 @@ def process_received_po_parse_job(received_po_id: str) -> None:
 
         db.flush()
         db.refresh(record)
+        if record.status == 'confirmed':
+            # The PO was confirmed while this background parse was running;
+            # never clobber reviewed data or regress the status.
+            db.rollback()
+            return
         run_exception_resolution_for_received_po(db, record)
 
         po_date_value = parsed_payload.get('po_date')
