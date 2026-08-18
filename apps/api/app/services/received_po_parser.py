@@ -417,17 +417,41 @@ def process_received_po_parse_job(received_po_id: str) -> None:
             except ValueError:
                 parsed_po_date = None
 
-        record.po_number = str(parsed_payload.get('po_number') or '').strip() or record.po_number
-        record.po_date = parsed_po_date or record.po_date
-        record.distributor = str(parsed_payload.get('distributor') or '').strip() or record.distributor
-        record.raw_extracted_json = _json_dumps(parsed_payload)
-        record.updated_at = utcnow()
-        record.status = 'parsed'
+        # Guard the status transition at the SQL level: a confirm can commit
+        # between the refresh above and this write, and it must always win.
+        updated_rows = (
+            db.query(ReceivedPO)
+            .filter(ReceivedPO.id == record.id, ReceivedPO.status != 'confirmed')
+            .update(
+                {
+                    'po_number': str(parsed_payload.get('po_number') or '').strip()
+                    or record.po_number,
+                    'po_date': parsed_po_date or record.po_date,
+                    'distributor': str(parsed_payload.get('distributor') or '').strip()
+                    or record.distributor,
+                    'raw_extracted_json': _json_dumps(parsed_payload),
+                    'updated_at': utcnow(),
+                    'status': 'parsed',
+                },
+                synchronize_session=False,
+            )
+        )
+        if updated_rows == 0:
+            db.rollback()
+            return
         db.commit()
     except Exception as exc:
         if record is not None:
-            record.status = 'failed'
-            record.raw_extracted_json = _json_dumps({'parse_error': str(exc)[:500]})
+            db.rollback()
+            db.query(ReceivedPO).filter(
+                ReceivedPO.id == record.id, ReceivedPO.status != 'confirmed'
+            ).update(
+                {
+                    'status': 'failed',
+                    'raw_extracted_json': _json_dumps({'parse_error': str(exc)[:500]}),
+                },
+                synchronize_session=False,
+            )
             db.commit()
     finally:
         db.close()
